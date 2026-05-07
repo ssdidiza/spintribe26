@@ -7,7 +7,7 @@ import { getMonthlyKm, buildLeaderboard, getFeaturedZone } from "@/lib/mock-data
 import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import ProgressRing from "@/components/ProgressRing";
-import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin } from "lucide-react";
+import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
 function formatDuration(seconds: number) {
@@ -24,6 +24,8 @@ export default function DashboardPage() {
     syncStravaActivities, hydrateChampionSessions, hydrateAthleteData,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiInsights, setAiInsights] = useState<{ title: string; tip: string }[]>([]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -40,6 +42,36 @@ export default function DashboardPage() {
     setSyncing(true);
     await syncStravaActivities();
     setSyncing(false);
+  }
+
+  async function fetchInsights() {
+    setAiLoading(true);
+    try {
+      const userActivities = activities.filter((a) => a.userId === currentUser!.id);
+      const monthlyKm      = getMonthlyKm(currentUser!.id, activities);
+      const rides          = userActivities.length;
+      const avgKm          = rides ? Math.round(userActivities.reduce((s, a) => s + a.distance, 0) / 1000 / rides) : 0;
+      const featuredZone   = getFeaturedZone(activities, zones);
+      const res = await fetch("/api/ai/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ftp:       currentUser!.ftp,
+          monthlyKm,
+          targetKm:  currentUser!.tier,
+          rides,
+          avgKm,
+          zoneName:  featuredZone?.name,
+        }),
+      });
+      if (res.ok) {
+        const { insights } = await res.json();
+        setAiInsights(insights ?? []);
+      }
+    } catch (e) {
+      console.warn("AI insights failed:", e);
+    }
+    setAiLoading(false);
   }
 
   if (!hydrated || !currentUser) return null;
@@ -193,6 +225,52 @@ export default function DashboardPage() {
           <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
           {syncing ? "Syncing Strava…" : "Sync with Strava"}
         </button>
+
+        {/* AI Training Insights */}
+        <section className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} style={{ color: "#cdbdff" }} />
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">
+                AI Training Insights
+              </p>
+            </div>
+            <button
+              onClick={fetchInsights}
+              disabled={aiLoading}
+              className="text-[11px] font-bold rounded-full px-3 py-1 transition-all disabled:opacity-40"
+              style={{ background: "rgba(124,77,255,0.15)", color: "#cdbdff", border: "1px solid rgba(124,77,255,0.3)" }}
+            >
+              {aiLoading ? "Thinking…" : aiInsights.length ? "Refresh" : "Generate"}
+            </button>
+          </div>
+
+          {aiInsights.length > 0 ? (
+            <div className="space-y-3">
+              {aiInsights.map((ins, i) => (
+                <div key={i} className="flex gap-3 rounded-xl p-3"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center text-[11px] font-black"
+                    style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)", color: "#fff" }}>
+                    {i + 1}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#e5e2e1] mb-0.5">{ins.title}</p>
+                    <p className="text-xs text-[#cac3d8] leading-snug">{ins.tip}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-xs text-[#cac3d8]/60">
+                {aiLoading
+                  ? "Analysing your training data…"
+                  : "Tap Generate for personalised training tips based on your FTP and rides."}
+              </p>
+            </div>
+          )}
+        </section>
 
         {/* Leaders + Featured zone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

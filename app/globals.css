@@ -208,16 +208,19 @@
   * {
     @apply border-border outline-ring/50;
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
     box-sizing: border-box;
+  }
+
+  /* Only suppress double-tap zoom on interactive elements, not everything */
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
   }
 
   html {
     @apply font-sans;
     /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
-    /* Smooth scrolling */
-    scroll-behavior: smooth;
+    /* NO scroll-behavior: smooth — causes sticky/laggy mouse-wheel scroll on desktop */
     /* Prevent font size inflation on iOS */
     -webkit-text-size-adjust: 100%;
   }
@@ -229,8 +232,6 @@
     overflow-x: hidden;
     /* Full viewport height on mobile (handles iOS Safari bottom bar) */
     min-height: 100svh;
-    /* Smooth overscroll on iOS */
-    overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
