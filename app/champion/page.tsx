@@ -144,7 +144,7 @@ export default function ChampionPage() {
         </span>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 py-5 space-y-5">
+      <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-5">
 
         {/* Annual progress */}
         <div className="glass-card p-5">
@@ -162,7 +162,7 @@ export default function ChampionPage() {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Champing / Month" value={champingThisMonth} target={2}  suffix="/ 2 min"    ok={champingThisMonth >= 2} />
+            <MiniStat label="Champing / Month" value={champingThisMonth} target={2}  suffix="/ 2 mininimum"    ok={champingThisMonth >= 2} />
             <MiniStat label="Champing / Year"  value={champingThisYear}  target={10} suffix="/ 10 target" ok={champingThisYear  >= 10} />
           </div>
         </div>

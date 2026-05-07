@@ -1,4 +1,4 @@
-import { User, Activity, ChampionSession, LeaderboardEntry } from "./types";
+import { User, Activity, ChampionSession, LeaderboardEntry, Zone } from "./types";
 
 export const MOCK_CURRENT_USER: User = {
   id: "u1",
@@ -209,6 +209,46 @@ export function getChampingSessionsThisYear(
       d.getFullYear() === now.getFullYear()
     );
   }).length;
+}
+
+/**
+ * Returns the zone where the most activities took place this month.
+ * Falls back to the zone with the highest usageCount if no GPS data is available.
+ */
+export function getFeaturedZone(
+  activities: Activity[],
+  zones: Zone[],
+  userId?: string
+): Zone | null {
+  if (!zones.length) return null;
+
+  // Count activities per detected zone (all users' activities for community feel,
+  // or filter by userId if provided)
+  const counts: Record<string, number> = {};
+  const now = new Date();
+  for (const a of activities) {
+    if (userId && a.userId !== userId) continue;
+    const d = new Date(a.date);
+    const isThisMonth =
+      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (isThisMonth && a.detectedZoneId) {
+      counts[a.detectedZoneId] = (counts[a.detectedZoneId] ?? 0) + 1;
+    }
+  }
+
+  // If we have GPS-detected zone data, pick the most active
+  if (Object.keys(counts).length > 0) {
+    const topId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+    const match = zones.find((z) => z.id === topId);
+    if (match) return match;
+  }
+
+  // Fallback: highest usageCount geographic zone
+  return (
+    zones
+      .filter((z) => z.type === "geographic")
+      .sort((a, b) => b.usageCount - a.usageCount)[0] ?? zones[0]
+  );
 }
 
 export function buildLeaderboard(

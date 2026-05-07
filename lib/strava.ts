@@ -25,6 +25,8 @@ export interface StravaAthlete {
   firstname: string;
   lastname: string;
   profile: string; // avatar URL
+  ftp?: number;    // Functional Threshold Power (watts) — may be null/0 if not set
+  country?: string;
 }
 
 export interface StravaActivity {
@@ -35,6 +37,7 @@ export interface StravaActivity {
   type: string;
   start_date: string; // ISO
   kudos_count: number;
+  start_latlng?: [number, number]; // [lat, lng] — absent for indoor rides
 }
 
 /** Step 1: Build Strava OAuth URL (with CSRF state) */

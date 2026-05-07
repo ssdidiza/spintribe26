@@ -88,7 +88,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 py-6 space-y-5">
+      <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-5">
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-2">

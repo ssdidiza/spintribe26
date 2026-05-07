@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStravaActivitiesForMonth, refreshStravaToken } from "@/lib/strava";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
+import { detectZoneFromGPS } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   // 1. Verify signed session
@@ -50,16 +51,23 @@ export async function POST(req: NextRequest) {
   // 4. Persist to Supabase
   if (stravaActivities.length > 0) {
     const db = supabaseAdmin();
-    const rows = stravaActivities.map((a) => ({
-      strava_id: String(a.id),
-      user_strava_id: String(session.athleteId),
-      name: a.name,
-      distance: a.distance,
-      moving_time: a.moving_time,
-      type: a.type,
-      date: a.start_date,
-      kudos: a.kudos_count,
-    }));
+    const rows = stravaActivities.map((a) => {
+      const lat = a.start_latlng?.[0];
+      const lng = a.start_latlng?.[1];
+      return {
+        strava_id: String(a.id),
+        user_strava_id: String(session.athleteId),
+        name: a.name,
+        distance: a.distance,
+        moving_time: a.moving_time,
+        type: a.type,
+        date: a.start_date,
+        kudos: a.kudos_count,
+        start_lat: lat ?? null,
+        start_lng: lng ?? null,
+        detected_zone_id: detectZoneFromGPS(lat, lng),
+      };
+    });
 
     await db
       .from("activities")

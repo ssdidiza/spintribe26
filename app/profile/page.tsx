@@ -46,7 +46,7 @@ export default function ProfilePage() {
         <h1 className="font-bold text-[#e5e2e1] text-xl">Profile</h1>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 py-6 space-y-4">
+      <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-4">
 
         {/* Avatar card */}
         <div className="glass-card p-6 flex flex-col items-center text-center gap-4">

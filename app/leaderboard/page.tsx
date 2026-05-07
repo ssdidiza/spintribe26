@@ -49,7 +49,7 @@ export default function LeaderboardPage() {
         </svg>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 py-5 space-y-4">
+      <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-4">
 
         {/* Tier tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
