@@ -14,7 +14,7 @@ export interface SessionData {
 
 const sessionOptions = {
   cookieName: "spintribe_session",
-  password: process.env.NEXTAUTH_SECRET!,   // min 32 chars
+  password: (process.env.NEXTAUTH_SECRET ?? process.env.SESSION_SECRET)!,   // min 32 chars
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
