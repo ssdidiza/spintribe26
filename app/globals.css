@@ -137,26 +137,49 @@
 }
 
 /* ─── Glassmorphism utilities ─────────────────────────────────────────────── */
+
+/* Inline glass — pills, badges, small chips */
 .glass {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(19, 13, 35, 0.70);
+  border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
+/* Elevated glass — modals, popovers */
 .glass-strong {
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(19, 13, 35, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* Content cards */
 .glass-card {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
+  background: rgba(20, 14, 38, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.25rem;
+  isolation: isolate;
+}
+
+/* Sticky headers — must be opaque enough to hide scrolled content */
+.glass-header {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  background: rgba(14, 10, 22, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  isolation: isolate;
+}
+
+/* Fixed bottom navbar — fully opaque to prevent bleed-through */
+.glass-nav {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  background: rgba(12, 8, 20, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  isolation: isolate;
 }
 
 /* ─── Gradient utilities ──────────────────────────────────────────────────── */
@@ -184,12 +207,78 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    box-sizing: border-box;
   }
+
+  html {
+    @apply font-sans;
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    /* Prevent font size inflation on iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans), system-ui, sans-serif;
+    /* Prevent horizontal overflow */
+    overflow-x: hidden;
+    /* Full viewport height on mobile (handles iOS Safari bottom bar) */
+    min-height: 100svh;
+    /* Smooth overscroll on iOS */
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  html {
-    @apply font-sans;
+
+  /* Prevent images from overflowing their containers */
+  img {
+    max-width: 100%;
+    height: auto;
   }
+
+  /* Better button defaults */
+  button {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Scrollbar — thin and themed */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(124, 77, 255, 0.3);
+    border-radius: 2px;
+  }
+}
+
+/* ─── Safe area utilities (iPhone notch / home bar) ──────────────────────── */
+.pb-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: max(0rem, env(safe-area-inset-top));
+}
+.mb-nav {
+  /* Space for fixed navbar + safe area */
+  margin-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+/* ─── Scrollbar hidden utility ────────────────────────────────────────────── */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

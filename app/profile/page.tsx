@@ -41,8 +41,8 @@ export default function ProfilePage() {
   const RoleIcon  = isAdmin ? ShieldCheck : isChamp ? Star : null;
 
   return (
-    <div className="min-h-screen bg-[#131313] pb-28">
-      <header className="sticky top-0 z-40 glass border-b border-white/[0.08] px-5 py-4">
+    <div className="min-h-screen bg-[#131313] mb-nav">
+      <header className="sticky top-0 z-40 glass-header px-5 py-4">
         <h1 className="font-bold text-[#e5e2e1] text-xl">Profile</h1>
       </header>
 

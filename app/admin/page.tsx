@@ -75,9 +75,9 @@ export default function AdminPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#131313] pb-28">
+    <div className="min-h-screen bg-[#131313] mb-nav">
       {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-white/[0.08] px-5 py-4 flex items-center gap-3">
+      <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center gap-3">
         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #7c4dff, #00e3fd)" }}>
           <ShieldCheck size={15} color="#fff" />

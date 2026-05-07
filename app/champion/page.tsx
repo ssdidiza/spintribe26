@@ -125,9 +125,9 @@ export default function ChampionPage() {
   const canSubmit  = !!selectedActivity && (modal === "ftp" || !!selectedZone);
 
   return (
-    <div className="min-h-screen bg-[#131313] pb-28">
+    <div className="min-h-screen bg-[#131313] mb-nav">
       {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-white/[0.08] px-5 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Star size={16} style={{ color: "#cdbdff", filter: "drop-shadow(0 0 6px rgba(124,77,255,0.7))" }} fill="#cdbdff" />
           <h1 className="font-bold text-[#e5e2e1]">Champ Console</h1>

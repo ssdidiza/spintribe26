@@ -13,13 +13,22 @@ export const metadata: Metadata = {
   title: "SpinTribe26 — Team Vitality Challenge",
   description:
     "Track your monthly cycling challenge with Team Vitality. Strava-powered leaderboards and champion check-ins.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SpinTribe26",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  minimumScale: 1,
   maximumScale: 1,
-  themeColor: "#131313",
+  userScalable: false,
+  viewportFit: "cover",   // honours safe-area-inset on notched iPhones
+  themeColor: "#0c0814",
 };
 
 export default function RootLayout({

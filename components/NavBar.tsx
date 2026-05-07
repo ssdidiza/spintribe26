@@ -25,8 +25,8 @@ export default function NavBar() {
   });
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/[0.08]">
-      <div className="mx-auto flex max-w-lg justify-around px-2 py-2.5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-nav">
+      <div className="mx-auto flex max-w-lg justify-around px-2 pt-2.5 pb-safe">
         {links.map(({ href, icon: Icon, label }) => {
           const active = pathname.startsWith(href);
           return (

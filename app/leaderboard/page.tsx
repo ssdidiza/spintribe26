@@ -35,9 +35,9 @@ export default function LeaderboardPage() {
   const entries   = buildLeaderboard(selectedTier, realUsers, activities);
 
   return (
-    <div className="min-h-screen bg-[#131313] pb-28">
+    <div className="min-h-screen bg-[#131313] mb-nav">
       {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-white/[0.08] px-5 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">
             {new Date().toLocaleString("default", { month: "long", year: "numeric" })}
