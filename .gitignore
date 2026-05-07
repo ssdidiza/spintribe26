@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design exports (do not commit)
+stitch_export_temp/
+stitch_spintribe_performance_dashboard/
+*.zip
