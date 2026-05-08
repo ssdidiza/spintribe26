@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
@@ -31,20 +31,20 @@ export default function DashboardPage() {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
-    hydrateChampionSessions();
-    hydrateAthleteData();
-    const myActivities = activities.filter((a) => a.userId === currentUser.id);
-    if (myActivities.length === 0) handleSync();
+    Promise.all([hydrateChampionSessions(), hydrateAthleteData()]).then(() => {
+      const myActivities = activities.filter((a) => a.userId === currentUser.id);
+      if (myActivities.length === 0) handleSync();
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, currentUser, isOnboarded]);
 
-  async function handleSync() {
+  const handleSync = useCallback(async () => {
     setSyncing(true);
     await syncStravaActivities();
     setSyncing(false);
-  }
+  }, [syncStravaActivities]);
 
-  async function fetchInsights() {
+  const fetchInsights = useCallback(async () => {
     setAiLoading(true);
     try {
       const userActivities = activities.filter((a) => a.userId === currentUser!.id);
@@ -72,15 +72,28 @@ export default function DashboardPage() {
       console.warn("AI insights failed:", e);
     }
     setAiLoading(false);
-  }
+  }, [activities, currentUser, zones]);
+
+  const userActivities = useMemo(
+    () => activities
+      .filter((a) => a.userId === currentUser?.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [activities, currentUser?.id]
+  );
+
+  const monthlyKm   = useMemo(
+    () => currentUser ? getMonthlyKm(currentUser.id, activities) : 0,
+    [currentUser, activities]
+  );
+  const realUsers   = useMemo(() => users.filter((u) => u.isConnected), [users]);
+  const topRiders   = useMemo(
+    () => currentUser ? buildLeaderboard(currentUser.tier, realUsers, activities).slice(0, 3) : [],
+    [currentUser, realUsers, activities]
+  );
+  const featuredZone = useMemo(() => getFeaturedZone(activities, zones), [activities, zones]);
 
   if (!hydrated || !currentUser) return null;
 
-  const userActivities = activities
-    .filter((a) => a.userId === currentUser.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  const monthlyKm   = getMonthlyKm(currentUser.id, activities);
   const targetKm    = currentUser.tier;
   const pct         = Math.min(100, Math.round((monthlyKm / targetKm) * 100));
   const remainingKm = Math.max(0, targetKm - monthlyKm);
@@ -89,11 +102,8 @@ export default function DashboardPage() {
     ? Math.round(userActivities.reduce((s, a) => s + a.distance, 0) / 1000 / userActivities.length)
     : 0;
 
-  const realUsers    = users.filter((u) => u.isConnected);
-  const topRiders    = buildLeaderboard(currentUser.tier, realUsers, activities).slice(0, 3);
-  const featuredZone = getFeaturedZone(activities, zones);
-  const ftp          = currentUser.ftp;
-  const now          = new Date();
+  const ftp = currentUser.ftp;
+  const now = new Date();
 
   const STATS = [
     { label: "Rides",  value: userActivities.length,                              icon: <Bike       size={14} className="text-[#cdbdff]" /> },

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { Zone, ZoneType } from "@/lib/types";
 import { findSimilarZones } from "@/lib/fuzzy";
@@ -19,6 +19,12 @@ export default function ZoneSelector({ region, value, onChange }: ZoneSelectorPr
   const [newType, setNewType] = useState<ZoneType>("geographic");
   const [newDesc, setNewDesc] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [debouncedName, setDebouncedName] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedName(newName), 300);
+    return () => clearTimeout(timer);
+  }, [newName]);
 
   // Zones for this region + National
   const regionalZones = useMemo(
@@ -31,14 +37,14 @@ export default function ZoneSelector({ region, value, onChange }: ZoneSelectorPr
 
   const displayed = showAll ? regionalZones : regionalZones.slice(0, 4);
 
-  // Fuzzy check when typing new zone name
+  // Fuzzy check when typing new zone name — debounced to avoid O(m*n) work on every keystroke
   const similarZones = useMemo(() => {
-    if (newName.length < 3) return [];
+    if (debouncedName.length < 3) return [];
     const namesInRegion = zones
       .filter((z) => z.region === region || z.region === "National")
       .map((z) => z.name);
-    return findSimilarZones(newName, namesInRegion);
-  }, [newName, zones, region]);
+    return findSimilarZones(debouncedName, namesInRegion);
+  }, [debouncedName, zones, region]);
 
   const canCreate = newName.trim().length >= 3 && similarZones.length === 0;
 

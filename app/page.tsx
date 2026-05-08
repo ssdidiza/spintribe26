@@ -1,9 +1,11 @@
 "use client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
+import LegalFooter from "@/components/LegalFooter";
 
 type Mode = "signin" | "signup";
 
@@ -71,7 +73,8 @@ export default function LandingPage() {
   if (!hydrated) return null;
 
   return (
-    <main className="min-h-screen bg-[#131313] flex flex-col md:flex-row overflow-hidden">
+    <div className="min-h-screen bg-[#131313] flex flex-col">
+    <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
       {/* ── Left panel — hero ─────────────────────────────────────── */}
       <div className="relative flex flex-col justify-between px-8 pt-12 pb-8 md:w-1/2 md:min-h-screen">
@@ -231,11 +234,21 @@ export default function LandingPage() {
           </button>
 
           <p className="mt-6 text-center text-[10px] text-white/25 leading-relaxed">
-            By continuing you agree to our Terms of Service.{" "}
-            Strava integration is currently invite-only — use email to join.
+            By continuing you agree to our{" "}
+            <Link href="/legal/terms" className="underline underline-offset-2 hover:text-white/50 transition-colors">
+              Terms &amp; Conditions
+            </Link>
+            {" "}and{" "}
+            <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-white/50 transition-colors">
+              Privacy Policy
+            </Link>
+            .{" "}Strava integration is currently invite-only — use email to join.
           </p>
         </div>
       </div>
+
     </main>
+    <LegalFooter />
+    </div>
   );
 }
