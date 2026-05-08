@@ -84,7 +84,7 @@ export default function HealthDisclaimer() {
 
       <h2>8. Contact</h2>
       <p>
-        Questions about this disclaimer: <a href="mailto:legal@spintribe26.co.za">legal@spintribe26.co.za</a>
+        Questions about this disclaimer: <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

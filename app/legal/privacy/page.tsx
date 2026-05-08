@@ -68,7 +68,7 @@ export default function PrivacyPolicy() {
       </ul>
       <p>
         To exercise any right, email us at{" "}
-        <a href="mailto:privacy@spintribe26.co.za">privacy@spintribe26.co.za</a>.
+        <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>.
       </p>
 
       <h2>7. Security</h2>
@@ -86,7 +86,7 @@ export default function PrivacyPolicy() {
 
       <h2>9. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:privacy@spintribe26.co.za">privacy@spintribe26.co.za</a>
+        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

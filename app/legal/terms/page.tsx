@@ -94,7 +94,7 @@ export default function TermsAndConditions() {
 
       <h2>10. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:legal@spintribe26.co.za">legal@spintribe26.co.za</a>
+        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

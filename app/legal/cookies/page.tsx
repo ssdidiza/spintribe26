@@ -86,7 +86,7 @@ export default function CookiePolicy() {
 
       <h2>6. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:privacy@spintribe26.co.za">privacy@spintribe26.co.za</a>
+        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );
