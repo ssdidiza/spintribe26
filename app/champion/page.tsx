@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
@@ -58,53 +58,68 @@ export default function ChampionPage() {
     return () => { document.body.style.overflow = ""; };
   }, [modal]);
 
-  if (!hydrated || !currentUser || !canAccessChampionFeatures(currentUser)) return null;
+  const userRegion = currentUser?.region ?? "Gauteng";
 
-  const userRegion       = currentUser.region ?? "Gauteng";
-  const champingThisMonth = getChampingSessionsThisMonth(currentUser.id, championSessions);
-  const champingThisYear  = getChampingSessionsThisYear(currentUser.id, championSessions);
-  const ftpSessions       = championSessions.filter(
-    (s) => s.userId === currentUser.id && s.type === "ftp_improver"
-  ).length;
-
-  const totalSessions = champingThisYear + ftpSessions;
-  const annualPct     = Math.min(100, Math.round((totalSessions / 22) * 100));
-
-  const userActivities = activities
-    .filter((a) => a.userId === currentUser.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  // Rule D: already-logged strava activity IDs
-  const usedActivityIds = new Set(
-    championSessions
-      .filter((s) => s.userId === currentUser.id && s.stravaActivityId)
-      .map((s) => s.stravaActivityId!)
+  const champingThisMonth = useMemo(
+    () => currentUser ? getChampingSessionsThisMonth(currentUser.id, championSessions) : 0,
+    [currentUser, championSessions]
+  );
+  const champingThisYear = useMemo(
+    () => currentUser ? getChampingSessionsThisYear(currentUser.id, championSessions) : 0,
+    [currentUser, championSessions]
+  );
+  const ftpSessions = useMemo(
+    () => championSessions.filter((s) => s.userId === currentUser?.id && s.type === "ftp_improver").length,
+    [championSessions, currentUser?.id]
   );
 
-  const recentSessions = [...championSessions]
-    .filter((s) => s.userId === currentUser.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 6);
-
-  const opportunityZones = zones
-    .filter((z) => z.region === userRegion || z.region === "National")
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 3);
-
-  const tierMembers = users.filter(
-    (u) => u.isConnected && u.tier === currentUser.tier && u.id !== currentUser.id
+  const userActivities = useMemo(
+    () => activities
+      .filter((a) => a.userId === currentUser?.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [activities, currentUser?.id]
   );
 
-  function openModal(type: ModalType, preselectedZone?: Zone) {
+  const usedActivityIds = useMemo(
+    () => new Set(
+      championSessions
+        .filter((s) => s.userId === currentUser?.id && s.stravaActivityId)
+        .map((s) => s.stravaActivityId!)
+    ),
+    [championSessions, currentUser?.id]
+  );
+
+  const recentSessions = useMemo(
+    () => [...championSessions]
+      .filter((s) => s.userId === currentUser?.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 6),
+    [championSessions, currentUser?.id]
+  );
+
+  const opportunityZones = useMemo(
+    () => zones
+      .filter((z) => z.region === userRegion || z.region === "National")
+      .sort((a, b) => b.usageCount - a.usageCount)
+      .slice(0, 3),
+    [zones, userRegion]
+  );
+
+  const tierMembers = useMemo(
+    () => users.filter((u) => u.isConnected && u.tier === currentUser?.tier && u.id !== currentUser?.id),
+    [users, currentUser?.tier, currentUser?.id]
+  );
+
+  const openModal = useCallback((type: ModalType, preselectedZone?: Zone) => {
     setModal(type);
     setStep("activity");
     setSelectedActivity(null);
     setSelectedZone(preselectedZone ?? null);
     setNotes("");
     setSaved(false);
-  }
+  }, []);
 
-  function handleSubmit() {
+  const handleSubmit = useCallback(() => {
     if (!modal || !selectedActivity) return;
     addChampionSession(
       modal === "ftp" ? "ftp_improver" : "champing",
@@ -119,8 +134,12 @@ export default function ChampionPage() {
     );
     setSaved(true);
     setTimeout(() => { setSaved(false); setModal(null); }, 1600);
-  }
+  }, [modal, selectedActivity, selectedZone, notes, addChampionSession]);
 
+  if (!hydrated || !currentUser || !canAccessChampionFeatures(currentUser)) return null;
+
+  const totalSessions = champingThisYear + ftpSessions;
+  const annualPct     = Math.min(100, Math.round((totalSessions / 22) * 100));
   const canAdvance = !!selectedActivity;
   const canSubmit  = !!selectedActivity && (modal === "ftp" || !!selectedZone);
 

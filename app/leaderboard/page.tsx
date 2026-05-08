@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
@@ -29,10 +29,13 @@ export default function LeaderboardPage() {
     else setSelectedTier(currentUser.tier as Tier);
   }, [hydrated, currentUser, isOnboarded, router]);
 
-  if (!hydrated || !currentUser) return null;
+  const realUsers = useMemo(() => users.filter((u) => u.isConnected), [users]);
+  const entries   = useMemo(
+    () => buildLeaderboard(selectedTier, realUsers, activities),
+    [selectedTier, realUsers, activities]
+  );
 
-  const realUsers = users.filter((u) => u.isConnected);
-  const entries   = buildLeaderboard(selectedTier, realUsers, activities);
+  if (!hydrated || !currentUser) return null;
 
   return (
     <div className="min-h-screen bg-[#131313] mb-nav">
