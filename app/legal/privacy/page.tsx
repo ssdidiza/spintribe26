@@ -46,7 +46,13 @@ export default function PrivacyPolicy() {
 
       <h2>4. Third-Party Services</h2>
       <ul>
-        <li><strong>Strava API:</strong> governed by Strava&apos;s own Privacy Policy. You may revoke access via your Strava settings at any time.</li>
+        <li>
+          <strong>Strava API:</strong> governed by the{" "}
+          <a href="https://www.strava.com/legal/api" target="_blank" rel="noopener noreferrer">Strava API Agreement</a>
+          {" "}and{" "}
+          <a href="https://www.strava.com/legal/privacy" target="_blank" rel="noopener noreferrer">Strava&apos;s Privacy Policy</a>
+          . You may revoke access via your Strava settings at any time.
+        </li>
         <li><strong>Supabase:</strong> our database and authentication provider. Data is stored on Supabase-managed infrastructure.</li>
         <li><strong>AI inference provider (Groq):</strong> used solely to generate training tips. Request payloads contain aggregated stats (km totals, FTP, ride counts) — no personally identifiable information is included.</li>
       </ul>

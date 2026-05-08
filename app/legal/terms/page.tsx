@@ -58,6 +58,14 @@ export default function TermsAndConditions() {
         time from your Strava settings; doing so will prevent further syncing but will not delete
         existing data.
       </p>
+      <p>
+        Our use of the Strava API is governed by the{" "}
+        <a href="https://www.strava.com/legal/api" target="_blank" rel="noopener noreferrer">
+          Strava API Agreement
+        </a>
+        . Activity data displayed on this platform is sourced from Strava and attributed
+        accordingly. This platform is not affiliated with or endorsed by Strava.
+      </p>
 
       <h2>6. Limitation of Liability</h2>
       <p>
