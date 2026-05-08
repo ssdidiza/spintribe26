@@ -43,7 +43,7 @@ function OnboardingContent() {
 
   function handleFinish() {
     if (!role || !tier) return;
-    completeOnboarding(role, tier);
+    completeOnboarding(role, tier, region);
     router.push(role === "champion" ? "/champion" : "/dashboard");
   }
 

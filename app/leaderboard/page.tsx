@@ -48,8 +48,15 @@ export default function LeaderboardPage() {
           </p>
           <h1 className="font-bold text-[#e5e2e1] text-xl">Leaderboard</h1>
         </div>
-        <svg viewBox="0 0 24 24" className="w-5 h-5" style={{ opacity: 0.4 }} fill="#cdbdff">
-          <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0 0 17.944h4.172" />
+        <svg viewBox="0 0 24 24" className="w-5 h-5" style={{ opacity: 0.4 }} fill="none" stroke="#cdbdff" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="12" cy="12" r="9.5" />
+          <circle cx="12" cy="12" r="1.75" fill="#cdbdff" stroke="none" />
+          <line x1="12" y1="10.25" x2="12" y2="3.5" />
+          <line x1="13.5" y1="10.5" x2="19.5" y2="7" />
+          <line x1="13.5" y1="13.5" x2="19.5" y2="17" />
+          <line x1="12" y1="13.75" x2="12" y2="20.5" />
+          <line x1="10.5" y1="13.5" x2="4.5" y2="17" />
+          <line x1="10.5" y1="10.5" x2="4.5" y2="7" />
         </svg>
       </header>
 
