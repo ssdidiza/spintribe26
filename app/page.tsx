@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
+import Image from "next/image";
 import LegalFooter from "@/components/LegalFooter";
 
 type Mode = "signin" | "signup";
@@ -223,14 +224,20 @@ export default function LandingPage() {
             <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
           </div>
 
-          {/* Strava button */}
-          <button onClick={handleStrava}
-            className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-3.5 font-bold text-sm tracking-wide transition-all active:scale-[0.98] border"
-            style={{ background: "rgba(252,82,0,0.08)", borderColor: "rgba(252,82,0,0.3)", color: "#fc5200" }}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0 0 17.944h4.172" />
-            </svg>
-            Continue with Strava
+          {/* Official "Connect with Strava" button per Strava branding guidelines */}
+          <button
+            onClick={handleStrava}
+            className="w-full flex items-center justify-center transition-all active:scale-[0.98] hover:opacity-90"
+            aria-label="Connect with Strava"
+          >
+            <Image
+              src="/strava/btn_connect_with_strava_orange.svg"
+              alt="Connect with Strava"
+              width={193}
+              height={48}
+              className="h-12 w-auto"
+              unoptimized
+            />
           </button>
 
           <p className="mt-6 text-center text-[10px] text-white/25 leading-relaxed">

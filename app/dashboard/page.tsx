@@ -7,6 +7,7 @@ import { getMonthlyKm, buildLeaderboard, getFeaturedZone } from "@/lib/mock-data
 import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import ProgressRing from "@/components/ProgressRing";
+import PoweredByStrava from "@/components/PoweredByStrava";
 import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
@@ -345,7 +346,9 @@ export default function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">Recent Rides</p>
-            <span className="text-[10px] text-[#cac3d8]">{syncing ? "Syncing…" : "Strava"}</span>
+            {syncing
+              ? <span className="text-[10px] text-[#cac3d8]">Syncing…</span>
+              : <PoweredByStrava />}
           </div>
           {syncing && userActivities.length === 0 ? (
             <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-16 rounded-2xl glass animate-pulse" />)}</div>
@@ -357,7 +360,13 @@ export default function DashboardPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {userActivities.slice(0, 8).map((activity) => (
-                <div key={activity.id} className="flex items-center gap-3 glass-card p-3">
+                <a
+                  key={activity.id}
+                  href={`https://www.strava.com/activities/${activity.stravaId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
+                >
                   <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-base flex-shrink-0">
                     {activity.type === "VirtualRide" ? "🏠" : activity.type === "Run" ? "🏃" : "🚴"}
                   </div>
@@ -374,7 +383,7 @@ export default function DashboardPage() {
                     <p className="font-bold text-sm text-[#cdbdff]">{(activity.distance / 1000).toFixed(1)} km</p>
                     <p className="text-[10px] text-[#cac3d8]">{formatDuration(activity.movingTime)}</p>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}

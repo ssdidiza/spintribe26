@@ -352,7 +352,7 @@ export default function ChampionPage() {
       {/* Modal */}
       {modal && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[70] bg-black/70 flex items-end sm:items-center justify-center"
           onClick={() => setModal(null)}
         >
           <div

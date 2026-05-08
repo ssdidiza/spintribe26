@@ -100,13 +100,18 @@ export default function ProfilePage() {
             {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km
           </span>
 
-          {/* Strava badge */}
-          <div className="flex items-center gap-1.5 text-[11px] text-[#cac3d8] glass rounded-full px-3 py-1.5">
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#fc4c02">
+          {/* Strava badge — links to athlete profile as required by Strava guidelines */}
+          <a
+            href={`https://www.strava.com/athletes/${currentUser.stravaId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[11px] text-[#cac3d8] glass rounded-full px-3 py-1.5 hover:border-[#FC4C02]/40 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#FC4C02">
               <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0 0 17.944h4.172" />
             </svg>
-            Strava · ID {currentUser.stravaId}
-          </div>
+            View on Strava
+          </a>
         </div>
 
         {/* Progress ring */}
@@ -169,10 +174,15 @@ export default function ProfilePage() {
           <div className="px-5 py-3 border-b border-white/[0.06]">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">Account</p>
           </div>
-          <button className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06]">
+          <a
+            href={`https://www.strava.com/athletes/${currentUser.stravaId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06]"
+          >
             <span className="text-sm font-semibold text-[#e5e2e1]">Strava Profile</span>
             <ExternalLink size={14} className="text-[#cac3d8]" />
-          </button>
+          </a>
           <button
             onClick={handleLogout}
             className="flex items-center justify-between w-full px-5 py-4 hover:bg-red-500/10 transition-colors"

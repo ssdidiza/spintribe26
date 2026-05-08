@@ -6,6 +6,7 @@ import { useHydrated } from "@/lib/useHydrated";
 import { buildLeaderboard } from "@/lib/mock-data";
 import { Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
 import NavBar from "@/components/NavBar";
+import PoweredByStrava from "@/components/PoweredByStrava";
 import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = [200, 400, 800, 1000];
@@ -84,7 +85,10 @@ export default function LeaderboardPage() {
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cdbdff]">
             {TIER_LABELS[selectedTier]} — {selectedTier} km
           </p>
-          <p className="text-[10px] text-[#cac3d8]">{entries.length} riders</p>
+          <div className="flex items-center gap-3">
+            <p className="text-[10px] text-[#cac3d8]">{entries.length} riders</p>
+            <PoweredByStrava />
+          </div>
         </div>
 
         {/* Entries */}
