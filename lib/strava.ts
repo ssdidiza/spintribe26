@@ -103,6 +103,9 @@ export async function refreshStravaToken(
     refreshToken: data.refresh_token,
     expiresAt: data.expires_at,
     athleteId: data.athlete?.id,
+    athleteFirstname: data.athlete?.firstname ?? "",
+    athleteLastname: data.athlete?.lastname ?? "",
+    athleteProfile: data.athlete?.profile ?? "",
   };
 }
 
