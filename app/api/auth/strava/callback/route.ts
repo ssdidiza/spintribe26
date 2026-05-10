@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeStravaCode, getStravaAthlete } from "@/lib/strava";
+import { exchangeStravaCode } from "@/lib/strava";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 
@@ -20,17 +20,19 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Exchange Strava code for tokens
+    // 1. Exchange code — athlete name/avatar are embedded in the token response
     const tokens = await exchangeStravaCode(code);
-    const athlete = await getStravaAthlete(tokens.accessToken);
+    const displayName = [tokens.athleteFirstname, tokens.athleteLastname]
+      .filter(Boolean)
+      .join(" ") || "Athlete";
 
     // 2. Upsert user in Supabase
     const db = supabaseAdmin();
     const { error: dbError } = await db.from("users").upsert(
       {
         strava_id: String(tokens.athleteId),
-        name: `${athlete.firstname} ${athlete.lastname}`,
-        avatar: athlete.profile,
+        name: displayName,
+        avatar: tokens.athleteProfile,
         strava_access_token: tokens.accessToken,
         strava_refresh_token: tokens.refreshToken,
         strava_token_expires_at: tokens.expiresAt,
@@ -55,8 +57,8 @@ export async function GET(req: NextRequest) {
     // 4. Redirect to onboarding with public athlete info as params
     const url = new URL("/onboarding", req.url);
     url.searchParams.set("strava_id", String(tokens.athleteId));
-    url.searchParams.set("name", `${athlete.firstname} ${athlete.lastname}`);
-    url.searchParams.set("avatar", athlete.profile);
+    url.searchParams.set("name", displayName);
+    url.searchParams.set("avatar", tokens.athleteProfile);
 
     const res = NextResponse.redirect(url);
 

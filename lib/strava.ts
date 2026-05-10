@@ -18,6 +18,10 @@ export interface StravaTokens {
   refreshToken: string;
   expiresAt: number; // unix epoch seconds
   athleteId: number;
+  // Basic athlete info from the token exchange — always present, no extra API call needed
+  athleteFirstname: string;
+  athleteLastname: string;
+  athleteProfile: string;
 }
 
 export interface StravaAthlete {
@@ -72,7 +76,10 @@ export async function exchangeStravaCode(code: string): Promise<StravaTokens> {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: data.expires_at,
-    athleteId: data.athlete.id,
+    athleteId: data.athlete?.id,
+    athleteFirstname: data.athlete?.firstname ?? "",
+    athleteLastname: data.athlete?.lastname ?? "",
+    athleteProfile: data.athlete?.profile ?? "",
   };
 }
 
@@ -96,6 +103,11 @@ export async function refreshStravaToken(
     refreshToken: data.refresh_token,
     expiresAt: data.expires_at,
     athleteId: data.athlete?.id,
+    // Strava's refresh endpoint does not return athlete data — these are intentional empty
+    // string defaults. Name/avatar are only needed at initial login (exchangeStravaCode).
+    athleteFirstname: data.athlete?.firstname ?? "",
+    athleteLastname: data.athlete?.lastname ?? "",
+    athleteProfile: data.athlete?.profile ?? "",
   };
 }
 

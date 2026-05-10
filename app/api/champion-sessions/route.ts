@@ -14,7 +14,8 @@ export async function GET() {
     .from("champion_sessions")
     .select("*")
     .eq("user_strava_id", String(session.athleteId))
-    .order("date", { ascending: false });
+    .order("date", { ascending: false })
+    .limit(50);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ sessions: data ?? [] });
@@ -29,19 +30,6 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const db = supabaseAdmin();
-
-  // Rule D: server-side duplicate check (DB unique index also enforces this)
-  if (body.stravaActivityId) {
-    const { data: existing } = await db
-      .from("champion_sessions")
-      .select("id")
-      .eq("user_strava_id", String(session.athleteId))
-      .eq("strava_activity_id", body.stravaActivityId)
-      .maybeSingle();
-    if (existing) {
-      return NextResponse.json({ error: "duplicate_activity" }, { status: 409 });
-    }
-  }
 
   const { data, error } = await db
     .from("champion_sessions")
@@ -58,6 +46,11 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json({ error: "duplicate_activity" }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ session: data }, { status: 201 });
 }

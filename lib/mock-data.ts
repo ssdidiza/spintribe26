@@ -256,10 +256,25 @@ export function buildLeaderboard(
   users: User[],
   activities: Activity[]
 ): LeaderboardEntry[] {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  // Single O(n) pass over all activities to aggregate monthly km per user.
+  // Avoids the previous O(m×n) pattern where getMonthlyKm scanned all
+  // activities once per user.
+  const kmByUser: Record<string, number> = {};
+  for (const a of activities) {
+    const d = new Date(a.date);
+    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+      kmByUser[a.userId] = (kmByUser[a.userId] ?? 0) + a.distance;
+    }
+  }
+
   return users
     .filter((u) => u.tier === tier)
     .map((u) => {
-      const totalKm = getMonthlyKm(u.id, activities);
+      const totalKm = Math.round((kmByUser[u.id] ?? 0) / 1000);
       return {
         user: u,
         totalKm,
