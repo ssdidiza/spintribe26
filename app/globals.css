@@ -51,7 +51,7 @@
 /* ─── Iridescent Glass Design Tokens ─────────────────────────────────────── */
 :root {
   /* Surfaces */
-  --background: #131313;
+  --background: #07080d;
   --foreground: #e5e2e1;
   --card: #0e0e0e;
   --card-foreground: #e5e2e1;
@@ -103,7 +103,7 @@
 }
 
 .dark {
-  --background: #131313;
+  --background: #07080d;
   --foreground: #e5e2e1;
   --card: #0e0e0e;
   --card-foreground: #e5e2e1;
@@ -177,9 +177,23 @@
 .glass-nav {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  background: rgba(12, 8, 20, 0.96);
+  background: rgba(4, 4, 8, 0.97);
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   isolation: isolate;
+}
+
+/* ─── Dot floor — Gemini-inspired atmospheric dot matrix ─────────────────── */
+/* Dense dots at the bottom, fading to invisible at the top.                  */
+/* Always pointer-events-none. Used in NavBar and page hero sections.         */
+.dot-floor {
+  background-image:
+    radial-gradient(circle, rgba(168, 85, 247, 0.55) 1px, transparent 1px),
+    radial-gradient(circle, rgba(0, 227, 253, 0.22) 1px, transparent 1px);
+  background-size: 20px 20px, 20px 20px;
+  background-position: 0 0, 10px 10px;
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 70%);
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 /* ─── Gradient utilities ──────────────────────────────────────────────────── */

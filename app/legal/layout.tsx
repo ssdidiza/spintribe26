@@ -13,8 +13,23 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
             className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
             style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)" }}
           >
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="currentColor">
-              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0 0 17.944h4.172" />
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" strokeWidth="1.8" strokeLinecap="round">
+              <defs>
+                <linearGradient id="iridLegal" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stopColor="#ff6b6b" />
+                  <stop offset="33%"  stopColor="#a855f7" />
+                  <stop offset="66%"  stopColor="#00e3fd" />
+                  <stop offset="100%" stopColor="#34d399" />
+                </linearGradient>
+              </defs>
+              <circle cx="12" cy="12" r="9.5" stroke="url(#iridLegal)" />
+              <circle cx="12" cy="12" r="1.75" fill="url(#iridLegal)" stroke="none" />
+              <line x1="12" y1="10.25" x2="12" y2="3.5" stroke="url(#iridLegal)" />
+              <line x1="13.5" y1="10.5" x2="19.5" y2="7" stroke="url(#iridLegal)" />
+              <line x1="13.5" y1="13.5" x2="19.5" y2="17" stroke="url(#iridLegal)" />
+              <line x1="12" y1="13.75" x2="12" y2="20.5" stroke="url(#iridLegal)" />
+              <line x1="10.5" y1="13.5" x2="4.5" y2="17" stroke="url(#iridLegal)" />
+              <line x1="10.5" y1="10.5" x2="4.5" y2="7" stroke="url(#iridLegal)" />
             </svg>
           </div>
           <span className="text-xs font-bold tracking-widest uppercase">SpinTribe26</span>

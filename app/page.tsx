@@ -93,9 +93,24 @@ export default function LandingPage() {
         {/* Brand */}
         <div className="relative z-10 flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)" }}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
-              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0 0 17.944h4.172" />
+            style={{ background: "linear-gradient(135deg,#1a0a2e,#0a1a2e)" }}>
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" strokeWidth="1.5" strokeLinecap="round">
+              <defs>
+                <linearGradient id="iridLanding" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stopColor="#ff6b6b" />
+                  <stop offset="33%"  stopColor="#a855f7" />
+                  <stop offset="66%"  stopColor="#00e3fd" />
+                  <stop offset="100%" stopColor="#34d399" />
+                </linearGradient>
+              </defs>
+              <circle cx="12" cy="12" r="9.5" stroke="url(#iridLanding)" />
+              <circle cx="12" cy="12" r="1.75" fill="url(#iridLanding)" stroke="none" />
+              <line x1="12" y1="10.25" x2="12" y2="3.5" stroke="url(#iridLanding)" />
+              <line x1="13.5" y1="10.5" x2="19.5" y2="7" stroke="url(#iridLanding)" />
+              <line x1="13.5" y1="13.5" x2="19.5" y2="17" stroke="url(#iridLanding)" />
+              <line x1="12" y1="13.75" x2="12" y2="20.5" stroke="url(#iridLanding)" />
+              <line x1="10.5" y1="13.5" x2="4.5" y2="17" stroke="url(#iridLanding)" />
+              <line x1="10.5" y1="10.5" x2="4.5" y2="7" stroke="url(#iridLanding)" />
             </svg>
           </div>
           <span className="text-xs font-bold tracking-widest uppercase text-white/60">SpinTribe 2026</span>
@@ -240,7 +255,10 @@ export default function LandingPage() {
             />
           </button>
 
-          <p className="mt-6 text-center text-[10px] text-white/25 leading-relaxed">
+          {/* Dot floor — Gemini-style atmospheric effect at the bottom of the auth panel */}
+          <div aria-hidden className="dot-floor w-full h-16 mt-4" />
+
+          <p className="mt-2 text-center text-[10px] text-white/25 leading-relaxed">
             By continuing you agree to our{" "}
             <Link href="/legal/terms" className="underline underline-offset-2 hover:text-white/50 transition-colors">
               Terms &amp; Conditions
