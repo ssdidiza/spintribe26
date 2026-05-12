@@ -42,21 +42,32 @@ export default function RootLayout({
         {/* Decorative background orbs — fixed, never intercept clicks */}
         <div
           aria-hidden
-          className="pointer-events-none fixed top-0 right-0 w-[500px] h-[500px] rounded-full"
+          className="pointer-events-none fixed top-0 right-0 w-[700px] h-[700px] rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(124,77,255,0.15) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            transform: "translate(30%, -30%)",
+            background: "radial-gradient(circle, rgba(124,77,255,0.22) 0%, transparent 65%)",
+            filter: "blur(80px)",
+            transform: "translate(35%, -35%)",
             zIndex: 0,
           }}
         />
         <div
           aria-hidden
-          className="pointer-events-none fixed bottom-0 left-0 w-[400px] h-[400px] rounded-full"
+          className="pointer-events-none fixed bottom-0 left-0 w-[600px] h-[600px] rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(0,227,253,0.08) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(0,227,253,0.14) 0%, transparent 65%)",
+            filter: "blur(80px)",
+            transform: "translate(-35%, 35%)",
+            zIndex: 0,
+          }}
+        />
+        {/* Deep purple centre glow — adds depth to the near-black background */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed top-1/2 left-1/2 w-[400px] h-[400px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(100,50,200,0.07) 0%, transparent 70%)",
             filter: "blur(60px)",
-            transform: "translate(-30%, 30%)",
+            transform: "translate(-50%, -50%)",
             zIndex: 0,
           }}
         />

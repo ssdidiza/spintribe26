@@ -117,7 +117,7 @@ export default function ProfilePage() {
               {/* Role badge */}
               <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)", boxShadow: "0 0 10px rgba(124,77,255,0.5)" }}
+                style={{ background: "linear-gradient(135deg,#ff6b6b,#a855f7,#00e3fd,#34d399)", boxShadow: "0 0 12px rgba(168,85,247,0.6)" }}
               >
                 {isAdmin ? (
                   <ShieldCheck size={14} color="#fff" />

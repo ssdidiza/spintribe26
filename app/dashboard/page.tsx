@@ -6,7 +6,6 @@ import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard, getFeaturedZone } from "@/lib/mock-data";
 import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
-import ProgressRing from "@/components/ProgressRing";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
@@ -138,27 +137,41 @@ export default function DashboardPage() {
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-5">
 
-        {/* Progress + FTP side by side on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          {/* Progress ring */}
-          <div className="glass-card p-6">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8] mb-4">Monthly Progress</p>
-            <div className="flex items-center gap-6">
-              <ProgressRing pct={pct} size={130} strokeWidth={10} label={`${monthlyKm}`} sublabel="km" />
-              <div className="flex-1 space-y-4">
-                <StatLine label="Target"    value={`${targetKm} km`} accent />
-                <StatLine label="Remaining" value={`${remainingKm} km`} />
-                <StatLine label="Tier"      value={TIER_LABELS[currentUser.tier]} />
-              </div>
-            </div>
-            {pct >= 100 && (
-              <div className="mt-4 rounded-2xl p-3 text-center text-sm font-bold"
-                style={{ background: "rgba(124,77,255,0.15)", color: "#cdbdff" }}>
-                🎉 Challenge complete — {targetKm} km done!
-              </div>
-            )}
+        {/* ── Cinematic hero — monthly km ───────────────────────────────────── */}
+        <div className="relative text-center pt-6 pb-2">
+          <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#cac3d8]/50 mb-4">
+            {format(now, "MMMM yyyy")} · {TIER_LABELS[currentUser.tier]}
+          </p>
+          <div className="flex items-end justify-center gap-2 mb-1">
+            <span
+              className="font-black leading-none"
+              style={{
+                fontSize: "clamp(5rem, 22vw, 7.5rem)",
+                color: "#e5e2e1",
+                letterSpacing: "-0.04em",
+                textShadow: "0 0 60px rgba(124,77,255,0.25)",
+              }}
+            >
+              {monthlyKm}
+            </span>
+            <span className="text-2xl font-light text-[#cac3d8]/70 pb-3">km</span>
           </div>
+          <p className="text-sm text-[#cac3d8]/50 mb-5">
+            of {targetKm} km &nbsp;·&nbsp; {pct}% complete
+          </p>
+          {/* Slim progress bar */}
+          <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto mb-1">
+            <div className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #7c4dff, #00e3fd)", boxShadow: "0 0 6px rgba(0,227,253,0.5)" }} />
+          </div>
+          {/* Challenge complete banner */}
+          {pct >= 100 && (
+            <div className="mt-5 rounded-2xl p-3 text-center text-sm font-bold max-w-xs mx-auto"
+              style={{ background: "rgba(124,77,255,0.15)", color: "#cdbdff", border: "1px solid rgba(124,77,255,0.25)" }}>
+              🎉 Challenge complete — {targetKm} km done!
+            </div>
+          )}
+        </div>
 
           {/* FTP card */}
           <div className="glass-card p-6 flex flex-col gap-4">
@@ -216,7 +229,6 @@ export default function DashboardPage() {
               <p className="text-[10px] text-[#cac3d8] mt-1">{monthlyKm} / {targetKm} km</p>
             </div>
           </div>
-        </div>
 
         {/* 4-stat bento */}
         <div className="grid grid-cols-4 gap-2">

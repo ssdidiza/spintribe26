@@ -25,6 +25,9 @@ export default function NavBar() {
   });
 
   return (
+    <>
+      {/* Dot floor — Gemini-style atmospheric effect rising from the nav */}
+      <div aria-hidden className="dot-floor fixed bottom-[4.5rem] left-0 right-0 h-24 z-[49]" />
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-nav pointer-events-none">
       <div className="mx-auto flex max-w-lg md:max-w-3xl justify-around px-2 pt-2.5 pb-safe pointer-events-auto">
         {links.map(({ href, icon: Icon, label }) => {
@@ -61,5 +64,6 @@ export default function NavBar() {
         })}
       </div>
     </nav>
+    </>
   );
 }

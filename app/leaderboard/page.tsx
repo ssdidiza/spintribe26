@@ -48,15 +48,23 @@ export default function LeaderboardPage() {
           </p>
           <h1 className="font-bold text-[#e5e2e1] text-xl">Leaderboard</h1>
         </div>
-        <svg viewBox="0 0 24 24" className="w-5 h-5" style={{ opacity: 0.4 }} fill="none" stroke="#cdbdff" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="12" cy="12" r="9.5" />
-          <circle cx="12" cy="12" r="1.75" fill="#cdbdff" stroke="none" />
-          <line x1="12" y1="10.25" x2="12" y2="3.5" />
-          <line x1="13.5" y1="10.5" x2="19.5" y2="7" />
-          <line x1="13.5" y1="13.5" x2="19.5" y2="17" />
-          <line x1="12" y1="13.75" x2="12" y2="20.5" />
-          <line x1="10.5" y1="13.5" x2="4.5" y2="17" />
-          <line x1="10.5" y1="10.5" x2="4.5" y2="7" />
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" strokeWidth="1.5" strokeLinecap="round">
+          <defs>
+            <linearGradient id="iridLeaderboard" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%"   stopColor="#ff6b6b" />
+              <stop offset="33%"  stopColor="#a855f7" />
+              <stop offset="66%"  stopColor="#00e3fd" />
+              <stop offset="100%" stopColor="#34d399" />
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="12" r="9.5" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <circle cx="12" cy="12" r="1.75" fill="url(#iridLeaderboard)" stroke="none" />
+          <line x1="12" y1="10.25" x2="12" y2="3.5" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <line x1="13.5" y1="10.5" x2="19.5" y2="7" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <line x1="13.5" y1="13.5" x2="19.5" y2="17" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <line x1="12" y1="13.75" x2="12" y2="20.5" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <line x1="10.5" y1="13.5" x2="4.5" y2="17" stroke="url(#iridLeaderboard)" opacity="0.7" />
+          <line x1="10.5" y1="10.5" x2="4.5" y2="7" stroke="url(#iridLeaderboard)" opacity="0.7" />
         </svg>
       </header>
 
