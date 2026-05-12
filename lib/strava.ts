@@ -103,6 +103,7 @@ export async function refreshStravaToken(
     refreshToken: data.refresh_token,
     expiresAt: data.expires_at,
     athleteId: data.athlete?.id,
+    // Strava's refresh endpoint does not return athlete data — intentional empty defaults.
     athleteFirstname: data.athlete?.firstname ?? "",
     athleteLastname: data.athlete?.lastname ?? "",
     athleteProfile: data.athlete?.profile ?? "",
