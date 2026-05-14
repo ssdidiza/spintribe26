@@ -51,6 +51,7 @@ interface AppState {
   deleteChampionSession: (sessionId: string) => void;
   hydrateChampionSessions: () => void;
   hydrateAthleteData: () => void;
+  hydrateActivities: () => Promise<void>;
   addZone: (zone: Omit<Zone, "id" | "usageCount" | "createdAt">) => Zone;
   incrementZoneUsage: (zoneId: string) => void;
   decrementZoneUsage: (zoneId: string) => void;
@@ -270,6 +271,43 @@ export const useStore = create<AppState>()(
           }));
         } catch (e) {
           console.warn("FTP hydration failed:", e);
+        }
+      },
+
+      hydrateActivities: async () => {
+        try {
+          const res = await fetch("/api/activities");
+          if (!res.ok) return;
+          const { activities: rows } = await res.json();
+          const user = get().currentUser;
+          if (!user || !Array.isArray(rows) || rows.length === 0) return;
+          const mapped = rows.map((a: {
+            strava_id: string; name: string; distance: number;
+            moving_time: number; type: string; date: string;
+            kudos: number; start_lat?: number; start_lng?: number;
+            detected_zone_id?: string;
+          }) => ({
+            id: String(a.strava_id),
+            userId: user.id,
+            stravaId: String(a.strava_id),
+            name: a.name,
+            distance: a.distance,
+            movingTime: a.moving_time,
+            type: a.type,
+            date: a.date,
+            kudos: a.kudos,
+            startLat: a.start_lat,
+            startLng: a.start_lng,
+            detectedZoneId: a.detected_zone_id ?? undefined,
+          }));
+          set((s) => ({
+            activities: [
+              ...s.activities.filter((a) => a.userId !== user.id),
+              ...mapped,
+            ],
+          }));
+        } catch (e) {
+          console.warn("Activity hydration failed:", e);
         }
       },
 

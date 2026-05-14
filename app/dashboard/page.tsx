@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const hydrated = useHydrated();
   const {
     currentUser, isOnboarded, activities, zones, users,
-    syncStravaActivities, hydrateChampionSessions, hydrateAthleteData,
+    syncStravaActivities, hydrateChampionSessions, hydrateAthleteData, hydrateActivities,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -31,10 +31,7 @@ export default function DashboardPage() {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
-    Promise.all([hydrateChampionSessions(), hydrateAthleteData()]).then(() => {
-      const myActivities = activities.filter((a) => a.userId === currentUser.id);
-      if (myActivities.length === 0) handleSync();
-    });
+    Promise.all([hydrateChampionSessions(), hydrateAthleteData(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, currentUser, isOnboarded]);
 
