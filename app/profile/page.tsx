@@ -7,7 +7,7 @@ import { getMonthlyKm } from "@/lib/mock-data";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
-import { LogOut, MapPin, Star, ShieldCheck, Zap, Target, Route } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Zap, Target, Route, Lock, RefreshCw } from "lucide-react";
 
 // Bike wheel icon — SpinTribe26 custom mark
 function BikeWheel({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
@@ -146,13 +146,21 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Tier chip */}
-            <span
-              className="text-[11px] font-bold rounded-full px-4 py-1.5 tracking-wide"
-              style={{ background: `${tierColor}18`, color: tierColor, border: `1px solid ${tierColor}40` }}
-            >
-              {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km target
-            </span>
+            {/* Tier chip — locked for champions */}
+            <div className="flex flex-col items-center gap-1">
+              <span
+                className="flex items-center gap-1.5 text-[11px] font-bold rounded-full px-4 py-1.5 tracking-wide"
+                style={{ background: `${tierColor}18`, color: tierColor, border: `1px solid ${tierColor}40` }}
+              >
+                <Lock size={10} />
+                {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km target
+              </span>
+              {isChamp && (
+                <p className="text-[9px] text-[#cac3d8]/40">
+                  Distance locked — disconnect account to change tier
+                </p>
+              )}
+            </div>
 
             {/* ── Progress ring + stats ────────────────────────────── */}
             <div
@@ -235,12 +243,43 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {/* FTP tip */}
+          {currentUser.stravaId && !currentUser.ftp && (
+            <div
+              className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-[#cac3d8]/70"
+              style={{ background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.2)" }}
+            >
+              <span className="font-bold text-[#cdbdff]">⚡ FTP not showing?</span>{" "}
+              First set a value in{" "}
+              <a
+                href="https://www.strava.com/settings/performance"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 text-[#cdbdff]/80 hover:text-[#cdbdff]"
+              >
+                Strava → Settings → My Performance
+              </a>
+              , then tap <span className="font-semibold text-[#cdbdff]">Reconnect Strava</span> below to grant profile access.
+            </div>
+          )}
+
           {/* Card footer */}
           <div
             className="px-6 py-3 flex items-center justify-between"
             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <PoweredByStrava />
+            <div className="flex items-center gap-3">
+              <PoweredByStrava />
+              {currentUser.stravaId && (
+                <a
+                  href="/api/auth/strava?reauth=1"
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#cdbdff]/50 hover:text-[#cdbdff] transition-colors"
+                >
+                  <RefreshCw size={11} />
+                  Reconnect Strava
+                </a>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 text-[11px] font-semibold text-[#ffb4ab]/60 hover:text-[#ffb4ab] transition-colors"

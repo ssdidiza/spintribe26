@@ -1,24 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getStravaAuthUrl } from "@/lib/strava";
 import { randomBytes } from "crypto";
 
-/** GET /api/auth/strava — redirect user to Strava OAuth with CSRF state */
-export function GET() {
-  // Generate a random state token to prevent CSRF on callback
+/** GET /api/auth/strava — redirect user to Strava OAuth with CSRF state
+ *  ?reauth=1  →  returning user updating scope; callback skips onboarding */
+export function GET(req: NextRequest) {
+  const reauth = new URL(req.url).searchParams.get("reauth") === "1";
   const state = randomBytes(16).toString("hex");
-
   const url = getStravaAuthUrl(state);
-
   const res = NextResponse.redirect(url);
 
-  // Store state in a short-lived cookie (httpOnly, 10 min TTL)
-  res.cookies.set("oauth_state", state, {
+  const cookieOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 10, // 10 minutes
+    sameSite: "lax" as const,
+    maxAge: 60 * 10,
     path: "/",
-  });
+  };
+
+  res.cookies.set("oauth_state", state, cookieOpts);
+  if (reauth) res.cookies.set("oauth_reauth", "1", cookieOpts);
 
   return res;
 }
