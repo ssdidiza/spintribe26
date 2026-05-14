@@ -210,8 +210,24 @@ export default function DashboardPage() {
               <div className="flex-1 flex flex-col justify-center items-center text-center gap-2">
                 <Zap size={28} className="text-[#cdbdff]/40" />
                 <p className="text-sm font-semibold text-[#cac3d8]">FTP not set</p>
-                <p className="text-[10px] text-[#cac3d8]/60 leading-snug">
-                  Set your FTP in Strava settings, then sync to display your power zones here
+                <p className="text-[10px] text-[#cac3d8]/60 leading-snug max-w-[220px]">
+                  <span className="font-semibold text-[#cac3d8]/80">Step 1 —</span>{" "}
+                  Set an FTP value in{" "}
+                  <a
+                    href="https://www.strava.com/settings/performance"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 text-[#cdbdff]/70 hover:text-[#cdbdff]"
+                  >
+                    Strava → My Performance
+                  </a>
+                  .{" "}
+                  <span className="font-semibold text-[#cac3d8]/80">Step 2 —</span>{" "}
+                  Go to your{" "}
+                  <a href="/profile" className="underline underline-offset-2 text-[#cdbdff]/70 hover:text-[#cdbdff]">
+                    Profile
+                  </a>{" "}
+                  and tap <span className="font-semibold">Reconnect Strava</span>.
                 </p>
               </div>
             )}

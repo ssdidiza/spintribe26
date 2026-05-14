@@ -54,16 +54,22 @@ export async function GET(req: NextRequest) {
     session.expiresAt = tokens.expiresAt;
     await session.save();
 
-    // 4. Redirect to onboarding with public athlete info as params
-    const url = new URL("/onboarding", req.url);
-    url.searchParams.set("strava_id", String(tokens.athleteId));
-    url.searchParams.set("name", displayName);
-    url.searchParams.set("avatar", tokens.athleteProfile);
+    // 4. Redirect — re-auth returns to dashboard (session + tokens refreshed);
+    //    new users go to onboarding to pick role/tier.
+    const isReauth = req.cookies.get("oauth_reauth")?.value === "1";
+    const dest = isReauth
+      ? new URL("/dashboard", req.url)
+      : (() => {
+          const u = new URL("/onboarding", req.url);
+          u.searchParams.set("strava_id", String(tokens.athleteId));
+          u.searchParams.set("name", displayName);
+          u.searchParams.set("avatar", tokens.athleteProfile);
+          return u;
+        })();
 
-    const res = NextResponse.redirect(url);
-
-    // Clear the CSRF state cookie
+    const res = NextResponse.redirect(dest);
     res.cookies.delete("oauth_state");
+    res.cookies.delete("oauth_reauth");
 
     return res;
   } catch (err) {
