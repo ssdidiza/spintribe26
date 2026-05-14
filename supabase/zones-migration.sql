@@ -34,6 +34,11 @@ create index if not exists idx_zones_region on public.zones(region);
 -- RLS
 alter table public.zones enable row level security;
 
+-- Explicit grants (required from May 30 2026 for new projects)
+grant select on public.zones to anon;
+grant select, insert, update, delete on public.zones to authenticated;
+grant usage, select on sequence public.zones_id_seq to authenticated;
+
 create policy "zones_read_all" on public.zones for select using (true);
 create policy "zones_insert_own" on public.zones for insert
   with check (created_by = current_setting('app.strava_id', true));

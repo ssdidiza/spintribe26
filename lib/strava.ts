@@ -52,8 +52,8 @@ export function getStravaAuthUrl(state: string): string {
       process.env.STRAVA_REDIRECT_URI ??
       "http://localhost:3000/api/auth/strava/callback",
     response_type: "code",
-    scope: "activity:read_all",
-    approval_prompt: "auto",
+    scope: "read,profile:read_all,activity:read_all",
+    approval_prompt: "force",
     state,
   });
   return `${STRAVA_AUTH}/authorize?${params}`;

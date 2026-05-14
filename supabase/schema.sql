@@ -77,6 +77,26 @@ create index if not exists idx_activities_date    on public.activities(date);
 create index if not exists idx_champ_sessions_user on public.champion_sessions(user_strava_id);
 
 -- ============================================================
+-- EXPLICIT GRANTS (required from May 30 2026 for new projects,
+-- October 30 2026 for all projects — Supabase Data API change)
+-- All writes go through supabaseAdmin (service role) in API routes.
+-- The anon/authenticated grants below cover the one client-side
+-- query: supabase.from("users").select() in app/page.tsx after email login.
+-- ============================================================
+grant select
+  on public.users, public.activities, public.zones, public.champion_sessions
+  to anon;
+
+grant select, insert, update, delete
+  on public.users, public.activities, public.zones, public.champion_sessions
+  to authenticated;
+
+-- Sequence access for bigserial inserts (if authenticated role ever inserts directly)
+grant usage, select
+  on all sequences in schema public
+  to authenticated;
+
+-- ============================================================
 -- ROW LEVEL SECURITY
 -- All writes go through supabaseAdmin (service role) in API routes,
 -- which bypasses RLS. RLS policies here protect direct anon-key access.
