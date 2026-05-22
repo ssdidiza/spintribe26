@@ -15,8 +15,21 @@ export interface User {
   tier: Tier;
   isConnected: boolean;
   region?: string;
+  zone?: string;
+  onboarded?: boolean;
   ftp?: number;        // Functional Threshold Power (watts) from Strava
   country?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: 'welcome' | 'info' | 'achievement';
+  title: string;
+  body: string;
+  dismissedAt?: string;
+  completedAt?: string;
+  createdAt: string;
 }
 
 export interface Activity {

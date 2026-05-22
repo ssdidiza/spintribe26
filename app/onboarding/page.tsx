@@ -15,15 +15,22 @@ const TIERS: { km: Tier; description: string }[] = [
 
 const REGIONS = ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Other"];
 
+type Step = "role" | "invite" | "tier";
+
 // Inner component that uses useSearchParams — must be wrapped in Suspense
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, login, completeOnboarding } = useStore();
-  const [step, setStep] = useState<"role" | "tier">("role");
+  const [step, setStep] = useState<Step>("role");
   const [role, setRole] = useState<UserRole | null>(null);
   const [tier, setTier] = useState<Tier | null>(null);
   const [region, setRegion] = useState<string>("Gauteng");
+  const [zone, setZone] = useState<string>("");
+  const [inviteCode, setInviteCode] = useState<string>("");
+  const [inviteError, setInviteError] = useState<string>("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const stravaId = searchParams.get("strava_id");
@@ -38,14 +45,54 @@ function OnboardingContent() {
 
   function handleRoleSelect(r: UserRole) {
     setRole(r);
-    setStep("tier");
+    if (r === "champion") {
+      setStep("invite");
+    } else {
+      setStep("tier");
+    }
   }
 
-  function handleFinish() {
+  async function handleVerifyInvite() {
+    if (!inviteCode.trim()) return;
+    setInviteLoading(true);
+    setInviteError("");
+    try {
+      const res = await fetch("/api/auth/validate-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: inviteCode.trim() }),
+      });
+      const { valid } = await res.json();
+      if (valid) {
+        setStep("tier");
+      } else {
+        setInviteError("Invalid invite code. Please check with your champion coordinator.");
+      }
+    } catch {
+      setInviteError("Could not verify invite code. Please try again.");
+    }
+    setInviteLoading(false);
+  }
+
+  async function handleFinish() {
     if (!role || !tier) return;
-    completeOnboarding(role, tier, region);
+    if (role === "champion" && !zone.trim()) return;
+    setSubmitting(true);
+    const res = await fetch("/api/users/onboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, tier, zone: zone.trim() || region }),
+    });
+    if (!res.ok) { setSubmitting(false); return; }
+    completeOnboarding(role, tier, zone.trim() || region);
     router.push(role === "champion" ? "/champion" : "/dashboard");
   }
+
+  // Determine step labels and progress
+  const isChampion = role === "champion";
+  const steps: Step[] = isChampion ? ["role", "invite", "tier"] : ["role", "tier"];
+  const currentStepIndex = steps.indexOf(step);
+  const totalSteps = steps.length;
 
   return (
     <main className="min-h-screen bg-background flex flex-col relative overflow-hidden">
@@ -59,11 +106,17 @@ function OnboardingContent() {
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-12 max-w-md mx-auto w-full">
         {/* Progress bar */}
         <div className="flex gap-2 mb-10">
-          <div className="h-0.5 flex-1 rounded-full" style={{ background: "#FF6500" }} />
-          <div
-            className="h-0.5 flex-1 rounded-full transition-all duration-300"
-            style={{ background: step === "tier" ? "#FF6500" : "#ffffff20" }}
-          />
+          {(step === "role" ? ["role", "tier"] : steps).map((s, i) => {
+            const barSteps = step === "role" ? ["role", "tier"] : steps;
+            const filled = i <= barSteps.indexOf(step);
+            return (
+              <div
+                key={s}
+                className="h-0.5 flex-1 rounded-full transition-all duration-300"
+                style={{ background: filled ? "#FF6500" : "#ffffff20" }}
+              />
+            );
+          })}
         </div>
 
         {step === "role" && (
@@ -106,7 +159,7 @@ function OnboardingContent() {
           </div>
         )}
 
-        {step === "tier" && (
+        {step === "invite" && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <button
               onClick={() => setStep("role")}
@@ -115,7 +168,63 @@ function OnboardingContent() {
               ← Back
             </button>
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
-              Step 2 of 2
+              Step 2 of {totalSteps}
+            </p>
+            <h2 className="text-3xl font-black text-white mb-1">Champion Invite</h2>
+            <p className="text-white/50 text-sm mb-8">
+              Champions are verified leaders. Enter your invite code to continue.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">
+                  Invite Code
+                </label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setInviteError(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleVerifyInvite(); }}
+                  placeholder="e.g. SPINTV26"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 transition-all font-mono tracking-widest"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                />
+              </div>
+
+              {inviteError && (
+                <p className="text-xs text-[#ffb4ab] rounded-xl px-4 py-2"
+                  style={{ background: "rgba(255,100,100,0.1)", border: "1px solid rgba(255,100,100,0.2)" }}>
+                  {inviteError}
+                </p>
+              )}
+
+              <button
+                onClick={handleVerifyInvite}
+                disabled={!inviteCode.trim() || inviteLoading}
+                className={cn(
+                  "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
+                  inviteCode.trim() && !inviteLoading
+                    ? "text-white hover:opacity-90 active:scale-[0.98]"
+                    : "text-white/30 cursor-not-allowed"
+                )}
+                style={{ background: inviteCode.trim() && !inviteLoading ? "#FF6500" : "#ffffff10" }}
+              >
+                {inviteLoading ? "Verifying…" : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "tier" && (
+          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+            <button
+              onClick={() => setStep(role === "champion" ? "invite" : "role")}
+              className="text-white/40 text-sm mb-6 text-left hover:text-white/70 transition-colors flex items-center gap-1"
+            >
+              ← Back
+            </button>
+            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
+              Step {totalSteps} of {totalSteps}
             </p>
             <h2 className="text-3xl font-black text-white mb-1">Pick your challenge</h2>
             <p className="text-white/50 text-sm mb-6">How many km will you ride this month?</p>
@@ -156,39 +265,58 @@ function OnboardingContent() {
               })}
             </div>
 
-            {/* Region picker */}
-            <div className="mb-6">
-              <p className="text-[11px] font-semibold tracking-widest uppercase text-white/40 mb-3">Your Region</p>
-              <div className="flex flex-wrap gap-2">
-                {REGIONS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRegion(r)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                      region === r
-                        ? "border-orange-500/60 text-orange-400 bg-orange-500/10"
-                        : "border-white/10 text-white/40 hover:border-white/20"
-                    )}
-                  >
-                    {r}
-                  </button>
-                ))}
+            {/* Zone input for champions */}
+            {role === "champion" && (
+              <div className="mb-6">
+                <label className="block text-[11px] font-semibold tracking-widest uppercase text-white/40 mb-2">
+                  Your Zone <span className="text-[#FF6500]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={zone}
+                  onChange={(e) => setZone(e.target.value)}
+                  placeholder="e.g. Centurion, Paarl, Durban North"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 transition-all"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                />
               </div>
-            </div>
+            )}
+
+            {/* Region picker for members */}
+            {role !== "champion" && (
+              <div className="mb-6">
+                <p className="text-[11px] font-semibold tracking-widest uppercase text-white/40 mb-3">Your Region</p>
+                <div className="flex flex-wrap gap-2">
+                  {REGIONS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRegion(r)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                        region === r
+                          ? "border-orange-500/60 text-orange-400 bg-orange-500/10"
+                          : "border-white/10 text-white/40 hover:border-white/20"
+                      )}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleFinish}
-              disabled={!tier}
+              disabled={!tier || (role === "champion" && !zone.trim()) || submitting}
               className={cn(
                 "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
-                tier
+                tier && (role !== "champion" || zone.trim()) && !submitting
                   ? "text-white hover:opacity-90 active:scale-[0.98]"
                   : "text-white/30 cursor-not-allowed"
               )}
-              style={{ background: tier ? "#FF6500" : "#ffffff10" }}
+              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "#FF6500" : "#ffffff10" }}
             >
-              START CHALLENGE <ChevronRight size={16} />
+              {submitting ? "Setting up…" : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>
           </div>
         )}

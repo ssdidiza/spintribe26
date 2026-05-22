@@ -79,6 +79,13 @@ export async function GET(req: NextRequest) {
       console.error("Initial activity sync failed (non-fatal):", syncErr);
     }
 
+    // Check if the user is already onboarded
+    const { data: existingUser } = await db
+      .from("users")
+      .select("onboarded")
+      .eq("strava_id", String(tokens.athleteId))
+      .maybeSingle();
+
     // 4. Write signed session cookie (httpOnly — safe from XSS)
     const session = await getSession();
     session.athleteId = tokens.athleteId;
@@ -87,19 +94,18 @@ export async function GET(req: NextRequest) {
     session.expiresAt = tokens.expiresAt;
     await session.save();
 
-    // 5. Redirect — re-auth returns to dashboard; new users go to onboarding.
-    const isReauth = req.cookies.get("oauth_reauth")?.value === "1";
-    const dest = isReauth
-      ? new URL("/dashboard", req.url)
-      : (() => {
-          const u = new URL("/onboarding", req.url);
-          u.searchParams.set("strava_id", String(tokens.athleteId));
-          u.searchParams.set("name", displayName);
-          u.searchParams.set("avatar", tokens.athleteProfile);
-          return u;
-        })();
+    // 5. Redirect based on onboarding status (onboarded DB flag replaces isReauth cookie)
+    let redirectUrl: URL;
+    if (existingUser?.onboarded) {
+      redirectUrl = new URL("/dashboard", req.url);
+    } else {
+      redirectUrl = new URL("/onboarding", req.url);
+      redirectUrl.searchParams.set("strava_id", String(tokens.athleteId));
+      redirectUrl.searchParams.set("name", displayName);
+      redirectUrl.searchParams.set("avatar", tokens.athleteProfile);
+    }
 
-    const res = NextResponse.redirect(dest);
+    const res = NextResponse.redirect(redirectUrl);
     res.cookies.delete("oauth_state");
     res.cookies.delete("oauth_reauth");
 

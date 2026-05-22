@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 
 export interface SessionData {
   athleteId?: number;
+  userId?: string;
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: number;
@@ -26,4 +27,10 @@ const sessionOptions = {
 export async function getSession() {
   const cookieStore = await cookies();
   return getIronSession<SessionData>(cookieStore, sessionOptions);
+}
+
+export function getEffectiveUserId(session: SessionData): string | null {
+  if (session.userId) return session.userId;
+  if (session.athleteId) return String(session.athleteId);
+  return null;
 }

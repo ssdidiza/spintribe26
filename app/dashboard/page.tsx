@@ -7,6 +7,7 @@ import { getMonthlyKm, buildLeaderboard, getFeaturedZone } from "@/lib/mock-data
 import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
+import NotificationBanner from "@/components/NotificationBanner";
 import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
@@ -133,6 +134,8 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-5">
+
+        <NotificationBanner />
 
         {/* ── Cinematic hero — monthly km ───────────────────────────────────── */}
         <div className="relative text-center pt-6 pb-2">

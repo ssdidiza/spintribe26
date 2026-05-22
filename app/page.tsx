@@ -13,7 +13,7 @@ type Mode = "signin" | "signup";
 export default function LandingPage() {
   const router = useRouter();
   const hydrated = useHydrated();
-  const { currentUser, isOnboarded, login } = useStore();
+  const { currentUser, isOnboarded, login, completeOnboarding } = useStore();
 
   const [mode, setMode]         = useState<Mode>("signin");
   const [email, setEmail]       = useState("");
@@ -44,20 +44,52 @@ export default function LandingPage() {
             setLoading(false); return;
           }
           const displayName = name.trim() || email.split("@")[0];
-          login(data.user.id, displayName);
+          // Set server-side session
+          await fetch("/api/auth/email-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken: data.session.access_token }),
+          });
+          // Check if user already onboarded in DB
+          const { data: row } = await supabase
+            .from("users")
+            .select("name, role, tier, zone, onboarded")
+            .eq("strava_id", data.user.id)
+            .maybeSingle();
+          if (row?.onboarded) {
+            login(data.user.id, row.name || displayName, "");
+            completeOnboarding(row.role, row.tier, row.zone);
+            router.push("/dashboard");
+          } else {
+            login(data.user.id, displayName);
+            router.push("/onboarding");
+          }
         }
       } else {
         const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
         if (data.user) {
-          // Fetch display name from Supabase users table if available
+          const displayName = name.trim() || email.split("@")[0];
+          // Set server-side session
+          await fetch("/api/auth/email-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken: data.session.access_token }),
+          });
+          // Fetch display name and onboarding status from Supabase users table
           const { data: row } = await supabase
             .from("users")
-            .select("name")
+            .select("name, role, tier, zone, onboarded")
             .eq("strava_id", data.user.id)
             .maybeSingle();
-          const displayName = row?.name || name.trim() || email.split("@")[0];
-          login(data.user.id, displayName);
+          if (row?.onboarded) {
+            login(data.user.id, row.name || displayName, "");
+            completeOnboarding(row.role, row.tier, row.zone);
+            router.push("/dashboard");
+          } else {
+            login(data.user.id, row?.name || displayName);
+            router.push("/onboarding");
+          }
         }
       }
     } catch (err: unknown) {
