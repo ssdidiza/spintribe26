@@ -16,6 +16,7 @@ import {
   Star, Dumbbell, MapPin, X, CheckCircle2, AlertCircle,
   ChevronRight, Bike, Trash2,
 } from "lucide-react";
+import NotificationBanner from "@/components/NotificationBanner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -164,6 +165,8 @@ export default function ChampionPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-5">
+
+        <NotificationBanner />
 
         {/* Annual progress */}
         <div className="glass-card p-5">
