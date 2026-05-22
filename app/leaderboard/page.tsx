@@ -97,19 +97,17 @@ export default function LeaderboardPage() {
 
         {/* Entry count */}
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cdbdff]">
-            {TIER_LABELS[selectedTier]} — {selectedTier} km
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]/60">
+            {entries.length} {entries.length === 1 ? "rider" : "riders"} · {TIER_LABELS[selectedTier]}
           </p>
-          <div className="flex items-center gap-3">
-            <p className="text-[10px] text-[#cac3d8]">{entries.length} riders</p>
-            <PoweredByStrava />
-          </div>
+          <PoweredByStrava />
         </div>
 
         {/* Entries */}
         {entries.length === 0 ? (
-          <div className="glass-card p-10 text-center">
-            <p className="text-[#cac3d8] text-sm">No riders in this tier yet.</p>
+          <div className="glass-card p-12 text-center">
+            <p className="text-sm text-[#cac3d8]">No riders in this tier yet.</p>
+            <p className="text-[11px] text-[#cac3d8]/50 mt-1">Be the first to sync your rides.</p>
           </div>
         ) : (
           <div className="space-y-2">
