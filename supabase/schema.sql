@@ -13,6 +13,8 @@ create table if not exists public.users (
   strava_access_token   text,
   strava_refresh_token  text,
   strava_token_expires_at bigint,
+  onboarded             boolean not null default false,
+  zone                  text,
   created_at            timestamptz default now(),
   updated_at            timestamptz default now()
 );
@@ -130,6 +132,29 @@ create policy "zones_read_all"      on public.zones for select using (true);
 create policy "zones_insert_own"    on public.zones for insert
   with check (created_by = current_setting('app.strava_id', true));
 create policy "zones_update_usage"  on public.zones for update using (true);
+
+-- ============================================================
+-- NOTIFICATIONS
+-- ============================================================
+create table if not exists public.notifications (
+  id              bigserial primary key,
+  user_strava_id  text not null references public.users(strava_id) on delete cascade,
+  type            text not null default 'info',   -- 'welcome' | 'info' | 'achievement'
+  title           text not null,
+  body            text not null,
+  dismissed_at    timestamptz,
+  completed_at    timestamptz,
+  created_at      timestamptz default now()
+);
+
+alter table public.notifications enable row level security;
+create policy "notifs_read_all" on public.notifications for select using (true);
+grant select on public.notifications to anon;
+grant select, insert, update, delete on public.notifications to authenticated;
+grant usage, select on sequence public.notifications_id_seq to authenticated;
+
+-- Enable Supabase Realtime on notifications
+alter publication supabase_realtime add table public.notifications;
 
 -- ============================================================
 -- ADMIN SETUP

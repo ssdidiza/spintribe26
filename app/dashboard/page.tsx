@@ -7,6 +7,7 @@ import { getMonthlyKm, buildLeaderboard, getFeaturedZone } from "@/lib/mock-data
 import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
+import NotificationBanner from "@/components/NotificationBanner";
 import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
@@ -102,6 +103,31 @@ export default function DashboardPage() {
   const ftp = currentUser.ftp;
   const now = new Date();
 
+  // ── Progress pace calculations ────────────────────────────────────────────
+  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth   = now.getDate();
+  const daysLeft     = daysInMonth - dayOfMonth;
+  const expectedKmByNow = (targetKm / daysInMonth) * dayOfMonth;
+  const paceKmPerDay    = dayOfMonth > 0 ? monthlyKm / dayOfMonth : 0;
+  const projectedTotal  = Math.round(paceKmPerDay * daysInMonth);
+  const kmNeededPerDay  = daysLeft > 0 ? Math.ceil(remainingKm / daysLeft) : 0;
+  const paceRatio       = expectedKmByNow > 0 ? monthlyKm / expectedKmByNow : (monthlyKm > 0 ? 2 : 0);
+
+  type ProgressStatus = "complete" | "great" | "on_track" | "behind";
+  const progressStatus: ProgressStatus =
+    pct >= 100           ? "complete" :
+    paceRatio >= 1.1     ? "great"    :
+    paceRatio >= 0.82    ? "on_track" :
+                           "behind";
+
+  const STATUS_CONFIG: Record<ProgressStatus, { label: string; emoji: string; color: string; bg: string; border: string }> = {
+    complete: { label: "Challenge Complete!",  emoji: "🎉", color: "#cdbdff", bg: "rgba(124,77,255,0.12)", border: "rgba(124,77,255,0.35)" },
+    great:    { label: "Doing Great",          emoji: "🔥", color: "#34d399", bg: "rgba(52,211,153,0.10)", border: "rgba(52,211,153,0.30)" },
+    on_track: { label: "On Track",             emoji: "✅", color: "#00e3fd", bg: "rgba(0,227,253,0.08)",  border: "rgba(0,227,253,0.25)"  },
+    behind:   { label: "Falling Behind",       emoji: "⚠️", color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
+  };
+  const statusCfg = STATUS_CONFIG[progressStatus];
+
   const STATS = [
     { label: "Rides",  value: userActivities.length,                              icon: <Bike       size={14} className="text-[#cdbdff]" /> },
     { label: "Avg km", value: avgKm,                                               icon: <TrendingUp size={14} className="text-[#00e3fd]" /> },
@@ -133,6 +159,8 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-5">
+
+        <NotificationBanner />
 
         {/* ── Cinematic hero — monthly km ───────────────────────────────────── */}
         <div className="relative text-center pt-6 pb-2">
@@ -167,6 +195,81 @@ export default function DashboardPage() {
               style={{ background: "rgba(124,77,255,0.15)", color: "#cdbdff", border: "1px solid rgba(124,77,255,0.25)" }}>
               🎉 Challenge complete — {targetKm} km done!
             </div>
+          )}
+        </div>
+
+        {/* ── Progress tracking card ────────────────────────────────────────── */}
+        <div
+          className="glass-card p-5"
+          style={{ borderColor: statusCfg.border, background: statusCfg.bg }}
+        >
+          {/* Status row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg leading-none">{statusCfg.emoji}</span>
+              <span className="text-sm font-black tracking-tight" style={{ color: statusCfg.color }}>
+                {statusCfg.label}
+              </span>
+            </div>
+            <span className="text-[10px] font-semibold text-[#cac3d8]">
+              Day {dayOfMonth} of {daysInMonth}
+            </span>
+          </div>
+
+          {progressStatus !== "complete" ? (
+            <>
+              {/* Dual-marker progress bar */}
+              <div className="relative h-2 rounded-full bg-white/[0.06] overflow-visible mb-4">
+                {/* Expected-by-now marker */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full opacity-50"
+                  style={{ left: `${Math.min(100, (expectedKmByNow / targetKm) * 100)}%`, background: "#cac3d8" }}
+                />
+                {/* Actual progress fill */}
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${statusCfg.color}99, ${statusCfg.color})`, boxShadow: `0 0 8px ${statusCfg.color}66` }}
+                />
+              </div>
+              <div className="flex justify-between text-[9px] text-[#cac3d8]/60 -mt-3 mb-4">
+                <span>0</span>
+                <span style={{ marginLeft: `${Math.min(80, (expectedKmByNow / targetKm) * 100 - 2)}%` }}>
+                  expected
+                </span>
+                <span>{targetKm} km</span>
+              </div>
+
+              {/* 3-stat row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
+                  <p className="text-lg font-black" style={{ color: statusCfg.color }}>
+                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "—"}
+                  </p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#cac3d8] mt-0.5">of pace</p>
+                </div>
+                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
+                  <p className="text-lg font-black text-[#e5e2e1]">{kmNeededPerDay}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#cac3d8] mt-0.5">km/day needed</p>
+                </div>
+                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
+                  <p className="text-lg font-black text-[#e5e2e1]">{projectedTotal}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#cac3d8] mt-0.5">km projected</p>
+                </div>
+              </div>
+
+              {/* Narrative line */}
+              <p className="text-[11px] text-[#cac3d8]/70 mt-3 leading-snug">
+                {progressStatus === "behind"
+                  ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
+                  : progressStatus === "great"
+                  ? `At your current pace you'll finish around ${projectedTotal} km — ${projectedTotal - targetKm} km over target.`
+                  : `You're right on pace. Keep riding ${kmNeededPerDay} km/day to secure your ${targetKm} km goal.`}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-[#cac3d8] leading-relaxed">
+              You've hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
+            </p>
           )}
         </div>
 
