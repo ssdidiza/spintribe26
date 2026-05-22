@@ -44,3 +44,4 @@ next-env.d.ts
 stitch_export_temp/
 stitch_spintribe_performance_dashboard/
 *.zip
+.claude/worktrees/
