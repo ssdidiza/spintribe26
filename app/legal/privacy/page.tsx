@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — SpinTribe26",
+  title: "Privacy Policy — spera",
 };
 
 export default function PrivacyPolicy() {
@@ -11,8 +11,8 @@ export default function PrivacyPolicy() {
       <p className="effective">Effective date: 1 January 2026</p>
 
       <p>
-        SpinTribe26 (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) operates the
-        SpinTribe26 Team Vitality Challenge platform. This policy explains what personal
+        spera (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) operates the
+        spera Team Vitality Challenge platform. This policy explains what personal
         information we collect, why we collect it, and your rights over that data. It applies
         to all users regardless of location and is intended to comply with the Protection of
         Personal Information Act (POPIA), GDPR, and similar frameworks.
@@ -92,7 +92,7 @@ export default function PrivacyPolicy() {
 
       <h2>9. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
+        spera &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

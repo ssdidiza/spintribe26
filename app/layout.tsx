@@ -10,13 +10,13 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "SpinTribe26 — Team Vitality Challenge",
+  title: "spera - Team Vitality Challenge",
   description:
-    "Track your monthly cycling challenge with Team Vitality. Strava-powered leaderboards and champion check-ins.",
+    "Track Team Vitality monthly cycling goals, leaderboards, and champion ride check-ins.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SpinTribe26",
+    title: "spera",
   },
   formatDetection: { telephone: false },
 };
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",   // honours safe-area-inset on notched iPhones
-  themeColor: "#0c0814",
+  themeColor: "#020202",
 };
 
 export default function RootLayout({
@@ -39,35 +39,24 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${lexend.variable} antialiased`}>
-        {/* Decorative background orbs — fixed, never intercept clicks */}
+        {/* Carbon texture and the Spera pulse stay fixed behind the app. */}
         <div
           aria-hidden
-          className="pointer-events-none fixed top-0 right-0 w-[700px] h-[700px] rounded-full"
+          className="pointer-events-none fixed inset-0"
           style={{
-            background: "radial-gradient(circle, rgba(124,77,255,0.22) 0%, transparent 65%)",
-            filter: "blur(80px)",
-            transform: "translate(35%, -35%)",
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.035) 25%, transparent 25%) 0 0 / 28px 28px, linear-gradient(225deg, rgba(255,255,255,0.025) 25%, transparent 25%) 0 0 / 28px 28px",
+            opacity: 0.58,
             zIndex: 0,
           }}
         />
         <div
           aria-hidden
-          className="pointer-events-none fixed bottom-0 left-0 w-[600px] h-[600px] rounded-full"
+          className="pointer-events-none fixed bottom-0 right-0 w-[560px] h-[560px] rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(0,227,253,0.14) 0%, transparent 65%)",
-            filter: "blur(80px)",
-            transform: "translate(-35%, 35%)",
-            zIndex: 0,
-          }}
-        />
-        {/* Deep purple centre glow — adds depth to the near-black background */}
-        <div
-          aria-hidden
-          className="pointer-events-none fixed top-1/2 left-1/2 w-[400px] h-[400px] rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(100,50,200,0.07) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            transform: "translate(-50%, -50%)",
+            background: "radial-gradient(circle, rgba(255,59,48,0.22) 0%, transparent 66%)",
+            filter: "blur(86px)",
+            transform: "translate(34%, 34%)",
             zIndex: 0,
           }}
         />

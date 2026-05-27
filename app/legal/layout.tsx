@@ -1,38 +1,22 @@
 import Link from "next/link";
 import LegalFooter from "@/components/LegalFooter";
+import { SperaIcon } from "@/components/SperaLogo";
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#131313] flex flex-col">
+    <div className="min-h-screen bg-[#020202] flex flex-col">
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center gap-3">
         <Link
           href="/"
-          className="flex items-center gap-2 text-[#cac3d8] hover:text-[#cdbdff] transition-colors"
+          className="flex items-center gap-2 text-[#b8b8b8] hover:text-white transition-colors"
         >
           <div
             className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)" }}
+            style={{ background: "#020202", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }}
           >
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" strokeWidth="1.8" strokeLinecap="round">
-              <defs>
-                <linearGradient id="iridLegal" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stopColor="#ff6b6b" />
-                  <stop offset="33%"  stopColor="#a855f7" />
-                  <stop offset="66%"  stopColor="#00e3fd" />
-                  <stop offset="100%" stopColor="#34d399" />
-                </linearGradient>
-              </defs>
-              <circle cx="12" cy="12" r="9.5" stroke="url(#iridLegal)" />
-              <circle cx="12" cy="12" r="1.75" fill="url(#iridLegal)" stroke="none" />
-              <line x1="12" y1="10.25" x2="12" y2="3.5" stroke="url(#iridLegal)" />
-              <line x1="13.5" y1="10.5" x2="19.5" y2="7" stroke="url(#iridLegal)" />
-              <line x1="13.5" y1="13.5" x2="19.5" y2="17" stroke="url(#iridLegal)" />
-              <line x1="12" y1="13.75" x2="12" y2="20.5" stroke="url(#iridLegal)" />
-              <line x1="10.5" y1="13.5" x2="4.5" y2="17" stroke="url(#iridLegal)" />
-              <line x1="10.5" y1="10.5" x2="4.5" y2="7" stroke="url(#iridLegal)" />
-            </svg>
+            <SperaIcon className="h-5 w-5" />
           </div>
-          <span className="text-xs font-bold tracking-widest uppercase">SpinTribe26</span>
+          <span className="text-xs font-bold tracking-widest uppercase">spera</span>
         </Link>
       </header>
 

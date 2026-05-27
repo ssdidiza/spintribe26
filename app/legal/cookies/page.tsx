@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Cookie Policy — SpinTribe26",
+  title: "Cookie Policy — spera",
 };
 
 export default function CookiePolicy() {
@@ -11,7 +11,7 @@ export default function CookiePolicy() {
       <p className="effective">Effective date: 1 January 2026</p>
 
       <p>
-        This Cookie Policy explains what cookies SpinTribe26 uses, why, and your choices.
+        This Cookie Policy explains what cookies spera uses, why, and your choices.
       </p>
 
       <h2>1. What Are Cookies?</h2>
@@ -45,7 +45,7 @@ export default function CookiePolicy() {
             </tr>
             <tr>
               <td><code>strava_state</code></td>
-              <td>SpinTribe26</td>
+              <td>spera</td>
               <td>CSRF protection token during Strava OAuth flow.</td>
               <td>Session</td>
             </tr>
@@ -86,7 +86,7 @@ export default function CookiePolicy() {
 
       <h2>6. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
+        spera &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

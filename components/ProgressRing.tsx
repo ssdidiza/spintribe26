@@ -14,7 +14,7 @@ export default function ProgressRing({
   pct,
   size = 160,
   strokeWidth = 12,
-  color = "#7c4dff",
+  color = "#ff4b35",
   label,
   sublabel,
   gradient = true,
@@ -30,8 +30,9 @@ export default function ProgressRing({
         <defs>
           {gradient && (
             <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#7c4dff" />
-              <stop offset="100%" stopColor="#00e3fd" />
+              <stop offset="0%" stopColor="#ff7a2f" />
+              <stop offset="50%" stopColor="#ff3b30" />
+              <stop offset="100%" stopColor="#e0007a" />
             </linearGradient>
           )}
         </defs>
@@ -57,20 +58,20 @@ export default function ProgressRing({
           strokeDashoffset={offset}
           style={{
             transition: "stroke-dashoffset 0.8s ease",
-            filter: "drop-shadow(0 0 6px rgba(124,77,255,0.5))",
+            filter: "drop-shadow(0 0 6px rgba(255,75,53,0.48))",
           }}
         />
       </svg>
       <div className="absolute flex flex-col items-center">
         {label && (
-          <span className="text-2xl font-bold text-[#e5e2e1]">{label}</span>
+          <span className="text-2xl font-bold text-white">{label}</span>
         )}
         {sublabel && (
-          <span className="text-xs text-[#cac3d8] mt-0.5">{sublabel}</span>
+          <span className="text-xs text-[#b8b8b8] mt-0.5">{sublabel}</span>
         )}
         <span
           className="text-sm font-semibold mt-1"
-          style={{ color: gradient ? "#cdbdff" : color }}
+          style={{ color: gradient ? "#ff4b35" : color }}
         >
           {Math.round(pct)}%
         </span>

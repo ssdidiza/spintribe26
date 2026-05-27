@@ -2,7 +2,7 @@
  * Strava API integration layer.
  *
  * Production apps should set STRAVA_SCOPES to the minimum permission needed.
- * SpinTribe defaults to activity:read for public/followers activity challenge
+ * spera defaults to activity:read for public/followers activity challenge
  * data. Use activity:read_all only if private activities are essential and
  * clearly explained to users during review.
  */
@@ -187,3 +187,4 @@ export function sumCyclingKm(activities: StravaActivity[]): number {
   const total = activities.reduce((s, a) => s + a.distance, 0);
   return Math.round(total / 1000);
 }
+

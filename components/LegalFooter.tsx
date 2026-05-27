@@ -16,14 +16,14 @@ export default function LegalFooter() {
             <Link
               key={href}
               href={href}
-              className="text-[11px] text-[#cac3d8]/60 hover:text-[#cdbdff] transition-colors"
+              className="text-[11px] text-[#b8b8b8]/70 hover:text-[#ff4b35] transition-colors"
             >
               {label}
             </Link>
           ))}
         </nav>
-        <p className="text-[10px] text-[#cac3d8]/30 text-center">
-          &copy; {new Date().getFullYear()} SpinTribe26. Participate at your own risk.{" "}
+        <p className="text-[10px] text-[#b8b8b8]/35 text-center">
+          &copy; {new Date().getFullYear()} spera. Participate at your own risk.{" "}
           Not medical advice.
         </p>
       </div>

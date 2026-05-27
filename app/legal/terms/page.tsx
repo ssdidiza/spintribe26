@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions — SpinTribe26",
+  title: "Terms & Conditions — spera",
 };
 
 export default function TermsAndConditions() {
@@ -11,7 +11,7 @@ export default function TermsAndConditions() {
       <p className="effective">Effective date: 1 January 2026</p>
 
       <p>
-        These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your use of the SpinTribe26
+        These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your use of the spera
         Team Vitality Challenge platform (&ldquo;the Platform&rdquo;). By creating an account
         or participating in the challenge you agree to these Terms. If you do not agree, do not
         use the Platform.
@@ -42,8 +42,8 @@ export default function TermsAndConditions() {
 
       <h2>4. Intellectual Property</h2>
       <p>
-        All content on the Platform, including the SpinTribe26 name, logo, challenge structure,
-        zone database, and AI-generated insights, is owned by SpinTribe26 or its licensors.
+        All content on the Platform, including the spera name, logo, challenge structure,
+        zone database, and AI-generated insights, is owned by spera or its licensors.
         You may not reproduce or redistribute any content without prior written permission.
       </p>
       <p>
@@ -70,7 +70,7 @@ export default function TermsAndConditions() {
       <h2>6. Limitation of Liability</h2>
       <p>
         The Platform is provided &ldquo;as is&rdquo; without warranties of any kind. To the
-        maximum extent permitted by law, SpinTribe26 is not liable for:
+        maximum extent permitted by law, spera is not liable for:
       </p>
       <ul>
         <li>Any injury, illness, or harm arising from physical activity undertaken as part of the challenge.</li>
@@ -102,7 +102,7 @@ export default function TermsAndConditions() {
 
       <h2>10. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
+        spera &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

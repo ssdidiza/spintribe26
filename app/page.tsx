@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import Image from "next/image";
 import LegalFooter from "@/components/LegalFooter";
+import { SperaWordmark } from "@/components/SperaLogo";
 
 type Mode = "signin" | "signup";
 
@@ -106,7 +107,7 @@ export default function LandingPage() {
   if (!hydrated) return null;
 
   return (
-    <div className="min-h-screen bg-[#131313] flex flex-col">
+    <div className="min-h-screen bg-[#020202] flex flex-col">
     <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
       {/* ── Left panel — hero ─────────────────────────────────────── */}
@@ -116,42 +117,21 @@ export default function LandingPage() {
           aria-hidden
           className="pointer-events-none absolute bottom-0 left-0 w-[500px] h-[400px] rounded-full"
           style={{
-            background: "radial-gradient(ellipse, rgba(124,77,255,0.2) 0%, transparent 70%)",
-            filter: "blur(80px)",
+            background: "radial-gradient(ellipse, rgba(255,59,48,0.18) 0%, transparent 70%)",
+            filter: "blur(82px)",
             zIndex: 0,
           }}
         />
 
         {/* Brand */}
-        <div className="relative z-10 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#1a0a2e,#0a1a2e)" }}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" strokeWidth="1.5" strokeLinecap="round">
-              <defs>
-                <linearGradient id="iridLanding" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stopColor="#ff6b6b" />
-                  <stop offset="33%"  stopColor="#a855f7" />
-                  <stop offset="66%"  stopColor="#00e3fd" />
-                  <stop offset="100%" stopColor="#34d399" />
-                </linearGradient>
-              </defs>
-              <circle cx="12" cy="12" r="9.5" stroke="url(#iridLanding)" />
-              <circle cx="12" cy="12" r="1.75" fill="url(#iridLanding)" stroke="none" />
-              <line x1="12" y1="10.25" x2="12" y2="3.5" stroke="url(#iridLanding)" />
-              <line x1="13.5" y1="10.5" x2="19.5" y2="7" stroke="url(#iridLanding)" />
-              <line x1="13.5" y1="13.5" x2="19.5" y2="17" stroke="url(#iridLanding)" />
-              <line x1="12" y1="13.75" x2="12" y2="20.5" stroke="url(#iridLanding)" />
-              <line x1="10.5" y1="13.5" x2="4.5" y2="17" stroke="url(#iridLanding)" />
-              <line x1="10.5" y1="10.5" x2="4.5" y2="7" stroke="url(#iridLanding)" />
-            </svg>
-          </div>
-          <span className="text-xs font-bold tracking-widest uppercase text-white/60">SpinTribe 2026</span>
+        <div className="relative z-10 flex items-center">
+          <SperaWordmark className="h-12 w-auto" />
         </div>
 
         {/* Hero copy */}
         <div className="relative z-10 py-12 md:py-0 md:flex-1 md:flex md:flex-col md:justify-center">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
-            style={{ color: "#cdbdff" }}>Team Vitality Challenge</p>
+            style={{ color: "#ff4b35" }}>Team Vitality Challenge</p>
           <h1 className="text-5xl md:text-6xl font-black leading-[1.0] tracking-tight text-white mb-5">
             PUSH<br />BEYOND<br />
             <span className="gradient-text">LIMITS.</span>
@@ -163,10 +143,10 @@ export default function LandingPage() {
           {/* Tier pills */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { km: 200,  label: "Rookie",    color: "#60a5fa" },
-              { km: 400,  label: "Contender", color: "#34d399" },
-              { km: 800,  label: "Elite",     color: "#f97316" },
-              { km: 1000, label: "Pinnacle",  color: "#a78bfa" },
+              { km: 200,  label: "Rookie",    color: "#b8b8b8" },
+              { km: 400,  label: "Contender", color: "#ffffff" },
+              { km: 800,  label: "Elite",     color: "#ff7a2f" },
+              { km: 1000, label: "Pinnacle",  color: "#ff4b35" },
             ].map((t) => (
               <span key={t.km} className="rounded-full px-3 py-1 text-xs font-bold border"
                 style={{ borderColor: `${t.color}40`, color: t.color, background: `${t.color}10` }}>
@@ -195,8 +175,8 @@ export default function LandingPage() {
               <button key={m} onClick={() => { setMode(m); setError(""); setInfo(""); }}
                 className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
                 style={mode === m
-                  ? { background: "linear-gradient(135deg,#7c4dff,#00e3fd)", color: "#fff" }
-                  : { color: "#cac3d8" }}>
+                  ? { background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", color: "#fff" }
+                  : { color: "#b8b8b8" }}>
                 {m === "signin" ? "Sign In" : "Sign Up"}
               </button>
             ))}
@@ -205,33 +185,33 @@ export default function LandingPage() {
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {mode === "signup" && (
               <div>
-                <label className="block text-xs font-semibold text-[#cac3d8] uppercase tracking-wider mb-1.5">Name</label>
+                <label className="block text-xs font-semibold text-[#b8b8b8] uppercase tracking-wider mb-1.5">Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#7c4dff]/60 transition-all"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#ff4b35]/60 transition-all"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-[#cac3d8] uppercase tracking-wider mb-1.5">Email</label>
+              <label className="block text-xs font-semibold text-[#b8b8b8] uppercase tracking-wider mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#7c4dff]/60 transition-all"
+                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#ff4b35]/60 transition-all"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#cac3d8] uppercase tracking-wider mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-[#b8b8b8] uppercase tracking-wider mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
@@ -239,7 +219,7 @@ export default function LandingPage() {
                 placeholder="••••••••"
                 required
                 minLength={6}
-                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#7c4dff]/60 transition-all"
+                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-[#ff4b35]/60 transition-all"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
               />
             </div>
@@ -251,15 +231,15 @@ export default function LandingPage() {
               </p>
             )}
             {info && (
-              <p className="text-xs text-[#bdf4ff] rounded-xl px-4 py-2"
-                style={{ background: "rgba(0,227,253,0.08)", border: "1px solid rgba(0,227,253,0.2)" }}>
+              <p className="text-xs text-white rounded-xl px-4 py-2"
+                style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.22)" }}>
                 {info}
               </p>
             )}
 
             <button type="submit" disabled={loading}
               className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wide text-white transition-all active:scale-[0.98] disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)", boxShadow: "0 0 20px rgba(124,77,255,0.35)" }}>
+              style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", boxShadow: "0 0 22px rgba(255,75,53,0.34)" }}>
               {loading ? "…" : mode === "signin" ? "Sign In" : "Create Account"}
             </button>
           </form>
