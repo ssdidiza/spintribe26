@@ -42,8 +42,6 @@ export interface Activity {
   type: string;
   date: string; // ISO
   kudos: number;
-  startLat?: number;
-  startLng?: number;
   detectedZoneId?: string; // matched zone id from GPS
 }
 

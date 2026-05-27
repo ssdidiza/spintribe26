@@ -25,8 +25,8 @@ export default function TermsAndConditions() {
 
       <h2>2. Challenge Rules</h2>
       <ul>
-        <li>Monthly km targets are set per tier (200, 400, 800, or 1 000 km). Progress is calculated from Strava-recorded activities only.</li>
-        <li>Champion sessions (champing and FTP Improver check-ins) must be linked to a genuine Strava activity. Each Strava activity may only be logged once.</li>
+        <li>Monthly km targets are set per tier (200, 400, 800, or 1 000 km). Progress is calculated from Strava-recorded cycling activities only.</li>
+        <li>Team Vitality champs are expected to attend two zone rides per month or ten annually. Champing and FTP Improver check-ins must be linked to a genuine Strava activity. Each Strava activity may only be logged once.</li>
         <li>Manipulating activity data, using GPS spoofing, or any other form of cheating will result in immediate account suspension.</li>
         <li>Tier changes are administered by platform operators and take effect at the start of the following month.</li>
       </ul>
@@ -54,9 +54,9 @@ export default function TermsAndConditions() {
       <h2>5. Strava Integration</h2>
       <p>
         We access your Strava data under the permissions you grant when connecting your account.
-        We only request the minimum scope needed (read activities). You may revoke access at any
-        time from your Strava settings; doing so will prevent further syncing but will not delete
-        existing data.
+        We request the minimum scope needed for club challenge progress and ride verification.
+        You may revoke access from your Strava settings or disconnect in the app; doing so prevents
+        further syncing and removes cached ride data from the Platform.
       </p>
       <p>
         Our use of the Strava API is governed by the{" "}

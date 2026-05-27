@@ -21,19 +21,19 @@ export default function LeaderboardPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, users, activities } = useStore();
-  const [selectedTier, setSelectedTier] = useState<Tier>(400);
+  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) router.replace("/");
     else if (!isOnboarded) router.replace("/onboarding");
-    else setSelectedTier(currentUser.tier as Tier);
   }, [hydrated, currentUser, isOnboarded, router]);
 
   const realUsers = useMemo(() => users.filter((u) => u.isConnected), [users]);
+  const activeTier = selectedTier ?? currentUser?.tier ?? 400;
   const entries   = useMemo(
-    () => buildLeaderboard(selectedTier, realUsers, activities),
-    [selectedTier, realUsers, activities]
+    () => buildLeaderboard(activeTier, realUsers, activities),
+    [activeTier, realUsers, activities]
   );
 
   if (!hydrated || !currentUser) return null;
@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
         {/* Tier tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {TIERS.map((t) => {
-            const active = selectedTier === t;
+            const active = activeTier === t;
             return (
               <button
                 key={t}
@@ -98,7 +98,7 @@ export default function LeaderboardPage() {
         {/* Entry count */}
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cdbdff]">
-            {TIER_LABELS[selectedTier]} — {selectedTier} km
+            {TIER_LABELS[activeTier]} - {activeTier} km
           </p>
           <div className="flex items-center gap-3">
             <p className="text-[10px] text-[#cac3d8]">{entries.length} riders</p>

@@ -15,6 +15,11 @@ create table if not exists public.users (
   strava_token_expires_at bigint,
   onboarded             boolean not null default false,
   zone                  text,
+  ftp                   int,
+  country               text,
+  last_strava_sync_at   timestamptz,
+  last_strava_sync_year int,
+  last_strava_sync_month int,
   created_at            timestamptz default now(),
   updated_at            timestamptz default now()
 );
@@ -30,6 +35,7 @@ create table if not exists public.activities (
   type            text   not null,    -- 'Ride' | 'VirtualRide' etc.
   date            timestamptz not null,
   kudos           int default 0,
+  detected_zone_id text,
   created_at      timestamptz default now()
 );
 
@@ -85,12 +91,17 @@ create index if not exists idx_champ_sessions_user on public.champion_sessions(u
 -- The anon/authenticated grants below cover the one client-side
 -- query: supabase.from("users").select() in app/page.tsx after email login.
 -- ============================================================
+revoke select on public.users from anon, authenticated;
+grant select (strava_id, name, avatar, role, tier, onboarded, zone, ftp, country, created_at, updated_at)
+  on public.users
+  to anon, authenticated;
+
 grant select
-  on public.users, public.activities, public.zones, public.champion_sessions
+  on public.activities, public.zones, public.champion_sessions
   to anon;
 
 grant select, insert, update, delete
-  on public.users, public.activities, public.zones, public.champion_sessions
+  on public.activities, public.zones, public.champion_sessions
   to authenticated;
 
 -- Sequence access for bigserial inserts (if authenticated role ever inserts directly)
@@ -108,13 +119,15 @@ alter table public.activities        enable row level security;
 alter table public.champion_sessions enable row level security;
 alter table public.zones             enable row level security;
 
--- Users: anyone can read (leaderboard needs it), only owner can update
+-- Users: anyone can read profile/leaderboard metadata, only owner can update
 create policy "users_read_all"   on public.users for select using (true);
 create policy "users_update_own" on public.users for update
   using (strava_id = current_setting('app.strava_id', true));
 
--- Activities: anyone can read (leaderboard), only owner can insert/update
-create policy "activities_read_all"   on public.activities for select using (true);
+-- Activities: raw Strava activities stay private to the owning athlete.
+-- Public leaderboards should use API routes or aggregate views, not raw rows.
+create policy "activities_read_own"   on public.activities for select
+  using (user_strava_id = current_setting('app.strava_id', true));
 create policy "activities_insert_own" on public.activities for insert
   with check (user_strava_id = current_setting('app.strava_id', true));
 create policy "activities_update_own" on public.activities for update

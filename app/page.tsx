@@ -157,7 +157,7 @@ export default function LandingPage() {
             <span className="gradient-text">LIMITS.</span>
           </h1>
           <p className="text-white/50 text-sm leading-relaxed max-w-xs mb-8">
-            Track your rides, climb the leaderboard, and unlock AI-powered training insights in the monthly km challenge.
+            Team Vitality Cycling Club riders sync Strava rides for monthly distance goals, tier leaderboards, and champ check-ins.
           </p>
 
           {/* Tier pills */}
@@ -299,7 +299,7 @@ export default function LandingPage() {
             <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-white/50 transition-colors">
               Privacy Policy
             </Link>
-            .{" "}Strava integration is currently invite-only — use email to join.
+            .{" "}Strava data is used only for club challenge progress and champ ride verification.
           </p>
         </div>
       </div>

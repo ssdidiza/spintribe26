@@ -12,7 +12,7 @@ export async function GET() {
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("activities")
-    .select("*")
+    .select("id,strava_id,user_strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id,created_at")
     .eq("user_strava_id", String(session.athleteId))
     .order("date", { ascending: false })
     .limit(200);

@@ -1,13 +1,10 @@
 /**
  * Strava API integration layer.
  *
- * To go live, create a Strava API application at https://www.strava.com/settings/api
- * and set the following environment variables in .env.local:
- *
- *   STRAVA_CLIENT_ID=your_client_id
- *   STRAVA_CLIENT_SECRET=your_client_secret
- *   STRAVA_REDIRECT_URI=http://localhost:3000/api/auth/strava/callback
- *   NEXTAUTH_SECRET=any_random_string
+ * Production apps should set STRAVA_SCOPES to the minimum permission needed.
+ * SpinTribe defaults to activity:read for public/followers activity challenge
+ * data. Use activity:read_all only if private activities are essential and
+ * clearly explained to users during review.
  */
 
 const STRAVA_BASE = "https://www.strava.com/api/v3";
@@ -18,7 +15,6 @@ export interface StravaTokens {
   refreshToken: string;
   expiresAt: number; // unix epoch seconds
   athleteId: number;
-  // Basic athlete info from the token exchange — always present, no extra API call needed
   athleteFirstname: string;
   athleteLastname: string;
   athleteProfile: string;
@@ -28,8 +24,8 @@ export interface StravaAthlete {
   id: number;
   firstname: string;
   lastname: string;
-  profile: string; // avatar URL
-  ftp?: number;    // Functional Threshold Power (watts) — may be null/0 if not set
+  profile: string;
+  ftp?: number;
   country?: string;
 }
 
@@ -41,25 +37,59 @@ export interface StravaActivity {
   type: string;
   start_date: string; // ISO
   kudos_count: number;
-  start_latlng?: [number, number]; // [lat, lng] — absent for indoor rides
+  start_latlng?: [number, number];
 }
 
-/** Step 1: Build Strava OAuth URL (with CSRF state) */
-export function getStravaAuthUrl(state: string): string {
+export interface SanitizedStravaActivity extends Omit<StravaActivity, "start_latlng"> {
+  detected_zone_id?: string | null;
+}
+
+export class StravaApiError extends Error {
+  status: number;
+  rateLimit?: string | null;
+  rateUsage?: string | null;
+  readRateLimit?: string | null;
+  readRateUsage?: string | null;
+
+  constructor(message: string, res: Response) {
+    super(message);
+    this.name = "StravaApiError";
+    this.status = res.status;
+    this.rateLimit = res.headers.get("x-ratelimit-limit");
+    this.rateUsage = res.headers.get("x-ratelimit-usage");
+    this.readRateLimit = res.headers.get("x-readratelimit-limit");
+    this.readRateUsage = res.headers.get("x-readratelimit-usage");
+  }
+}
+
+async function parseStravaResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let message = `Strava request failed with ${res.status}`;
+    try {
+      const body = await res.json();
+      message = body?.message ?? message;
+    } catch {
+      // Preserve the status-based message for non-JSON responses.
+    }
+    throw new StravaApiError(message, res);
+  }
+  return res.json() as Promise<T>;
+}
+
+export function getStravaAuthUrl(state: string, forceApproval = false): string {
   const params = new URLSearchParams({
     client_id: process.env.STRAVA_CLIENT_ID ?? "",
     redirect_uri:
       process.env.STRAVA_REDIRECT_URI ??
       "http://localhost:3000/api/auth/strava/callback",
     response_type: "code",
-    scope: "read,profile:read_all,activity:read_all",
-    approval_prompt: "force",
+    scope: process.env.STRAVA_SCOPES ?? "read,activity:read",
+    approval_prompt: forceApproval ? "force" : "auto",
     state,
   });
   return `${STRAVA_AUTH}/authorize?${params}`;
 }
 
-/** Step 2: Exchange code for tokens */
 export async function exchangeStravaCode(code: string): Promise<StravaTokens> {
   const res = await fetch(`${STRAVA_AUTH}/token`, {
     method: "POST",
@@ -71,22 +101,24 @@ export async function exchangeStravaCode(code: string): Promise<StravaTokens> {
       grant_type: "authorization_code",
     }),
   });
-  const data = await res.json();
+  const data = await parseStravaResponse<{
+    access_token?: string;
+    refresh_token?: string;
+    expires_at?: number;
+    athlete?: { id?: number; firstname?: string; lastname?: string; profile?: string };
+  }>(res);
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresAt: data.expires_at,
-    athleteId: data.athlete?.id,
+    accessToken: data.access_token ?? "",
+    refreshToken: data.refresh_token ?? "",
+    expiresAt: data.expires_at ?? 0,
+    athleteId: data.athlete?.id ?? 0,
     athleteFirstname: data.athlete?.firstname ?? "",
     athleteLastname: data.athlete?.lastname ?? "",
     athleteProfile: data.athlete?.profile ?? "",
   };
 }
 
-/** Step 3: Refresh expired token */
-export async function refreshStravaToken(
-  refreshToken: string
-): Promise<StravaTokens> {
+export async function refreshStravaToken(refreshToken: string): Promise<StravaTokens> {
   const res = await fetch(`${STRAVA_AUTH}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,34 +129,35 @@ export async function refreshStravaToken(
       refresh_token: refreshToken,
     }),
   });
-  const data = await res.json();
+  const data = await parseStravaResponse<{
+    access_token?: string;
+    refresh_token?: string;
+    expires_at?: number;
+    athlete?: { id?: number; firstname?: string; lastname?: string; profile?: string };
+  }>(res);
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresAt: data.expires_at,
-    athleteId: data.athlete?.id,
     // Strava's refresh endpoint does not return athlete data — intentional empty defaults.
+    accessToken: data.access_token ?? "",
+    refreshToken: data.refresh_token ?? refreshToken,
+    expiresAt: data.expires_at ?? 0,
+    athleteId: data.athlete?.id ?? 0,
     athleteFirstname: data.athlete?.firstname ?? "",
     athleteLastname: data.athlete?.lastname ?? "",
     athleteProfile: data.athlete?.profile ?? "",
   };
 }
 
-/** Fetch athlete profile */
-export async function getStravaAthlete(
-  accessToken: string
-): Promise<StravaAthlete> {
+export async function getStravaAthlete(accessToken: string): Promise<StravaAthlete> {
   const res = await fetch(`${STRAVA_BASE}/athlete`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  return res.json();
+  return parseStravaResponse<StravaAthlete>(res);
 }
 
-/** Fetch activities for a given month */
 export async function getStravaActivitiesForMonth(
   accessToken: string,
   year: number,
-  month: number // 1-indexed
+  month: number
 ): Promise<StravaActivity[]> {
   const after = Math.floor(new Date(year, month - 1, 1).getTime() / 1000);
   const before = Math.floor(new Date(year, month, 0, 23, 59, 59).getTime() / 1000);
@@ -136,14 +169,20 @@ export async function getStravaActivitiesForMonth(
   const res = await fetch(`${STRAVA_BASE}/athlete/activities?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  const activities: StravaActivity[] = await res.json();
-  // Filter to cycling only
+  const activities = await parseStravaResponse<StravaActivity[]>(res);
   return activities.filter((a) =>
     ["Ride", "VirtualRide", "EBikeRide", "Velomobile"].includes(a.type)
   );
 }
 
-/** Sum up km for a month from activity list */
+export async function deauthorizeStrava(accessToken: string): Promise<void> {
+  const res = await fetch(`${STRAVA_AUTH}/deauthorize`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  await parseStravaResponse<unknown>(res);
+}
+
 export function sumCyclingKm(activities: StravaActivity[]): number {
   const total = activities.reduce((s, a) => s + a.distance, 0);
   return Math.round(total / 1000);

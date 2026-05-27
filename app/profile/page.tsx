@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
@@ -7,7 +7,7 @@ import { getMonthlyKm } from "@/lib/mock-data";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
-import { LogOut, MapPin, Star, ShieldCheck, Zap, Target, Route, Lock, RefreshCw } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Zap, Target, Route, Lock, RefreshCw, Unplug, Trash2 } from "lucide-react";
 
 // Bike wheel icon — SpinTribe26 custom mark
 function BikeWheel({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
@@ -24,11 +24,11 @@ function BikeWheel({ size = 14, color = "currentColor" }: { size?: number; color
     </svg>
   );
 }
-
 export default function ProfilePage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, activities, zones, championSessions, logout } = useStore();
+  const [disconnecting, setDisconnecting] = useState<"disconnect" | "delete" | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -59,6 +59,20 @@ export default function ProfilePage() {
   function handleLogout() {
     logout();
     router.push("/");
+  }
+
+  async function handleStravaDisconnect(deleteAccount = false) {
+    setDisconnecting(deleteAccount ? "delete" : "disconnect");
+    try {
+      await fetch("/api/strava/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteAccount }),
+      });
+    } finally {
+      logout();
+      router.push("/");
+    }
   }
 
   // Arc path for the progress ring
@@ -291,6 +305,33 @@ export default function ProfilePage() {
         </div>
 
         <p className="text-center text-[10px] text-white/20 pb-2">SpinTribe26 · Team Vitality · 2026</p>
+        <div className="glass-card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">Data Controls</p>
+          </div>
+          <button
+            onClick={() => handleStravaDisconnect(false)}
+            disabled={!!disconnecting}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06] disabled:opacity-50"
+          >
+            <span className="text-sm font-semibold text-[#e5e2e1]">
+              {disconnecting === "disconnect" ? "Disconnecting..." : "Disconnect Strava and remove ride cache"}
+            </span>
+            <Unplug size={14} className="text-[#cac3d8]" />
+          </button>
+          <button
+            onClick={() => handleStravaDisconnect(true)}
+            disabled={!!disconnecting}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            <span className="text-sm font-semibold text-[#ffb4ab]">
+              {disconnecting === "delete" ? "Deleting..." : "Delete account data"}
+            </span>
+            <Trash2 size={14} className="text-[#ffb4ab]" />
+          </button>
+        </div>
+
+        <p className="text-center text-[10px] text-[#cac3d8]/40">SpinTribe26 · Team Vitality · 2026</p>
       </main>
       <NavBar />
     </div>

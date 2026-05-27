@@ -28,6 +28,12 @@ export default function DashboardPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInsights, setAiInsights] = useState<{ title: string; tip: string }[]>([]);
 
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    await syncStravaActivities();
+    setSyncing(false);
+  }, [syncStravaActivities]);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
@@ -35,12 +41,6 @@ export default function DashboardPage() {
     Promise.all([hydrateChampionSessions(), hydrateAthleteData(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, currentUser, isOnboarded]);
-
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    await syncStravaActivities();
-    setSyncing(false);
-  }, [syncStravaActivities]);
 
   const fetchInsights = useCallback(async () => {
     setAiLoading(true);
@@ -268,7 +268,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <p className="text-sm text-[#cac3d8] leading-relaxed">
-              You've hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
+              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
             </p>
           )}
         </div>
@@ -522,11 +522,3 @@ export default function DashboardPage() {
   );
 }
 
-function StatLine({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] text-[#cac3d8] uppercase tracking-wider">{label}</p>
-      <p className="font-bold text-sm" style={accent ? { color: "#cdbdff" } : { color: "#e5e2e1" }}>{value}</p>
-    </div>
-  );
-}

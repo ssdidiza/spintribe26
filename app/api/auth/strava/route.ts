@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 export function GET(req: NextRequest) {
   const reauth = new URL(req.url).searchParams.get("reauth") === "1";
   const state = randomBytes(16).toString("hex");
-  const url = getStravaAuthUrl(state);
+  const url = getStravaAuthUrl(state, reauth);
   const res = NextResponse.redirect(url);
 
   const cookieOpts = {

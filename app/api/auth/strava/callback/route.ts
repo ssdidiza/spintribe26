@@ -68,13 +68,20 @@ export async function GET(req: NextRequest) {
             type: a.type,
             date: a.start_date,
             kudos: a.kudos_count,
-            start_lat: lat ?? null,
-            start_lng: lng ?? null,
             detected_zone_id: detectZoneFromGPS(lat, lng),
           };
         });
         await db.from("activities").upsert(rows, { onConflict: "strava_id" });
       }
+      await db
+        .from("users")
+        .update({
+          last_strava_sync_at: new Date().toISOString(),
+          last_strava_sync_year: now.getFullYear(),
+          last_strava_sync_month: now.getMonth() + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("strava_id", String(tokens.athleteId));
     } catch (syncErr) {
       console.error("Initial activity sync failed (non-fatal):", syncErr);
     }
@@ -89,9 +96,6 @@ export async function GET(req: NextRequest) {
     // 4. Write signed session cookie (httpOnly — safe from XSS)
     const session = await getSession();
     session.athleteId = tokens.athleteId;
-    session.accessToken = tokens.accessToken;
-    session.refreshToken = tokens.refreshToken;
-    session.expiresAt = tokens.expiresAt;
     await session.save();
 
     // 5. Redirect based on onboarding status (onboarded DB flag replaces isReauth cookie)
