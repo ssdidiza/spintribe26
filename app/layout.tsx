@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const lexend = Lexend({
@@ -61,6 +62,7 @@ export default function RootLayout({
           }}
         />
         <div className="relative z-10">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
