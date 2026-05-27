@@ -8,7 +8,7 @@ import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
-import { LogOut, MapPin, Star, ShieldCheck, Zap, Target, Route, Lock, RefreshCw, Unplug, Trash2 } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2 } from "lucide-react";
 
 export default function ProfilePage() {
   const router   = useRouter();
@@ -34,7 +34,6 @@ export default function ProfilePage() {
   const tierColor     = TIER_COLORS[currentUser.tier];
   const champSessions = championSessions.filter((s) => s.userId === currentUser.id);
   const champingCount = champSessions.filter((s) => s.type === "champing").length;
-  const ftpCount      = champSessions.filter((s) => s.type === "ftp_improver").length;
   const myZones       = zones.filter((z) => z.createdBy === currentUser.id);
   const isChamp       = canAccessChampionFeatures(currentUser);
   const isAdmin       = hasAdminRole(currentUser);
@@ -134,12 +133,12 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-black text-[#ffffff] tracking-tight">{currentUser.name}</h2>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold" style={{ color: roleColor }}>{roleLabel}</span>
-                {currentUser.region && (
+                {(currentUser.zone || currentUser.region) && (
                   <>
                     <span className="text-white/30">·</span>
                     <span className="flex items-center gap-1 text-sm text-[#b8b8b8]">
                       <MapPin size={11} />
-                      {currentUser.region}
+                      {currentUser.zone || currentUser.region}
                     </span>
                   </>
                 )}
@@ -211,19 +210,18 @@ export default function ProfilePage() {
 
             {/* Champion stats (if applicable) */}
             {isChamp && (
-              <div className="w-full grid grid-cols-3 gap-2">
+              <div className="w-full grid grid-cols-2 gap-2">
                 {[
-                  { icon: <Target size={15} />, value: champingCount, label: "Champing" },
-                  { icon: <Zap size={15} />,    value: ftpCount,      label: "FTP Rides" },
+                  { icon: <Target size={15} />, value: champingCount, label: "Check-ins" },
                   { icon: <Route size={15} />,  value: myZones.length, label: "Zones" },
                 ].map(({ icon, value, label }) => (
                   <div
                     key={label}
-                    className="rounded-2xl px-3 py-3 flex flex-col items-center gap-1"
+                    className="rounded-2xl px-3 py-4 flex flex-col items-center gap-1.5"
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
                   >
                     <span className="text-[#b8b8b8]/60">{icon}</span>
-                    <span className="text-xl font-black text-[#ffffff]">{value}</span>
+                    <span className="text-2xl font-black text-[#ffffff]">{value}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]/50">{label}</span>
                   </div>
                 ))}

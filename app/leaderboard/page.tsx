@@ -93,7 +93,8 @@ export default function LeaderboardPage() {
         {/* Entries */}
         {entries.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-[#b8b8b8] text-sm">No riders in this tier yet.</p>
+            <p className="text-sm text-[#b8b8b8]">No riders in this tier yet.</p>
+            <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Be the first to sync your rides.</p>
           </div>
         ) : (
           <div className="space-y-2">

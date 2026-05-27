@@ -306,18 +306,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Challenge bar */}
-            <div>
-              <div className="flex justify-between mb-1.5">
-                <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider">Challenge</p>
-                <p className="text-[10px] font-bold" style={{ color: "#ff4b35" }}>{pct}%</p>
-              </div>
-              <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff4b35, #ffffff)", boxShadow: "0 0 8px rgba(255,255,255,0.4)" }} />
-              </div>
-              <p className="text-[10px] text-[#b8b8b8] mt-1">{monthlyKm} / {targetKm} km</p>
-            </div>
           </div>
 
         {/* 4-stat bento */}
