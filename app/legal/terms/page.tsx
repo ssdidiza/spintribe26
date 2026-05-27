@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions — SpinTribe26",
+  title: "Terms & Conditions — spera",
 };
 
 export default function TermsAndConditions() {
@@ -11,7 +11,7 @@ export default function TermsAndConditions() {
       <p className="effective">Effective date: 1 January 2026</p>
 
       <p>
-        These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your use of the SpinTribe26
+        These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your use of the spera
         Team Vitality Challenge platform (&ldquo;the Platform&rdquo;). By creating an account
         or participating in the challenge you agree to these Terms. If you do not agree, do not
         use the Platform.
@@ -25,8 +25,8 @@ export default function TermsAndConditions() {
 
       <h2>2. Challenge Rules</h2>
       <ul>
-        <li>Monthly km targets are set per tier (200, 400, 800, or 1 000 km). Progress is calculated from Strava-recorded activities only.</li>
-        <li>Champion sessions (champing and FTP Improver check-ins) must be linked to a genuine Strava activity. Each Strava activity may only be logged once.</li>
+        <li>Monthly km targets are set per tier (200, 400, 800, or 1 000 km). Progress is calculated from Strava-recorded cycling activities only.</li>
+        <li>Team Vitality champs are expected to attend two zone rides per month or ten annually. Champing and FTP Improver check-ins must be linked to a genuine Strava activity. Each Strava activity may only be logged once.</li>
         <li>Manipulating activity data, using GPS spoofing, or any other form of cheating will result in immediate account suspension.</li>
         <li>Tier changes are administered by platform operators and take effect at the start of the following month.</li>
       </ul>
@@ -42,8 +42,8 @@ export default function TermsAndConditions() {
 
       <h2>4. Intellectual Property</h2>
       <p>
-        All content on the Platform, including the SpinTribe26 name, logo, challenge structure,
-        zone database, and AI-generated insights, is owned by SpinTribe26 or its licensors.
+        All content on the Platform, including the spera name, logo, challenge structure,
+        zone database, and app interface, is owned by spera or its licensors.
         You may not reproduce or redistribute any content without prior written permission.
       </p>
       <p>
@@ -54,9 +54,9 @@ export default function TermsAndConditions() {
       <h2>5. Strava Integration</h2>
       <p>
         We access your Strava data under the permissions you grant when connecting your account.
-        We only request the minimum scope needed (read activities). You may revoke access at any
-        time from your Strava settings; doing so will prevent further syncing but will not delete
-        existing data.
+        We request the minimum scope needed for club challenge progress and ride verification.
+        You may revoke access from your Strava settings or disconnect in the app; doing so prevents
+        further syncing and removes cached ride data from the Platform.
       </p>
       <p>
         Our use of the Strava API is governed by the{" "}
@@ -70,12 +70,11 @@ export default function TermsAndConditions() {
       <h2>6. Limitation of Liability</h2>
       <p>
         The Platform is provided &ldquo;as is&rdquo; without warranties of any kind. To the
-        maximum extent permitted by law, SpinTribe26 is not liable for:
+        maximum extent permitted by law, spera is not liable for:
       </p>
       <ul>
         <li>Any injury, illness, or harm arising from physical activity undertaken as part of the challenge.</li>
         <li>Loss of data, service interruptions, or technical errors.</li>
-        <li>Decisions made based on AI-generated training insights.</li>
       </ul>
       <p>
         Physical activity carries inherent risk. See our{" "}
@@ -102,7 +101,7 @@ export default function TermsAndConditions() {
 
       <h2>10. Contact</h2>
       <p>
-        SpinTribe26 &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
+        spera &mdash; <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>
     </article>
   );

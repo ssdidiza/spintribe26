@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getStravaAthlete, refreshStravaToken } from "@/lib/strava";
+import { getStravaAthlete, StravaApiError } from "@/lib/strava";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
 
 /**
  * GET /api/strava/athlete
@@ -14,22 +15,23 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Refresh token if near expiry
-  let accessToken = session.accessToken!;
-  if (session.expiresAt && session.expiresAt < Math.floor(Date.now() / 1000) + 60) {
-    try {
-      const refreshed = await refreshStravaToken(session.refreshToken!);
-      accessToken = refreshed.accessToken;
-      session.accessToken = refreshed.accessToken;
-      session.refreshToken = refreshed.refreshToken;
-      session.expiresAt = refreshed.expiresAt;
-      await session.save();
-    } catch (e) {
-      console.error("Token refresh failed:", e);
-    }
+  const accessToken = await getFreshStravaAccessToken(session.athleteId);
+  if (!accessToken) {
+    return NextResponse.json({ error: "Strava disconnected" }, { status: 409 });
   }
 
-  const athlete = await getStravaAthlete(accessToken);
+  let athlete;
+  try {
+    athlete = await getStravaAthlete(accessToken);
+  } catch (e) {
+    if (e instanceof StravaApiError) {
+      return NextResponse.json(
+        { error: "Strava unavailable", status: e.status },
+        { status: e.status === 429 ? 429 : 502 }
+      );
+    }
+    throw e;
+  }
 
   // Persist FTP to Supabase so it survives sessions
   if (athlete.ftp) {
@@ -37,7 +39,7 @@ export async function GET() {
       const db = supabaseAdmin();
       await db
         .from("users")
-        .update({ ftp: athlete.ftp })
+        .update({ ftp: athlete.ftp, country: athlete.country ?? null })
         .eq("strava_id", String(session.athleteId));
     } catch {
       // non-fatal — column may not exist yet

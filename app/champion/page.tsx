@@ -117,15 +117,16 @@ export default function ChampionPage() {
   const annualPct = Math.min(100, Math.round((champingThisYear / 22) * 100));
 
   return (
-    <div className="min-h-screen bg-[#131313] mb-nav">
-
+    <div className="min-h-screen bg-[#020202] mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Star size={15} style={{ color: "#cdbdff", filter: "drop-shadow(0 0 6px rgba(124,77,255,0.7))" }} fill="#cdbdff" />
-          <h1 className="font-bold text-[#e5e2e1]">Champ Console</h1>
+          <Star size={16} style={{ color: "#ff4b35", filter: "drop-shadow(0 0 6px rgba(255,75,53,0.7))" }} fill="#ff4b35" />
+          <h1 className="font-bold text-[#ffffff]">Champ Console</h1>
         </div>
-        <span className="text-[10px] font-bold rounded-full px-2.5 py-1"
-          style={{ border: "1px solid rgba(124,77,255,0.4)", color: "#cdbdff", background: "rgba(124,77,255,0.1)" }}>
+        <span
+          className="text-[10px] font-bold rounded-full px-2.5 py-1"
+          style={{ border: "1px solid rgba(255,75,53,0.4)", color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}
+        >
           {currentUser.tier} km
         </span>
       </header>
@@ -136,14 +137,14 @@ export default function ChampionPage() {
 
         {/* ── Annual progress + check-in ───────────────────────────── */}
         <div className="glass-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8]">Annual Progress</p>
-            <span className="text-[10px] font-bold" style={{ color: "#cdbdff" }}>{champingThisYear} sessions</span>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Annual Progress</p>
+            <span className="text-[10px] font-bold" style={{ color: "#ff4b35" }}>{champingThisYear} sessions</span>
           </div>
 
           <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-4">
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${annualPct}%`, background: "linear-gradient(90deg,#7c4dff,#00e3fd)", boxShadow: "0 0 8px rgba(0,227,253,0.4)" }} />
+              style={{ width: `${annualPct}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)", boxShadow: "0 0 8px rgba(255,255,255,0.4)" }} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">
@@ -154,7 +155,7 @@ export default function ChampionPage() {
           <button
             onClick={openModal}
             className="w-full rounded-2xl py-3 font-bold text-sm tracking-widest text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)", boxShadow: "0 0 16px rgba(124,77,255,0.3)" }}
+            style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", boxShadow: "0 0 16px rgba(255,75,53,0.3)" }}
           >
             <Star size={13} fill="currentColor" />
             LOG CHECK-IN
@@ -163,12 +164,12 @@ export default function ChampionPage() {
 
         {/* ── Recent check-ins ─────────────────────────────────────── */}
         <section>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8] mb-3">Recent Check-ins</p>
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Recent Check-ins</p>
           {recentSessions.length === 0 ? (
             <div className="glass-card p-10 text-center">
-              <Star size={22} className="mx-auto mb-2 text-[#cac3d8]/25" />
-              <p className="text-sm text-[#cac3d8]">No check-ins yet.</p>
-              <p className="text-[11px] text-[#cac3d8]/50 mt-1">Log your first session above.</p>
+              <Star size={22} className="mx-auto mb-2 text-[#b8b8b8]/25" />
+              <p className="text-sm text-[#b8b8b8]">No check-ins yet.</p>
+              <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Log your first session above.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -176,39 +177,41 @@ export default function ChampionPage() {
                 <div key={s.id} className="glass-card overflow-hidden">
                   <div className="flex items-start gap-3 p-3.5">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "rgba(124,77,255,0.12)" }}>
-                      <Star size={13} style={{ color: "#cdbdff" }} />
+                      style={{ background: "rgba(255,75,53,0.12)" }}>
+                      <Star size={13} style={{ color: "#ff4b35" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#e5e2e1]">Champing Session</p>
+                      <p className="font-semibold text-sm text-[#ffffff]">Champing Session</p>
                       {s.stravaActivityName && (
-                        <p className="text-[10px] text-[#cac3d8] truncate mt-0.5">
+                        <p className="text-[10px] text-[#b8b8b8] truncate mt-0.5">
                           🚴 {s.stravaActivityName}{s.stravaActivityKm ? ` · ${s.stravaActivityKm} km` : ""}
                         </p>
                       )}
                       {s.zoneName && (
-                        <p className="text-[10px] flex items-center gap-1 mt-0.5" style={{ color: "#cdbdff" }}>
+                        <p className="text-[10px] flex items-center gap-1 mt-0.5 text-[#ff4b35]">
                           <MapPin size={9} /> {s.zoneName}
                         </p>
                       )}
-                      {s.notes && <p className="text-[10px] text-[#cac3d8] truncate mt-0.5">{s.notes}</p>}
+                      {s.notes && <p className="text-[10px] text-[#b8b8b8] truncate">{s.notes}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className="text-[10px] text-[#cac3d8]">{format(new Date(s.date), "MMM d")}</p>
+                      <p className="text-[10px] text-[#b8b8b8]">{format(new Date(s.date), "MMM d")}</p>
                       <button
                         onClick={() => setConfirmDeleteId(s.id)}
                         className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/20"
                       >
-                        <Trash2 size={11} className="text-[#cac3d8]/40" />
+                        <Trash2 size={11} className="text-[#b8b8b8]/60 hover:text-[#ffb4ab]" />
                       </button>
                     </div>
                   </div>
                   {confirmDeleteId === s.id && (
-                    <div className="flex items-center justify-between gap-2 px-3.5 pb-3.5 -mt-1">
-                      <p className="text-[11px] text-[#cac3d8]">Remove this check-in?</p>
+                    <div className="flex items-center justify-between gap-2 px-3 pb-3">
+                      <p className="text-[11px] text-[#b8b8b8]">Remove this session?</p>
                       <div className="flex gap-1.5">
-                        <button onClick={() => setConfirmDeleteId(null)}
-                          className="rounded-lg px-3 py-1 text-[11px] font-semibold text-[#cac3d8] glass hover:border-white/20 transition-all">
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="rounded-lg px-3 py-1 text-[11px] font-semibold text-[#b8b8b8] glass hover:border-white/20 transition-all"
+                        >
                           Cancel
                         </button>
                         <button
@@ -228,7 +231,7 @@ export default function ChampionPage() {
         {/* ── Tier members ─────────────────────────────────────────── */}
         {tierMembers.length > 0 && (
           <section>
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cac3d8] mb-3">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">
               {currentUser.tier} km Tier Members
             </p>
             <div className="space-y-2">
@@ -240,13 +243,13 @@ export default function ChampionPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={member.avatar} alt={member.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#e5e2e1] truncate">{member.name}</p>
-                      <div className="mt-1.5 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                      <p className="text-sm font-semibold text-[#ffffff] truncate">{member.name}</p>
+                      <div className="mt-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
                         <div className="h-full rounded-full transition-all"
-                          style={{ width: `${p}%`, background: "linear-gradient(90deg,#7c4dff,#00e3fd)" }} />
+                          style={{ width: `${p}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)" }} />
                       </div>
                     </div>
-                    <p className="text-sm font-bold flex-shrink-0" style={{ color: "#cdbdff" }}>{km} km</p>
+                    <p className="text-sm font-bold text-[#b8b8b8] flex-shrink-0">{km} km</p>
                   </div>
                 );
               })}
@@ -270,20 +273,20 @@ export default function ChampionPage() {
             <div className="sticky top-0 glass px-6 pt-5 pb-4 border-b border-white/[0.08] rounded-t-3xl">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#cdbdff]">Champing Session</p>
-                  <h3 className="font-bold text-[#e5e2e1] text-lg">
+                  <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Champing Session</p>
+                  <h3 className="font-bold text-[#ffffff] text-lg">
                     {step === "activity" ? "Link a Ride" : "Confirm & Log"}
                   </h3>
                 </div>
                 <button onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full glass flex items-center justify-center">
-                  <X size={14} className="text-[#cac3d8]" />
+                  <X size={14} className="text-[#b8b8b8]" />
                 </button>
               </div>
               <div className="flex gap-1.5">
                 {(["activity", "notes"] as ModalStep[]).map((s, i) => (
                   <div key={s} className="h-0.5 flex-1 rounded-full transition-all"
-                    style={{ background: i <= (step === "activity" ? 0 : 1) ? "linear-gradient(90deg,#7c4dff,#00e3fd)" : "rgba(255,255,255,0.1)" }} />
+                    style={{ background: i <= (step === "activity" ? 0 : 1) ? "linear-gradient(90deg,#ff4b35,#ffffff)" : "rgba(255,255,255,0.1)" }} />
                 ))}
               </div>
             </div>
@@ -293,10 +296,10 @@ export default function ChampionPage() {
               {step === "activity" && (
                 <>
                   <div className="flex items-start gap-2 rounded-xl p-3"
-                    style={{ background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.18)" }}>
-                    <AlertCircle size={13} style={{ color: "#cdbdff" }} className="mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-[#cac3d8] leading-relaxed">
-                      Link a <strong className="text-[#e5e2e1]">Strava ride</strong> as proof of your champing session.
+                    style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.2)" }}>
+                    <AlertCircle size={13} style={{ color: "#ff4b35" }} className="mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-[#b8b8b8] leading-relaxed">
+                      Link a <strong className="text-[#ffffff]">Strava ride</strong> as proof of your champing session.
                     </p>
                   </div>
                   <ActivityPicker
@@ -313,8 +316,8 @@ export default function ChampionPage() {
                       selectedActivity ? "text-white" : "text-white/30 cursor-not-allowed"
                     )}
                     style={selectedActivity ? {
-                      background: "linear-gradient(135deg,#7c4dff,#00e3fd)",
-                      boxShadow: "0 0 20px rgba(124,77,255,0.4)",
+                      background: "linear-gradient(135deg,#ff4b35,#ffffff)",
+                      boxShadow: "0 0 20px rgba(255,75,53,0.4)",
                     } : { background: "rgba(255,255,255,0.06)" }}
                   >
                     CONTINUE <ChevronRight size={15} />
@@ -327,11 +330,11 @@ export default function ChampionPage() {
                   {/* Linked activity */}
                   {selectedActivity && (
                     <div className="rounded-xl p-3.5 flex items-center gap-3"
-                      style={{ background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.18)" }}>
+                      style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.18)" }}>
                       <span className="text-base">🚴</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#e5e2e1] truncate">{selectedActivity.name}</p>
-                        <p className="text-[10px] text-[#cac3d8]">
+                        <p className="text-xs font-semibold text-[#ffffff] truncate">{selectedActivity.name}</p>
+                        <p className="text-[10px] text-[#b8b8b8]">
                           {(selectedActivity.distance / 1000).toFixed(1)} km · {format(new Date(selectedActivity.date), "MMM d")}
                         </p>
                       </div>
@@ -340,8 +343,8 @@ export default function ChampionPage() {
 
                   {/* Zone (optional) */}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#cac3d8] mb-2">
-                      Zone <span className="normal-case text-[#cac3d8]/45 font-normal">· optional</span>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#b8b8b8] mb-2">
+                      Zone <span className="normal-case text-[#b8b8b8]/45 font-normal">· optional</span>
                     </p>
                     <ZoneSelector region={currentUser.region ?? currentUser.zone ?? "Gauteng"} value={selectedZone} onChange={setSelectedZone} />
                   </div>
@@ -350,13 +353,13 @@ export default function ChampionPage() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Notes (optional)…"
-                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-[#e5e2e1] placeholder:text-[#cac3d8]/40 resize-none focus:outline-none focus:border-[#7c4dff]/50 transition-colors"
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-[#ffffff] placeholder:text-[#b8b8b8]/40 resize-none focus:outline-none focus:border-[#ff4b35]/50 transition-colors"
                     rows={3}
                   />
 
                   <div className="flex gap-2">
                     <button onClick={() => setStep("activity")}
-                      className="flex-1 rounded-2xl py-3.5 font-semibold text-sm text-[#cac3d8] glass hover:border-white/20 transition-all">
+                      className="flex-1 rounded-2xl py-3.5 font-semibold text-sm text-[#b8b8b8] glass hover:border-white/20 transition-all">
                       Back
                     </button>
                     <button
@@ -367,8 +370,8 @@ export default function ChampionPage() {
                         saved ? "bg-emerald-500/90 text-white" : "text-white"
                       )}
                       style={!saved ? {
-                        background: "linear-gradient(135deg,#7c4dff,#00e3fd)",
-                        boxShadow: "0 0 20px rgba(124,77,255,0.4)",
+                        background: "linear-gradient(135deg,#ff4b35,#ffffff)",
+                        boxShadow: "0 0 20px rgba(255,75,53,0.4)",
                       } : undefined}
                     >
                       {saved ? <><CheckCircle2 size={16} /> Logged!</> : "LOG SESSION"}
@@ -392,14 +395,14 @@ function MiniStat({ label, value, target, ok, caption }: {
   return (
     <div className="rounded-2xl p-3"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <p className="text-[10px] text-[#cac3d8] uppercase tracking-wider mb-1">{label}</p>
-      <p className={cn("text-2xl font-black", ok ? "text-emerald-400" : "text-[#e5e2e1]")}>
+      <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">{label}</p>
+      <p className={cn("text-2xl font-black", ok ? "text-emerald-400" : "text-[#ffffff]")}>
         {value}
-        <span className="text-[11px] font-normal text-[#cac3d8] ml-1">{caption}</span>
+        <span className="text-[11px] font-normal text-[#b8b8b8] ml-1">{caption}</span>
       </p>
       <div className="mt-2 h-1 rounded-full bg-white/[0.06] overflow-hidden">
         <div className="h-full rounded-full transition-all"
-          style={{ width: `${Math.min(100, (value / target) * 100)}%`, background: ok ? "#34d399" : "linear-gradient(90deg,#7c4dff,#00e3fd)" }} />
+          style={{ width: `${Math.min(100, (value / target) * 100)}%`, background: ok ? "#34d399" : "linear-gradient(90deg,#ff4b35,#ffffff)" }} />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Health Disclaimer — SpinTribe26",
+  title: "Health Disclaimer â€” spera",
 };
 
 export default function HealthDisclaimer() {
@@ -18,15 +18,15 @@ export default function HealthDisclaimer() {
         }}
       >
         <p className="text-sm font-semibold" style={{ color: "#ffb74d" }}>
-          Important: SpinTribe26 does not provide medical advice. The content on this
+          Important: spera does not provide medical advice. The content on this
           platform is for informational and motivational purposes only.
         </p>
       </div>
 
       <h2>1. Not Medical Advice</h2>
       <p>
-        Nothing on the SpinTribe26 platform — including leaderboard data, champion session
-        logs, FTP zones, or AI-generated training insights — constitutes medical advice,
+        Nothing on the spera platform, including leaderboard data, champion session
+        logs, or FTP zones, constitutes medical advice,
         diagnosis, or treatment. Always seek the advice of a qualified healthcare provider
         before beginning any new exercise programme, particularly if you have a pre-existing
         medical condition.
@@ -46,20 +46,12 @@ export default function HealthDisclaimer() {
       <h2>3. Participate at Your Own Risk</h2>
       <p>
         All physical activity carries inherent risk, including the risk of injury or death.
-        By participating in the SpinTribe26 challenge you acknowledge that you do so
+        By participating in the spera challenge you acknowledge that you do so
         voluntarily and at your own risk. You assume full responsibility for your safety
         during all activities, including outdoor cycling, indoor training, and zone sessions.
       </p>
 
-      <h2>4. AI Training Insights</h2>
-      <p>
-        The AI-generated training tips available on your dashboard are produced by an
-        automated language model based on your aggregated stats. They are generic suggestions
-        only and do not account for your individual health status, injury history, or medical
-        needs. Do not make medical or clinical decisions based on these insights.
-      </p>
-
-      <h2>5. FTP &amp; Power Zones</h2>
+      <h2>4. FTP &amp; Power Zones</h2>
       <p>
         FTP (Functional Threshold Power) values and derived power zones are displayed as
         informational reference data sourced from Strava. Training at high intensity can
@@ -68,21 +60,21 @@ export default function HealthDisclaimer() {
         shortness of breath, or unusual discomfort.
       </p>
 
-      <h2>6. Limitation of Liability</h2>
+      <h2>5. Limitation of Liability</h2>
       <p>
-        SpinTribe26, its operators, and contributors accept no responsibility or liability
+        spera, its operators, and contributors accept no responsibility or liability
         for any injury, illness, adverse health outcome, or death arising from participation
         in any activity connected with this platform. This disclaimer forms part of our{" "}
         <a href="/legal/terms">Terms &amp; Conditions</a>.
       </p>
 
-      <h2>7. Emergency</h2>
+      <h2>6. Emergency</h2>
       <p>
         If you or someone around you experiences a medical emergency during activity, stop
         immediately and call your local emergency services.
       </p>
 
-      <h2>8. Contact</h2>
+      <h2>7. Contact</h2>
       <p>
         Questions about this disclaimer: <a href="mailto:ssdidiza@gmail.com">ssdidiza@gmail.com</a>
       </p>

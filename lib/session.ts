@@ -8,9 +8,6 @@ import { cookies } from "next/headers";
 export interface SessionData {
   athleteId?: number;
   userId?: string;
-  accessToken?: string;
-  refreshToken?: string;
-  expiresAt?: number;
 }
 
 const sessionOptions = {

@@ -42,8 +42,6 @@ export interface Activity {
   type: string;
   date: string; // ISO
   kudos: number;
-  startLat?: number;
-  startLng?: number;
   detectedZoneId?: string; // matched zone id from GPS
 }
 
@@ -110,17 +108,17 @@ export const TIER_LABELS: Record<Tier, string> = {
 };
 
 export const TIER_COLORS: Record<Tier, string> = {
-  200: "#60a5fa",
-  400: "#34d399",
-  800: "#f97316",
-  1000: "#a78bfa",
+  200: "#b8b8b8",
+  400: "#ffffff",
+  800: "#ff7a2f",
+  1000: "#ff4b35",
 };
 
 export const TIER_GRADIENT: Record<Tier, string> = {
-  200: "from-blue-500 to-blue-700",
-  400: "from-emerald-500 to-emerald-700",
-  800: "from-orange-500 to-orange-700",
-  1000: "from-violet-500 to-violet-700",
+  200: "from-zinc-400 to-zinc-600",
+  400: "from-white to-zinc-300",
+  800: "from-orange-400 to-red-500",
+  1000: "from-red-500 to-pink-700",
 };
 
 // ─── Geographic zone bounding boxes (lat/lng) ────────────────────────────────
@@ -166,7 +164,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Gauteng",
     type: "geographic",
     description: "Tshwane South routes — Centurion, Irene, and surrounding flats",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 18, createdAt: "2026-01-01T06:00:00Z",
   },
   {
@@ -175,7 +173,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Gauteng",
     type: "geographic",
     description: "Muldersdrift climbs toward the Cradle of Humankind — tough and scenic",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 14, createdAt: "2026-01-01T06:00:00Z",
   },
   {
@@ -184,7 +182,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Gauteng",
     type: "geographic",
     description: "Ekurhuleni roads — Boksburg, Benoni, Germiston and surrounds",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 9, createdAt: "2026-01-15T06:00:00Z",
   },
   {
@@ -193,7 +191,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Gauteng",
     type: "geographic",
     description: "Alberton, Ennerdale and southern JHB corridors",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 11, createdAt: "2026-01-15T06:00:00Z",
   },
   // Western Cape
@@ -203,7 +201,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Western Cape",
     type: "geographic",
     description: "Sea Point, Camps Bay, Green Point, Hout Bay — ocean-side routes",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 21, createdAt: "2026-01-01T06:00:00Z",
   },
   {
@@ -212,7 +210,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Western Cape",
     type: "geographic",
     description: "Bellville, Durbanville, Brackenfell — flat to rolling terrain",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 16, createdAt: "2026-01-01T06:00:00Z",
   },
   {
@@ -221,7 +219,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Western Cape",
     type: "geographic",
     description: "Paarl valley and surrounding wine-country climbs",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 8, createdAt: "2026-02-01T06:00:00Z",
   },
   {
@@ -230,7 +228,7 @@ export const SEED_ZONES: Zone[] = [
     region: "Western Cape",
     type: "geographic",
     description: "Constantia, Rondebosch, Claremont — mountain-side routes",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 12, createdAt: "2026-01-01T06:00:00Z",
   },
   // KwaZulu-Natal
@@ -240,7 +238,7 @@ export const SEED_ZONES: Zone[] = [
     region: "KwaZulu-Natal",
     type: "geographic",
     description: "Durban coastal and inland routes — humidity-tested legs",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 7, createdAt: "2026-02-01T06:00:00Z",
   },
   // National training zone
@@ -250,7 +248,8 @@ export const SEED_ZONES: Zone[] = [
     region: "National",
     type: "training",
     description: "Indoor structured 4×8min FTP intervals — virtual everywhere",
-    createdBy: "system", createdByName: "SpinTribe",
+    createdBy: "system", createdByName: "spera",
     usageCount: 31, createdAt: "2026-01-01T06:00:00Z",
   },
 ];
+

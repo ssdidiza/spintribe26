@@ -152,7 +152,7 @@ function OnboardingContent() {
                   "Sync Strava activities",
                   "See Zone activity near you",
                 ]}
-                accent="#60a5fa"
+                accent="#ffffff"
                 onClick={() => handleRoleSelect("member")}
               />
             </div>

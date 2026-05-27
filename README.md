@@ -16,6 +16,30 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Strava Approval Notes
+
+SpinTribe26 uses Strava for Team Vitality Cycling Club monthly distance challenges, tier leaderboards, and champ check-ins. The default OAuth scope is `activity:read`; set `STRAVA_SCOPES=activity:read_all` only if private activities are required and disclosed during Strava review.
+
+To keep API usage low:
+
+- `/api/strava/sync` caches the current athlete's monthly cycling activities and enforces a 10-minute server-side cooldown.
+- Raw GPS coordinates are used only during sync to assign broad club zones, then discarded before the response and database write.
+- `/api/strava/webhook` supports Strava webhook verification and invalidates cached sync state when activities change.
+- `/profile` includes controls to disconnect Strava, remove cached ride data, or delete account data.
+
+Required production environment variables:
+
+```bash
+STRAVA_CLIENT_ID=
+STRAVA_CLIENT_SECRET=
+STRAVA_REDIRECT_URI=https://your-domain.example/api/auth/strava/callback
+STRAVA_WEBHOOK_VERIFY_TOKEN=
+NEXTAUTH_SECRET=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

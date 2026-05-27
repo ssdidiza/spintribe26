@@ -1,11 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStravaActivitiesForMonth, refreshStravaToken } from "@/lib/strava";
+import {
+  getStravaActivitiesForMonth,
+  SanitizedStravaActivity,
+  StravaApiError,
+} from "@/lib/strava";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 import { detectZoneFromGPS } from "@/lib/types";
+import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
+
+const SYNC_COOLDOWN_MS = 10 * 60 * 1000;
+
+type CachedActivityRow = {
+  strava_id: string;
+  name: string;
+  distance: number;
+  moving_time: number;
+  type: string;
+  date: string;
+  kudos: number | null;
+  detected_zone_id: string | null;
+};
+
+function sanitizeActivity(a: {
+  id: number;
+  name: string;
+  distance: number;
+  moving_time: number;
+  type: string;
+  start_date: string;
+  kudos_count: number;
+  start_latlng?: [number, number];
+}): SanitizedStravaActivity {
+  const lat = a.start_latlng?.[0];
+  const lng = a.start_latlng?.[1];
+  return {
+    id: a.id,
+    name: a.name,
+    distance: a.distance,
+    moving_time: a.moving_time,
+    type: a.type,
+    start_date: a.start_date,
+    kudos_count: a.kudos_count,
+    detected_zone_id: detectZoneFromGPS(lat, lng),
+  };
+}
+
+function mapCachedActivity(row: CachedActivityRow): SanitizedStravaActivity {
+  return {
+    id: Number(row.strava_id),
+    name: row.name,
+    distance: Number(row.distance),
+    moving_time: row.moving_time,
+    type: row.type,
+    start_date: row.date,
+    kudos_count: row.kudos ?? 0,
+    detected_zone_id: row.detected_zone_id,
+  };
+}
 
 export async function POST(req: NextRequest) {
-  // 1. Verify signed session
   const session = await getSession();
   if (!session.athleteId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -13,66 +67,96 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const now = new Date();
-  // Validate and clamp year/month to safe ranges
   const rawYear = Number(body.year ?? now.getFullYear());
   const rawMonth = Number(body.month ?? now.getMonth() + 1);
   const y = Number.isInteger(rawYear) && rawYear >= 2020 && rawYear <= 2030 ? rawYear : now.getFullYear();
   const m = Number.isInteger(rawMonth) && rawMonth >= 1 && rawMonth <= 12 ? rawMonth : now.getMonth() + 1;
 
-  // 2. Refresh token if expired
-  let accessToken = session.accessToken!;
-  if (session.expiresAt && session.expiresAt < Math.floor(Date.now() / 1000) + 60) {
-    try {
-      const refreshed = await refreshStravaToken(session.refreshToken!);
-      accessToken = refreshed.accessToken;
-      session.accessToken = refreshed.accessToken;
-      session.refreshToken = refreshed.refreshToken;
-      session.expiresAt = refreshed.expiresAt;
-      await session.save();
+  const db = supabaseAdmin();
+  const monthStart = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+  const monthEnd = new Date(Date.UTC(y, m, 1)).toISOString();
 
-      // Update token in Supabase too
-      const db = supabaseAdmin();
-      await db
-        .from("users")
-        .update({
-          strava_access_token: refreshed.accessToken,
-          strava_refresh_token: refreshed.refreshToken,
-          strava_token_expires_at: refreshed.expiresAt,
-        })
-        .eq("strava_id", String(session.athleteId));
-    } catch (e) {
-      console.error("Token refresh failed:", e);
-    }
-  }
+  const { data: user } = await db
+    .from("users")
+    .select("last_strava_sync_at,last_strava_sync_year,last_strava_sync_month")
+    .eq("strava_id", String(session.athleteId))
+    .maybeSingle();
 
-  // 3. Fetch activities from Strava API
-  const stravaActivities = await getStravaActivitiesForMonth(accessToken, y, m);
+  const cached = await db
+    .from("activities")
+    .select("strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id")
+    .eq("user_strava_id", String(session.athleteId))
+    .gte("date", monthStart)
+    .lt("date", monthEnd)
+    .order("date", { ascending: false });
 
-  // 4. Persist to Supabase
-  if (stravaActivities.length > 0) {
-    const db = supabaseAdmin();
-    const rows = stravaActivities.map((a) => {
-      const lat = a.start_latlng?.[0];
-      const lng = a.start_latlng?.[1];
-      return {
-        strava_id: String(a.id),
-        user_strava_id: String(session.athleteId),
-        name: a.name,
-        distance: a.distance,
-        moving_time: a.moving_time,
-        type: a.type,
-        date: a.start_date,
-        kudos: a.kudos_count,
-        start_lat: lat ?? null,
-        start_lng: lng ?? null,
-        detected_zone_id: detectZoneFromGPS(lat, lng),
-      };
+  const lastSyncAt = user?.last_strava_sync_at ? new Date(user.last_strava_sync_at).getTime() : 0;
+  const sameMonth = user?.last_strava_sync_year === y && user?.last_strava_sync_month === m;
+  const withinCooldown = sameMonth && Date.now() - lastSyncAt < SYNC_COOLDOWN_MS;
+
+  if (withinCooldown && cached.data) {
+    return NextResponse.json({
+      activities: cached.data.map(mapCachedActivity),
+      cached: true,
+      nextSyncAt: new Date(lastSyncAt + SYNC_COOLDOWN_MS).toISOString(),
     });
-
-    await db
-      .from("activities")
-      .upsert(rows, { onConflict: "strava_id" });
   }
 
-  return NextResponse.json({ activities: stravaActivities });
+  const accessToken = await getFreshStravaAccessToken(session.athleteId);
+  if (!accessToken) {
+    return NextResponse.json({ error: "Strava disconnected" }, { status: 409 });
+  }
+
+  let sanitized: SanitizedStravaActivity[];
+  try {
+    const stravaActivities = await getStravaActivitiesForMonth(accessToken, y, m);
+    sanitized = stravaActivities.map(sanitizeActivity);
+  } catch (e) {
+    if (e instanceof StravaApiError) {
+      if (e.status === 429 && cached.data) {
+        return NextResponse.json(
+          {
+            activities: cached.data.map(mapCachedActivity),
+            cached: true,
+            error: "Strava rate limit reached; showing cached activities.",
+            rateUsage: e.readRateUsage ?? e.rateUsage,
+          },
+          { status: 200 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Strava unavailable", status: e.status },
+        { status: e.status === 429 ? 429 : 502 }
+      );
+    }
+    throw e;
+  }
+
+  if (sanitized.length > 0) {
+    const rows = sanitized.map((a) => ({
+      strava_id: String(a.id),
+      user_strava_id: String(session.athleteId),
+      name: a.name,
+      distance: a.distance,
+      moving_time: a.moving_time,
+      type: a.type,
+      date: a.start_date,
+      kudos: a.kudos_count,
+      detected_zone_id: a.detected_zone_id,
+    }));
+
+    await db.from("activities").upsert(rows, { onConflict: "strava_id" });
+  }
+
+  await db
+    .from("users")
+    .update({
+      last_strava_sync_at: new Date().toISOString(),
+      last_strava_sync_year: y,
+      last_strava_sync_month: m,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("strava_id", String(session.athleteId));
+
+  return NextResponse.json({ activities: sanitized, cached: false });
 }

@@ -9,7 +9,6 @@ import {
   Tier,
   UserRole,
   SEED_ZONES,
-  detectZoneFromGPS,
 } from "./types";
 import {
   MOCK_USERS,
@@ -336,7 +335,7 @@ export const useStore = create<AppState>()(
               type: string;
               start_date: string;
               kudos_count: number;
-              start_latlng?: [number, number];
+              detected_zone_id?: string | null;
             }) => ({
               id: String(a.id),
               userId: user.id,
@@ -347,9 +346,7 @@ export const useStore = create<AppState>()(
               type: a.type,
               date: a.start_date,
               kudos: a.kudos_count,
-              startLat: a.start_latlng?.[0],
-              startLng: a.start_latlng?.[1],
-              detectedZoneId: detectZoneFromGPS(a.start_latlng?.[0], a.start_latlng?.[1]) ?? undefined,
+              detectedZoneId: a.detected_zone_id ?? undefined,
             })
           );
           set((s) => ({

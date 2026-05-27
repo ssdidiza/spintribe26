@@ -1,34 +1,20 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm } from "@/lib/mock-data";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
+import { SperaIcon } from "@/components/SperaLogo";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
-import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw } from "lucide-react";
-
-// Bike wheel icon — SpinTribe26 custom mark
-function BikeWheel({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round">
-      <circle cx="12" cy="12" r="9.5" />
-      <circle cx="12" cy="12" r="1.75" fill={color} stroke="none" />
-      <line x1="12" y1="10.25" x2="12" y2="3.5" />
-      <line x1="13.5" y1="10.5" x2="19.5" y2="7" />
-      <line x1="13.5" y1="13.5" x2="19.5" y2="17" />
-      <line x1="12" y1="13.75" x2="12" y2="20.5" />
-      <line x1="10.5" y1="13.5" x2="4.5" y2="17" />
-      <line x1="10.5" y1="10.5" x2="4.5" y2="7" />
-    </svg>
-  );
-}
+import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2 } from "lucide-react";
 
 export default function ProfilePage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, activities, zones, championSessions, logout } = useStore();
+  const [disconnecting, setDisconnecting] = useState<"disconnect" | "delete" | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -53,11 +39,25 @@ export default function ProfilePage() {
   const isAdmin       = hasAdminRole(currentUser);
 
   const roleLabel = isAdmin ? "Admin" : isChamp ? "Champion" : "Member";
-  const roleColor = isAdmin ? "#00e3fd" : isChamp ? "#cdbdff" : "#a0a0b0";
+  const roleColor = isAdmin ? "#ff4b35" : isChamp ? "#ffffff" : "#a0a0a0";
 
   function handleLogout() {
     logout();
     router.push("/");
+  }
+
+  async function handleStravaDisconnect(deleteAccount = false) {
+    setDisconnecting(deleteAccount ? "delete" : "disconnect");
+    try {
+      await fetch("/api/strava/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteAccount }),
+      });
+    } finally {
+      logout();
+      router.push("/");
+    }
   }
 
   // Arc path for the progress ring
@@ -68,9 +68,9 @@ export default function ProfilePage() {
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <div className="min-h-screen bg-[#131313] mb-nav">
+    <div className="min-h-screen bg-[#020202] mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4">
-        <h1 className="font-bold text-[#e5e2e1] text-xl">Profile</h1>
+        <h1 className="font-bold text-[#ffffff] text-xl">Profile</h1>
       </header>
 
       <main className="mx-auto w-full max-w-lg px-4 py-6 space-y-3">
@@ -79,7 +79,7 @@ export default function ProfilePage() {
         <div
           className="rounded-3xl overflow-hidden relative"
           style={{
-            background: "linear-gradient(160deg, rgba(124,77,255,0.12) 0%, rgba(0,227,253,0.06) 100%)",
+            background: "linear-gradient(160deg, rgba(255,75,53,0.12) 0%, rgba(255,255,255,0.06) 100%)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
@@ -88,7 +88,7 @@ export default function ProfilePage() {
             aria-hidden
             className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full"
             style={{
-              background: "radial-gradient(ellipse, rgba(124,77,255,0.22) 0%, transparent 70%)",
+              background: "radial-gradient(ellipse, rgba(255,75,53,0.22) 0%, transparent 70%)",
               filter: "blur(40px)",
             }}
           />
@@ -103,12 +103,12 @@ export default function ProfilePage() {
                   src={currentUser.avatar}
                   alt={currentUser.name}
                   className="w-24 h-24 rounded-full object-cover"
-                  style={{ border: "2px solid rgba(124,77,255,0.6)", boxShadow: "0 0 24px rgba(124,77,255,0.35)" }}
+                  style={{ border: "2px solid rgba(255,75,53,0.6)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
                 />
               ) : (
                 <div
                   className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black text-white"
-                  style={{ background: "linear-gradient(135deg,#7c4dff,#00e3fd)", boxShadow: "0 0 24px rgba(124,77,255,0.35)" }}
+                  style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
                 >
                   {currentUser.name.charAt(0).toUpperCase()}
                 </div>
@@ -116,27 +116,27 @@ export default function ProfilePage() {
               {/* Role badge */}
               <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,#ff6b6b,#a855f7,#00e3fd,#34d399)", boxShadow: "0 0 12px rgba(168,85,247,0.6)" }}
+                style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", boxShadow: "0 0 12px rgba(255,75,53,0.55)" }}
               >
                 {isAdmin ? (
                   <ShieldCheck size={14} color="#fff" />
                 ) : isChamp ? (
                   <Star size={14} color="#fff" fill="#fff" />
                 ) : (
-                  <BikeWheel size={14} color="#fff" />
+                  <SperaIcon className="h-4 w-4" />
                 )}
               </div>
             </div>
 
             {/* Name + meta */}
             <div className="space-y-1">
-              <h2 className="text-2xl font-black text-[#e5e2e1] tracking-tight">{currentUser.name}</h2>
+              <h2 className="text-2xl font-black text-[#ffffff] tracking-tight">{currentUser.name}</h2>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold" style={{ color: roleColor }}>{roleLabel}</span>
                 {(currentUser.zone || currentUser.region) && (
                   <>
                     <span className="text-white/30">·</span>
-                    <span className="flex items-center gap-1 text-sm text-[#cac3d8]">
+                    <span className="flex items-center gap-1 text-sm text-[#b8b8b8]">
                       <MapPin size={11} />
                       {currentUser.zone || currentUser.region}
                     </span>
@@ -155,7 +155,7 @@ export default function ProfilePage() {
                 {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km target
               </span>
               {isChamp && (
-                <p className="text-[9px] text-[#cac3d8]/40">
+                <p className="text-[9px] text-[#b8b8b8]/40">
                   Distance locked — disconnect account to change tier
                 </p>
               )}
@@ -182,29 +182,29 @@ export default function ProfilePage() {
                 />
                 <defs>
                   <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#7c4dff" />
-                    <stop offset="100%" stopColor="#00e3fd" />
+                    <stop offset="0%" stopColor="#ff4b35" />
+                    <stop offset="100%" stopColor="#ffffff" />
                   </linearGradient>
                 </defs>
-                <text x={cx} y={cy - 6} textAnchor="middle" fill="#e5e2e1" fontSize="18" fontWeight="800">{monthlyKm}</text>
-                <text x={cx} y={cy + 10} textAnchor="middle" fill="#cac3d8" fontSize="10" fontWeight="600">km</text>
-                <text x={cx} y={cy + 23} textAnchor="middle" fill="#cac3d8" fontSize="9" opacity="0.5">{pct}%</text>
+                <text x={cx} y={cy - 6} textAnchor="middle" fill="#ffffff" fontSize="18" fontWeight="800">{monthlyKm}</text>
+                <text x={cx} y={cy + 10} textAnchor="middle" fill="#b8b8b8" fontSize="10" fontWeight="600">km</text>
+                <text x={cx} y={cy + 23} textAnchor="middle" fill="#b8b8b8" fontSize="9" opacity="0.5">{pct}%</text>
               </svg>
 
               <div className="flex-1 min-w-0 space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold text-[#cac3d8] uppercase tracking-wider mb-0.5">
+                  <p className="text-[11px] font-semibold text-[#b8b8b8] uppercase tracking-wider mb-0.5">
                     {new Date().toLocaleString("default", { month: "long" })} Progress
                   </p>
-                  <p className="text-[#e5e2e1] font-bold text-sm">{monthlyKm} <span className="text-[#cac3d8] font-normal">of</span> {currentUser.tier} km</p>
+                  <p className="text-[#ffffff] font-bold text-sm">{monthlyKm} <span className="text-[#b8b8b8] font-normal">of</span> {currentUser.tier} km</p>
                 </div>
                 <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
                   <div
                     className="h-full rounded-full"
-                    style={{ width: `${pct}%`, background: "linear-gradient(90deg,#7c4dff,#00e3fd)", transition: "width 0.6s ease" }}
+                    style={{ width: `${pct}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)", transition: "width 0.6s ease" }}
                   />
                 </div>
-                <p className="text-[11px] text-[#cac3d8]/60">{remaining} km to go</p>
+                <p className="text-[11px] text-[#b8b8b8]/60">{remaining} km to go</p>
               </div>
             </div>
 
@@ -220,9 +220,9 @@ export default function ProfilePage() {
                     className="rounded-2xl px-3 py-4 flex flex-col items-center gap-1.5"
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
                   >
-                    <span className="text-[#cac3d8]/50">{icon}</span>
-                    <span className="text-2xl font-black text-[#e5e2e1]">{value}</span>
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#cac3d8]/50">{label}</span>
+                    <span className="text-[#b8b8b8]/60">{icon}</span>
+                    <span className="text-2xl font-black text-[#ffffff]">{value}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]/50">{label}</span>
                   </div>
                 ))}
               </div>
@@ -244,20 +244,20 @@ export default function ProfilePage() {
           {/* FTP tip */}
           {currentUser.stravaId && !currentUser.ftp && (
             <div
-              className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-[#cac3d8]/70"
-              style={{ background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.2)" }}
+              className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-[#b8b8b8]/70"
+              style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.2)" }}
             >
-              <span className="font-bold text-[#cdbdff]">⚡ FTP not showing?</span>{" "}
+              <span className="font-bold text-[#ff4b35]">⚡ FTP not showing?</span>{" "}
               First set a value in{" "}
               <a
                 href="https://www.strava.com/settings/performance"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 text-[#cdbdff]/80 hover:text-[#cdbdff]"
+                className="underline underline-offset-2 text-[#ff4b35]/80 hover:text-[#ff4b35]"
               >
                 Strava → Settings → My Performance
               </a>
-              , then tap <span className="font-semibold text-[#cdbdff]">Reconnect Strava</span> below to grant profile access.
+              , then tap <span className="font-semibold text-[#ff4b35]">Reconnect Strava</span> below to grant profile access.
             </div>
           )}
 
@@ -271,7 +271,7 @@ export default function ProfilePage() {
               {currentUser.stravaId && (
                 <a
                   href="/api/auth/strava?reauth=1"
-                  className="flex items-center gap-1 text-[10px] font-semibold text-[#cdbdff]/50 hover:text-[#cdbdff] transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#ff4b35]/50 hover:text-[#ff4b35] transition-colors"
                 >
                   <RefreshCw size={11} />
                   Reconnect Strava
@@ -288,7 +288,33 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <p className="text-center text-[10px] text-white/20 pb-2">SpinTribe26 · Team Vitality · 2026</p>
+        <div className="glass-card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Data Controls</p>
+          </div>
+          <button
+            onClick={() => handleStravaDisconnect(false)}
+            disabled={!!disconnecting}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06] disabled:opacity-50"
+          >
+            <span className="text-sm font-semibold text-[#ffffff]">
+              {disconnecting === "disconnect" ? "Disconnecting..." : "Disconnect Strava and remove ride cache"}
+            </span>
+            <Unplug size={14} className="text-[#b8b8b8]" />
+          </button>
+          <button
+            onClick={() => handleStravaDisconnect(true)}
+            disabled={!!disconnecting}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            <span className="text-sm font-semibold text-[#ffb4ab]">
+              {disconnecting === "delete" ? "Deleting..." : "Delete account data"}
+            </span>
+            <Trash2 size={14} className="text-[#ffb4ab]" />
+          </button>
+        </div>
+
+        <p className="text-center text-[10px] text-[#b8b8b8]/40">spera · Team Vitality · 2026</p>
       </main>
       <NavBar />
     </div>
