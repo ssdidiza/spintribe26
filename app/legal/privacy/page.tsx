@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — spera",
+  title: "Privacy Policy â€” spera",
 };
 
 export default function PrivacyPolicy() {
@@ -32,7 +32,6 @@ export default function PrivacyPolicy() {
       <ul>
         <li>To authenticate you and maintain your session securely.</li>
         <li>To display Team Vitality monthly distance progress, tier leaderboard rankings, and champ check-in proof.</li>
-        <li>To generate AI-powered training insights (data is sent to a third-party AI API for inference; no data is retained by that provider beyond the single request).</li>
         <li>To enable zone check-ins and champion session tracking.</li>
         <li>To send transactional emails (e.g. email confirmation on sign-up).</li>
       </ul>
@@ -54,7 +53,6 @@ export default function PrivacyPolicy() {
           . You may revoke access via your Strava settings or the in-app disconnect control at any time.
         </li>
         <li><strong>Supabase:</strong> our database and authentication provider. Data is stored on Supabase-managed infrastructure.</li>
-        <li><strong>AI inference provider (Groq):</strong> used solely to generate training tips. Request payloads contain aggregated stats (km totals, FTP, ride counts) — no personally identifiable information is included.</li>
       </ul>
 
       <h2>5. Cookies</h2>

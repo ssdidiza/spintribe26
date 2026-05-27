@@ -43,7 +43,7 @@ export default function TermsAndConditions() {
       <h2>4. Intellectual Property</h2>
       <p>
         All content on the Platform, including the spera name, logo, challenge structure,
-        zone database, and AI-generated insights, is owned by spera or its licensors.
+        zone database, and app interface, is owned by spera or its licensors.
         You may not reproduce or redistribute any content without prior written permission.
       </p>
       <p>
@@ -75,7 +75,6 @@ export default function TermsAndConditions() {
       <ul>
         <li>Any injury, illness, or harm arising from physical activity undertaken as part of the challenge.</li>
         <li>Loss of data, service interruptions, or technical errors.</li>
-        <li>Decisions made based on AI-generated training insights.</li>
       </ul>
       <p>
         Physical activity carries inherent risk. See our{" "}

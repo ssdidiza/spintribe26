@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -8,7 +8,7 @@ import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
-import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Sparkles } from "lucide-react";
+import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Trophy } from "lucide-react";
 import { format } from "date-fns";
 
 function formatDuration(seconds: number) {
@@ -25,8 +25,6 @@ export default function DashboardPage() {
     syncStravaActivities, hydrateChampionSessions, hydrateAthleteData, hydrateActivities,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiInsights, setAiInsights] = useState<{ title: string; tip: string }[]>([]);
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -42,36 +40,6 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, currentUser, isOnboarded]);
 
-  const fetchInsights = useCallback(async () => {
-    setAiLoading(true);
-    try {
-      const userActivities = activities.filter((a) => a.userId === currentUser!.id);
-      const monthlyKm      = getMonthlyKm(currentUser!.id, activities);
-      const rides          = userActivities.length;
-      const avgKm          = rides ? Math.round(userActivities.reduce((s, a) => s + a.distance, 0) / 1000 / rides) : 0;
-      const featuredZone   = getFeaturedZone(activities, zones);
-      const res = await fetch("/api/ai/insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ftp:       currentUser!.ftp,
-          monthlyKm,
-          targetKm:  currentUser!.tier,
-          rides,
-          avgKm,
-          zoneName:  featuredZone?.name,
-        }),
-      });
-      if (res.ok) {
-        const { insights } = await res.json();
-        setAiInsights(insights ?? []);
-      }
-    } catch (e) {
-      console.warn("AI insights failed:", e);
-    }
-    setAiLoading(false);
-  }, [activities, currentUser, zones]);
-
   const userActivities = useMemo(
     () => activities
       .filter((a) => a.userId === currentUser?.id)
@@ -84,9 +52,14 @@ export default function DashboardPage() {
     [currentUser, activities]
   );
   const realUsers   = useMemo(() => users.filter((u) => u.isConnected), [users]);
-  const topRiders   = useMemo(
-    () => currentUser ? buildLeaderboard(currentUser.tier, realUsers, activities).slice(0, 3) : [],
+  const leaderboardEntries = useMemo(
+    () => currentUser ? buildLeaderboard(currentUser.tier, realUsers, activities) : [],
     [currentUser, realUsers, activities]
+  );
+  const topRiders = useMemo(() => leaderboardEntries.slice(0, 3), [leaderboardEntries]);
+  const currentRankEntry = useMemo(
+    () => leaderboardEntries.find((entry) => entry.user.id === currentUser?.id),
+    [leaderboardEntries, currentUser?.id]
   );
   const featuredZone = useMemo(() => getFeaturedZone(activities, zones), [activities, zones]);
 
@@ -103,7 +76,7 @@ export default function DashboardPage() {
   const ftp = currentUser.ftp;
   const now = new Date();
 
-  // ── Progress pace calculations ────────────────────────────────────────────
+  // â”€â”€ Progress pace calculations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth   = now.getDate();
   const daysLeft     = daysInMonth - dayOfMonth;
@@ -121,10 +94,10 @@ export default function DashboardPage() {
                            "behind";
 
   const STATUS_CONFIG: Record<ProgressStatus, { label: string; emoji: string; color: string; bg: string; border: string }> = {
-    complete: { label: "Challenge Complete!",  emoji: "🎉", color: "#ff4b35", bg: "rgba(255,75,53,0.12)", border: "rgba(255,75,53,0.35)" },
-    great:    { label: "Doing Great",          emoji: "🔥", color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
-    on_track: { label: "On Track",             emoji: "✅", color: "#ffffff", bg: "rgba(255,255,255,0.08)",  border: "rgba(255,255,255,0.25)"  },
-    behind:   { label: "Falling Behind",       emoji: "⚠️", color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
+    complete: { label: "Challenge Complete!",  emoji: "ðŸŽ‰", color: "#ff4b35", bg: "rgba(255,75,53,0.12)", border: "rgba(255,75,53,0.35)" },
+    great:    { label: "Doing Great",          emoji: "ðŸ”¥", color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
+    on_track: { label: "On Track",             emoji: "âœ…", color: "#ffffff", bg: "rgba(255,255,255,0.08)",  border: "rgba(255,255,255,0.25)"  },
+    behind:   { label: "Falling Behind",       emoji: "âš ï¸", color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
   };
   const statusCfg = STATUS_CONFIG[progressStatus];
 
@@ -132,7 +105,7 @@ export default function DashboardPage() {
     { label: "Rides",  value: userActivities.length,                              icon: <Bike       size={14} className="text-[#ff4b35]" /> },
     { label: "Avg km", value: avgKm,                                               icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
     { label: "Time",   value: formatDuration(totalMoving),                         icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
-    { label: "Kudos",  value: userActivities.reduce((s, a) => s + a.kudos, 0),    icon: <Zap        size={14} className="text-[#ff4b35]" /> },
+    { label: "Rank",   value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
   ];
 
   return (
@@ -149,7 +122,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
-            {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km
+            {TIER_LABELS[currentUser.tier]} Â· {currentUser.tier} km
           </span>
           <button onClick={handleSync} disabled={syncing}
             className="w-8 h-8 rounded-full glass flex items-center justify-center text-[#b8b8b8] disabled:opacity-40 hover:text-[#ff4b35] transition-colors">
@@ -162,10 +135,10 @@ export default function DashboardPage() {
 
         <NotificationBanner />
 
-        {/* ── Cinematic hero — monthly km ───────────────────────────────────── */}
+        {/* â”€â”€ Cinematic hero â€” monthly km â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="relative text-center pt-6 pb-2">
           <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#b8b8b8]/50 mb-4">
-            {format(now, "MMMM yyyy")} · {TIER_LABELS[currentUser.tier]}
+            {format(now, "MMMM yyyy")} Â· {TIER_LABELS[currentUser.tier]}
           </p>
           <div className="flex items-end justify-center gap-2 mb-1">
             <span
@@ -182,7 +155,8 @@ export default function DashboardPage() {
             <span className="text-2xl font-light text-[#b8b8b8]/70 pb-3">km</span>
           </div>
           <p className="text-sm text-[#b8b8b8]/50 mb-5">
-            of {targetKm} km &nbsp;·&nbsp; {pct}% complete
+            Rank {currentRankEntry ? `#${currentRankEntry.rank}` : "-"} of {leaderboardEntries.length || 1}
+            {" "}in {TIER_LABELS[currentUser.tier]} &nbsp;·&nbsp; {pct}% of {targetKm} km
           </p>
           {/* Slim progress bar */}
           <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto mb-1">
@@ -193,12 +167,12 @@ export default function DashboardPage() {
           {pct >= 100 && (
             <div className="mt-5 rounded-2xl p-3 text-center text-sm font-bold max-w-xs mx-auto"
               style={{ background: "rgba(255,75,53,0.15)", color: "#ff4b35", border: "1px solid rgba(255,75,53,0.25)" }}>
-              🎉 Challenge complete — {targetKm} km done!
+              ðŸŽ‰ Challenge complete â€” {targetKm} km done!
             </div>
           )}
         </div>
 
-        {/* ── Progress tracking card ────────────────────────────────────────── */}
+        {/* â”€â”€ Progress tracking card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           className="glass-card p-5"
           style={{ borderColor: statusCfg.border, background: statusCfg.bg }}
@@ -243,7 +217,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
                   <p className="text-lg font-black" style={{ color: statusCfg.color }}>
-                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "—"}
+                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "â€”"}
                   </p>
                   <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">of pace</p>
                 </div>
@@ -262,13 +236,13 @@ export default function DashboardPage() {
                 {progressStatus === "behind"
                   ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
                   : progressStatus === "great"
-                  ? `At your current pace you'll finish around ${projectedTotal} km — ${projectedTotal - targetKm} km over target.`
+                  ? `At your current pace you'll finish around ${projectedTotal} km â€” ${projectedTotal - targetKm} km over target.`
                   : `You're right on pace. Keep riding ${kmNeededPerDay} km/day to secure your ${targetKm} km goal.`}
               </p>
             </>
           ) : (
             <p className="text-sm text-[#b8b8b8] leading-relaxed">
-              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
+              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding â€” every km now is a bonus.
             </p>
           )}
         </div>
@@ -280,7 +254,7 @@ export default function DashboardPage() {
             {ftp ? (
               <>
                 <div>
-                  <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP · Functional Threshold Power</p>
+                  <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP Â· Functional Threshold Power</p>
                   <div className="flex items-end gap-2">
                     <span className="text-4xl font-black" style={{ color: "#ff4b35" }}>{ftp}</span>
                     <span className="text-sm text-[#b8b8b8] mb-1">watts</span>
@@ -311,7 +285,7 @@ export default function DashboardPage() {
                 <Zap size={28} className="text-[#ff4b35]/40" />
                 <p className="text-sm font-semibold text-[#b8b8b8]">FTP not set</p>
                 <p className="text-[10px] text-[#b8b8b8]/60 leading-snug max-w-[220px]">
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 1 —</span>{" "}
+                  <span className="font-semibold text-[#b8b8b8]/80">Step 1 â€”</span>{" "}
                   Set an FTP value in{" "}
                   <a
                     href="https://www.strava.com/settings/performance"
@@ -319,10 +293,10 @@ export default function DashboardPage() {
                     rel="noopener noreferrer"
                     className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]"
                   >
-                    Strava → My Performance
+                    Strava â†’ My Performance
                   </a>
                   .{" "}
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 2 —</span>{" "}
+                  <span className="font-semibold text-[#b8b8b8]/80">Step 2 â€”</span>{" "}
                   Go to your{" "}
                   <a href="/profile" className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]">
                     Profile
@@ -362,56 +336,9 @@ export default function DashboardPage() {
           className="w-full rounded-2xl py-3.5 font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #ff4b35 0%, #ffffff 100%)", boxShadow: "0 0 20px rgba(255,75,53,0.4)", color: "#fff" }}>
           <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing Strava…" : "Sync with Strava"}
+          {syncing ? "Syncing Stravaâ€¦" : "Sync with Strava"}
         </button>
-
-        {/* AI Training Insights */}
-        <section className="glass-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Sparkles size={15} style={{ color: "#ff4b35" }} />
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-                AI Training Insights
-              </p>
-            </div>
-            <button
-              onClick={fetchInsights}
-              disabled={aiLoading}
-              className="text-[11px] font-bold rounded-full px-3 py-1 transition-all disabled:opacity-40"
-              style={{ background: "rgba(255,75,53,0.15)", color: "#ff4b35", border: "1px solid rgba(255,75,53,0.3)" }}
-            >
-              {aiLoading ? "Thinking…" : aiInsights.length ? "Refresh" : "Generate"}
-            </button>
-          </div>
-
-          {aiInsights.length > 0 ? (
-            <div className="space-y-3">
-              {aiInsights.map((ins, i) => (
-                <div key={i} className="flex gap-3 rounded-xl p-3"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center text-[11px] font-black"
-                    style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", color: "#fff" }}>
-                    {i + 1}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#ffffff] mb-0.5">{ins.title}</p>
-                    <p className="text-xs text-[#b8b8b8] leading-snug">{ins.tip}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-xs text-[#b8b8b8]/60">
-                {aiLoading
-                  ? "Analysing your training data…"
-                  : "Tap Generate for personalised training tips based on your FTP and rides."}
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* Leaders + Featured zone */}
+{/* Leaders + Featured zone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {topRiders.length > 0 && (
@@ -421,7 +348,7 @@ export default function DashboardPage() {
               </p>
               <div className="space-y-2">
                 {topRiders.map((entry, i) => {
-                  const medals = ["🥇", "🥈", "🥉"];
+                  const medals = ["ðŸ¥‡", "ðŸ¥ˆ", "ðŸ¥‰"];
                   const isMe = entry.user.id === currentUser.id;
                   return (
                     <div key={entry.user.id} className="flex items-center gap-3 glass-card p-3"
@@ -475,7 +402,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Recent Rides</p>
             {syncing
-              ? <span className="text-[10px] text-[#b8b8b8]">Syncing…</span>
+              ? <span className="text-[10px] text-[#b8b8b8]">Syncingâ€¦</span>
               : <PoweredByStrava />}
           </div>
           {syncing && userActivities.length === 0 ? (
@@ -496,14 +423,14 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
                 >
                   <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-base flex-shrink-0">
-                    {activity.type === "VirtualRide" ? "🏠" : activity.type === "Run" ? "🏃" : "🚴"}
+                    {activity.type === "VirtualRide" ? "ðŸ " : activity.type === "Run" ? "ðŸƒ" : "ðŸš´"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-[#ffffff] truncate">{activity.name}</p>
                     <p className="text-[10px] text-[#b8b8b8]">
                       {format(new Date(activity.date), "MMM d")}
                       {activity.detectedZoneId && (
-                        <span className="ml-1.5 text-[#ffffff]/70">· {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
+                        <span className="ml-1.5 text-[#ffffff]/70">Â· {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
                       )}
                     </p>
                   </div>

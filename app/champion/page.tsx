@@ -184,15 +184,13 @@ export default function ChampionPage() {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat label="Champing / Month" value={champingThisMonth} target={2}  suffix="/ 2 mininimum"    ok={champingThisMonth >= 2} />
+            <MiniStat label="Champing / Month" value={champingThisMonth} target={2}  suffix="/ 2 minimum" ok={champingThisMonth >= 2} />
             <MiniStat label="Champing / Year"  value={champingThisYear}  target={10} suffix="/ 10 target" ok={champingThisYear  >= 10} />
           </div>
-        </div>
 
-        {/* Check-in grid */}
-        <div>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Check In</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Check In</p>
+            <div className="grid grid-cols-2 gap-3">
             <ActionCard
               icon={<Bike size={20} style={{ color: "#ff4b35" }} />}
               label="Log Outdoor Session"
@@ -207,6 +205,7 @@ export default function ChampionPage() {
               onClick={() => openModal("ftp")}
               gradient="rgba(255,255,255,0.08)"
             />
+            </div>
           </div>
         </div>
 

@@ -2,9 +2,9 @@
  * Strava API integration layer.
  *
  * Production apps should set STRAVA_SCOPES to the minimum permission needed.
- * spera defaults to activity:read for public/followers activity challenge
- * data. Use activity:read_all only if private activities are essential and
- * clearly explained to users during review.
+ * spera defaults to the minimum challenge scopes plus profile:read_all for
+ * the optional FTP field returned by GET /athlete. Use activity:read_all only
+ * if private activities are essential and clearly explained during review.
  */
 
 const STRAVA_BASE = "https://www.strava.com/api/v3";
@@ -83,7 +83,7 @@ export function getStravaAuthUrl(state: string, forceApproval = false): string {
       process.env.STRAVA_REDIRECT_URI ??
       "http://localhost:3000/api/auth/strava/callback",
     response_type: "code",
-    scope: process.env.STRAVA_SCOPES ?? "read,activity:read",
+    scope: process.env.STRAVA_SCOPES ?? "read,profile:read_all,activity:read",
     approval_prompt: forceApproval ? "force" : "auto",
     state,
   });

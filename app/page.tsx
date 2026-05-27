@@ -158,7 +158,7 @@ export default function LandingPage() {
 
         {/* Features row (desktop only) */}
         <div className="relative z-10 hidden md:flex gap-4 mt-8">
-          {["🚴 Strava Sync", "🏆 Leaderboard", "🤖 AI Insights", "⚡ FTP Zones"].map((f) => (
+          {["🚴 Strava Sync", "🏆 Leaderboard", "✅ Champ Check-ins", "⚡ FTP Zones"].map((f) => (
             <span key={f} className="text-[11px] text-white/40 font-medium">{f}</span>
           ))}
         </div>
