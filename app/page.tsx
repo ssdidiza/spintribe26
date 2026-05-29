@@ -54,11 +54,19 @@ export default function LandingPage() {
           // Check if user already onboarded in DB
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded")
+            .select("name, role, tier, zone, onboarded, ftp, country")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
-            login(data.user.id, row.name || displayName, "");
+            login(data.user.id, row.name || displayName, "", {
+              role: row.role,
+              tier: row.tier,
+              zone: row.zone,
+              region: row.zone,
+              onboarded: row.onboarded,
+              ftp: row.ftp ?? undefined,
+              country: row.country ?? undefined,
+            });
             completeOnboarding(row.role, row.tier, row.zone);
             router.push("/dashboard");
           } else {
@@ -80,11 +88,19 @@ export default function LandingPage() {
           // Fetch display name and onboarding status from Supabase users table
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded")
+            .select("name, role, tier, zone, onboarded, ftp, country")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
-            login(data.user.id, row.name || displayName, "");
+            login(data.user.id, row.name || displayName, "", {
+              role: row.role,
+              tier: row.tier,
+              zone: row.zone,
+              region: row.zone,
+              onboarded: row.onboarded,
+              ftp: row.ftp ?? undefined,
+              country: row.country ?? undefined,
+            });
             completeOnboarding(row.role, row.tier, row.zone);
             router.push("/dashboard");
           } else {

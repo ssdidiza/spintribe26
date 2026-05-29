@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeStravaCode, getStravaActivitiesForMonth } from "@/lib/strava";
+import { exchangeStravaCode, getStravaActivitiesForMonth, getStravaAthlete } from "@/lib/strava";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 import { detectZoneFromGPS } from "@/lib/types";
@@ -14,20 +14,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/?error=strava_denied", req.url));
   }
 
-  // CSRF: verify state matches the cookie set in /api/auth/strava
+  // CSRF: verify state matches the cookie set in /api/auth/strava.
   const expectedState = req.cookies.get("oauth_state")?.value;
   if (!returnedState || !expectedState || returnedState !== expectedState) {
     return NextResponse.redirect(new URL("/?error=strava_error", req.url));
   }
 
   try {
-    // 1. Exchange code — athlete name/avatar are embedded in the token response
+    // Athlete name/avatar are embedded in the token response.
     const tokens = await exchangeStravaCode(code);
     const displayName = [tokens.athleteFirstname, tokens.athleteLastname]
       .filter(Boolean)
       .join(" ") || "Athlete";
 
-    // 2. Upsert user in Supabase
     const db = supabaseAdmin();
     const { error: dbError } = await db.from("users").upsert(
       {
@@ -46,8 +45,23 @@ export async function GET(req: NextRequest) {
       console.error("Supabase upsert error:", dbError);
     }
 
-    // 3. Initial activity sync — done here while we have a fresh token,
-    //    so the dashboard loads with data immediately (no "syncing..." spinner).
+    // FTP is optional Strava profile data. Read it once during OAuth/re-auth,
+    // then serve it from our cache unless the athlete explicitly refreshes it.
+    try {
+      const athlete = await getStravaAthlete(tokens.accessToken);
+      await db
+        .from("users")
+        .update({
+          ftp: athlete.ftp ?? null,
+          country: athlete.country ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("strava_id", String(tokens.athleteId));
+    } catch (profileErr) {
+      console.error("Athlete profile sync failed (non-fatal):", profileErr);
+    }
+
+    // Initial activity sync uses the fresh token so the dashboard opens with data.
     try {
       const now = new Date();
       const stravaActivities = await getStravaActivitiesForMonth(
@@ -86,19 +100,16 @@ export async function GET(req: NextRequest) {
       console.error("Initial activity sync failed (non-fatal):", syncErr);
     }
 
-    // Check if the user is already onboarded
     const { data: existingUser } = await db
       .from("users")
       .select("onboarded")
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
 
-    // 4. Write signed session cookie (httpOnly — safe from XSS)
     const session = await getSession();
     session.athleteId = tokens.athleteId;
     await session.save();
 
-    // 5. Redirect based on onboarding status (onboarded DB flag replaces isReauth cookie)
     let redirectUrl: URL;
     if (existingUser?.onboarded) {
       redirectUrl = new URL("/dashboard", req.url);

@@ -33,7 +33,12 @@ interface AppState {
   zones: Zone[];
   isOnboarded: boolean;
 
-  login: (stravaId?: string, name?: string, avatar?: string) => void;
+  login: (
+    stravaId?: string,
+    name?: string,
+    avatar?: string,
+    profile?: Pick<Partial<User>, "ftp" | "country" | "role" | "tier" | "zone" | "region" | "onboarded">
+  ) => void;
   logout: () => void;
   completeOnboarding: (role: UserRole, tier: Tier, zone?: string) => void;
   addChampionSession: (
@@ -49,7 +54,7 @@ interface AppState {
   ) => { success: boolean; reason?: string };
   deleteChampionSession: (sessionId: string) => void;
   hydrateChampionSessions: () => void;
-  hydrateAthleteData: () => void;
+  hydrateAthleteData: (forceRefresh?: boolean) => Promise<void>;
   hydrateActivities: () => Promise<void>;
   addZone: (zone: Omit<Zone, "id" | "usageCount" | "createdAt">) => Zone;
   incrementZoneUsage: (zoneId: string) => void;
@@ -67,7 +72,7 @@ export const useStore = create<AppState>()(
       zones: SEED_ZONES,
       isOnboarded: false,
 
-      login: (stravaId, name, avatar) => {
+      login: (stravaId, name, avatar, profile) => {
         const id = stravaId ?? "mock-1";
         const newUser: User = {
           id,
@@ -81,6 +86,7 @@ export const useStore = create<AppState>()(
           isConnected: true,
           region: "Gauteng",
           onboarded: false,
+          ...profile,
         };
         set((s) => ({
           currentUser: newUser,
@@ -253,17 +259,17 @@ export const useStore = create<AppState>()(
       },
 
       // Fetch athlete FTP from Strava and update currentUser
-      hydrateAthleteData: async () => {
+      hydrateAthleteData: async (forceRefresh = false) => {
         try {
-          const res = await fetch("/api/strava/athlete");
+          const res = await fetch(`/api/strava/athlete${forceRefresh ? "?refresh=1" : ""}`);
           if (!res.ok) return;
           const { ftp, country } = await res.json();
           const user = get().currentUser;
           if (!user) return;
           const updated = {
             ...user,
-            ...(ftp != null ? { ftp } : {}),
-            ...(country ? { country } : {}),
+            ftp: ftp ?? undefined,
+            country: country ?? user.country,
           };
           set((s) => ({
             currentUser: updated,

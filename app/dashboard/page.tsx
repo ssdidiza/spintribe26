@@ -37,12 +37,19 @@ export default function DashboardPage() {
     syncStravaActivities, hydrateChampionSessions, hydrateAthleteData, hydrateActivities,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
+  const [refreshingFtp, setRefreshingFtp] = useState(false);
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
     await syncStravaActivities();
     setSyncing(false);
   }, [syncStravaActivities]);
+
+  const handleFtpRefresh = useCallback(async () => {
+    setRefreshingFtp(true);
+    await hydrateAthleteData(true);
+    setRefreshingFtp(false);
+  }, [hydrateAthleteData]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -296,26 +303,28 @@ export default function DashboardPage() {
             ) : (
               <div className="flex-1 flex flex-col justify-center items-center text-center gap-2">
                 <Zap size={28} className="text-[#ff4b35]/40" />
-                <p className="text-sm font-semibold text-[#b8b8b8]">FTP not set</p>
-                <p className="text-[10px] text-[#b8b8b8]/60 leading-snug max-w-[220px]">
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 1 —</span>{" "}
-                  Set an FTP value in{" "}
+                <p className="text-sm font-semibold text-[#b8b8b8]">FTP unavailable</p>
+                <p className="text-[10px] text-[#b8b8b8]/60 leading-snug max-w-[240px]">
+                  FTP is optional and only visible to you. Set it in{" "}
                   <a
                     href="https://www.strava.com/settings/performance"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]"
                   >
-                    Strava → My Performance
+                    Strava My Performance
                   </a>
-                  .{" "}
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 2 —</span>{" "}
-                  Go to your{" "}
-                  <a href="/profile" className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]">
-                    Profile
-                  </a>{" "}
-                  and tap <span className="font-semibold">Reconnect Strava</span>.
+                  , then refresh your profile here. If it still does not show, reconnect Strava from Profile so the profile permission is granted.
                 </p>
+                <button
+                  type="button"
+                  onClick={handleFtpRefresh}
+                  disabled={refreshingFtp}
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#ffffff] transition-all hover:border-[#ff4b35]/50 disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={refreshingFtp ? "animate-spin" : ""} />
+                  {refreshingFtp ? "Refreshing" : "Refresh FTP"}
+                </button>
               </div>
             )}
 
