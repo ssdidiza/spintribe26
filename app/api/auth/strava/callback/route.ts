@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
         .update({
           ftp: athlete.ftp ?? null,
           country: athlete.country ?? null,
+          ftp_cached_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("strava_id", String(tokens.athleteId));

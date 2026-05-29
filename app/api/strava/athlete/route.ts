@@ -4,6 +4,8 @@ import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
 
+const STRAVA_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * GET /api/strava/athlete
  * Returns the athlete's own FTP profile field.
@@ -19,16 +21,25 @@ export async function GET(req: NextRequest) {
   const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1";
   const athleteId = String(session.athleteId);
 
-  const { data: cachedUser } = await db
+  const { data: cachedUser, error: cacheError } = await db
     .from("users")
-    .select("ftp,country")
+    .select("ftp,country,ftp_cached_at")
     .eq("strava_id", athleteId)
     .maybeSingle();
+  const cacheTime = cachedUser?.ftp_cached_at
+    ? new Date(cachedUser.ftp_cached_at).getTime()
+    : 0;
+  const cacheFresh = Boolean(
+    cachedUser?.ftp &&
+    cacheTime &&
+    Date.now() - cacheTime <= STRAVA_CACHE_MAX_AGE_MS
+  );
 
   if (!forceRefresh) {
     return NextResponse.json({
-      ftp: cachedUser?.ftp ?? null,
-      country: cachedUser?.country ?? null,
+      ftp: cacheError || !cacheFresh ? null : cachedUser?.ftp ?? null,
+      country: cacheError ? null : cachedUser?.country ?? null,
+      cachedAt: cacheError || !cacheFresh ? null : cachedUser?.ftp_cached_at ?? null,
       source: "cache",
       refreshAvailable: true,
     });
@@ -58,6 +69,7 @@ export async function GET(req: NextRequest) {
       .update({
         ftp: athlete.ftp ?? null,
         country: athlete.country ?? null,
+        ftp_cached_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("strava_id", athleteId);
@@ -69,6 +81,7 @@ export async function GET(req: NextRequest) {
     ftp: athlete.ftp ?? null,
     country: athlete.country ?? null,
     name: `${athlete.firstname} ${athlete.lastname}`,
+    cachedAt: new Date().toISOString(),
     source: "strava",
   });
 }

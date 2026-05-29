@@ -16,6 +16,7 @@ create table if not exists public.users (
   onboarded             boolean not null default false,
   zone                  text,
   ftp                   int,
+  ftp_cached_at         timestamptz,
   country               text,
   last_strava_sync_at   timestamptz,
   last_strava_sync_year int,
@@ -92,7 +93,7 @@ create index if not exists idx_champ_sessions_user on public.champion_sessions(u
 -- query: supabase.from("users").select() in app/page.tsx after email login.
 -- ============================================================
 revoke select on public.users from anon, authenticated;
-grant select (strava_id, name, avatar, role, tier, onboarded, zone, ftp, country, created_at, updated_at)
+grant select (strava_id, name, avatar, role, tier, onboarded, zone, ftp, ftp_cached_at, country, created_at, updated_at)
   on public.users
   to anon, authenticated;
 

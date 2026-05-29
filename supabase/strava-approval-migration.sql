@@ -5,6 +5,7 @@
 
 alter table public.users
   add column if not exists ftp int,
+  add column if not exists ftp_cached_at timestamptz,
   add column if not exists country text,
   add column if not exists last_strava_sync_at timestamptz,
   add column if not exists last_strava_sync_year int,

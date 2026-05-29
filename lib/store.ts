@@ -37,7 +37,7 @@ interface AppState {
     stravaId?: string,
     name?: string,
     avatar?: string,
-    profile?: Pick<Partial<User>, "ftp" | "country" | "role" | "tier" | "zone" | "region" | "onboarded">
+    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded">
   ) => void;
   logout: () => void;
   completeOnboarding: (role: UserRole, tier: Tier, zone?: string) => void;
@@ -263,12 +263,13 @@ export const useStore = create<AppState>()(
         try {
           const res = await fetch(`/api/strava/athlete${forceRefresh ? "?refresh=1" : ""}`);
           if (!res.ok) return;
-          const { ftp, country } = await res.json();
+          const { ftp, country, cachedAt } = await res.json();
           const user = get().currentUser;
           if (!user) return;
           const updated = {
             ...user,
             ftp: ftp ?? undefined,
+            ftpCachedAt: cachedAt ?? undefined,
             country: country ?? user.country,
           };
           set((s) => ({
