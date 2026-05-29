@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -8,7 +8,19 @@ import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
-import { RefreshCw, Zap, Clock, Bike, TrendingUp, MapPin, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  Bike,
+  CheckCircle2,
+  Clock,
+  Flame,
+  MapPin,
+  PartyPopper,
+  RefreshCw,
+  TrendingUp,
+  Trophy,
+  Zap,
+} from "lucide-react";
 import { format } from "date-fns";
 
 function formatDuration(seconds: number) {
@@ -76,7 +88,7 @@ export default function DashboardPage() {
   const ftp = currentUser.ftp;
   const now = new Date();
 
-  // â”€â”€ Progress pace calculations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Progress pace calculations ────────────────────────────────────────────
   const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayOfMonth   = now.getDate();
   const daysLeft     = daysInMonth - dayOfMonth;
@@ -93,13 +105,14 @@ export default function DashboardPage() {
     paceRatio >= 0.82    ? "on_track" :
                            "behind";
 
-  const STATUS_CONFIG: Record<ProgressStatus, { label: string; emoji: string; color: string; bg: string; border: string }> = {
-    complete: { label: "Challenge Complete!",  emoji: "ðŸŽ‰", color: "#ff4b35", bg: "rgba(255,75,53,0.12)", border: "rgba(255,75,53,0.35)" },
-    great:    { label: "Doing Great",          emoji: "ðŸ”¥", color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
-    on_track: { label: "On Track",             emoji: "âœ…", color: "#ffffff", bg: "rgba(255,255,255,0.08)",  border: "rgba(255,255,255,0.25)"  },
-    behind:   { label: "Falling Behind",       emoji: "âš ï¸", color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
+  const STATUS_CONFIG: Record<ProgressStatus, { label: string; Icon: typeof Trophy; color: string; bg: string; border: string }> = {
+    complete: { label: "Challenge Complete!", Icon: PartyPopper, color: "#ff4b35", bg: "rgba(255,75,53,0.12)", border: "rgba(255,75,53,0.35)" },
+    great:    { label: "Doing Great",         Icon: Flame,       color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
+    on_track: { label: "On Track",            Icon: CheckCircle2, color: "#ffffff", bg: "rgba(255,255,255,0.08)",  border: "rgba(255,255,255,0.25)"  },
+    behind:   { label: "Falling Behind",      Icon: AlertTriangle, color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)" },
   };
   const statusCfg = STATUS_CONFIG[progressStatus];
+  const StatusIcon = statusCfg.Icon;
 
   const STATS = [
     { label: "Rides",  value: userActivities.length,                              icon: <Bike       size={14} className="text-[#ff4b35]" /> },
@@ -122,7 +135,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
-            {TIER_LABELS[currentUser.tier]} Â· {currentUser.tier} km
+            {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km
           </span>
           <button onClick={handleSync} disabled={syncing}
             className="w-8 h-8 rounded-full glass flex items-center justify-center text-[#b8b8b8] disabled:opacity-40 hover:text-[#ff4b35] transition-colors">
@@ -135,10 +148,10 @@ export default function DashboardPage() {
 
         <NotificationBanner />
 
-        {/* â”€â”€ Cinematic hero â€” monthly km â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Cinematic hero — monthly km ───────────────────────────────────── */}
         <div className="relative text-center pt-6 pb-2">
           <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#b8b8b8]/50 mb-4">
-            {format(now, "MMMM yyyy")} Â· {TIER_LABELS[currentUser.tier]}
+            {format(now, "MMMM yyyy")} · {TIER_LABELS[currentUser.tier]}
           </p>
           <div className="flex items-end justify-center gap-2 mb-1">
             <span
@@ -156,7 +169,7 @@ export default function DashboardPage() {
           </div>
           <p className="text-sm text-[#b8b8b8]/50 mb-5">
             Rank {currentRankEntry ? `#${currentRankEntry.rank}` : "-"} of {leaderboardEntries.length || 1}
-            {" "}in {TIER_LABELS[currentUser.tier]} &nbsp;·&nbsp; {pct}% of {targetKm} km
+            {" "}in {TIER_LABELS[currentUser.tier]} - {pct}% of {targetKm} km
           </p>
           {/* Slim progress bar */}
           <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto mb-1">
@@ -167,12 +180,12 @@ export default function DashboardPage() {
           {pct >= 100 && (
             <div className="mt-5 rounded-2xl p-3 text-center text-sm font-bold max-w-xs mx-auto"
               style={{ background: "rgba(255,75,53,0.15)", color: "#ff4b35", border: "1px solid rgba(255,75,53,0.25)" }}>
-              ðŸŽ‰ Challenge complete â€” {targetKm} km done!
+              Challenge complete - {targetKm} km done!
             </div>
           )}
         </div>
 
-        {/* â”€â”€ Progress tracking card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Progress tracking card ────────────────────────────────────────── */}
         <div
           className="glass-card p-5"
           style={{ borderColor: statusCfg.border, background: statusCfg.bg }}
@@ -180,7 +193,7 @@ export default function DashboardPage() {
           {/* Status row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="text-lg leading-none">{statusCfg.emoji}</span>
+              <StatusIcon size={17} style={{ color: statusCfg.color }} />
               <span className="text-sm font-black tracking-tight" style={{ color: statusCfg.color }}>
                 {statusCfg.label}
               </span>
@@ -217,7 +230,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
                   <p className="text-lg font-black" style={{ color: statusCfg.color }}>
-                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "â€”"}
+                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "—"}
                   </p>
                   <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">of pace</p>
                 </div>
@@ -236,13 +249,13 @@ export default function DashboardPage() {
                 {progressStatus === "behind"
                   ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
                   : progressStatus === "great"
-                  ? `At your current pace you'll finish around ${projectedTotal} km â€” ${projectedTotal - targetKm} km over target.`
+                  ? `At your current pace you'll finish around ${projectedTotal} km — ${projectedTotal - targetKm} km over target.`
                   : `You're right on pace. Keep riding ${kmNeededPerDay} km/day to secure your ${targetKm} km goal.`}
               </p>
             </>
           ) : (
             <p className="text-sm text-[#b8b8b8] leading-relaxed">
-              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding â€” every km now is a bonus.
+              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
             </p>
           )}
         </div>
@@ -254,7 +267,7 @@ export default function DashboardPage() {
             {ftp ? (
               <>
                 <div>
-                  <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP Â· Functional Threshold Power</p>
+                  <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP · Functional Threshold Power</p>
                   <div className="flex items-end gap-2">
                     <span className="text-4xl font-black" style={{ color: "#ff4b35" }}>{ftp}</span>
                     <span className="text-sm text-[#b8b8b8] mb-1">watts</span>
@@ -285,7 +298,7 @@ export default function DashboardPage() {
                 <Zap size={28} className="text-[#ff4b35]/40" />
                 <p className="text-sm font-semibold text-[#b8b8b8]">FTP not set</p>
                 <p className="text-[10px] text-[#b8b8b8]/60 leading-snug max-w-[220px]">
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 1 â€”</span>{" "}
+                  <span className="font-semibold text-[#b8b8b8]/80">Step 1 —</span>{" "}
                   Set an FTP value in{" "}
                   <a
                     href="https://www.strava.com/settings/performance"
@@ -293,10 +306,10 @@ export default function DashboardPage() {
                     rel="noopener noreferrer"
                     className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]"
                   >
-                    Strava â†’ My Performance
+                    Strava → My Performance
                   </a>
                   .{" "}
-                  <span className="font-semibold text-[#b8b8b8]/80">Step 2 â€”</span>{" "}
+                  <span className="font-semibold text-[#b8b8b8]/80">Step 2 —</span>{" "}
                   Go to your{" "}
                   <a href="/profile" className="underline underline-offset-2 text-[#ff4b35]/70 hover:text-[#ff4b35]">
                     Profile
@@ -324,9 +337,10 @@ export default function DashboardPage() {
           className="w-full rounded-2xl py-3.5 font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #ff4b35 0%, #ffffff 100%)", boxShadow: "0 0 20px rgba(255,75,53,0.4)", color: "#fff" }}>
           <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing Stravaâ€¦" : "Sync with Strava"}
+          {syncing ? "Syncing Strava…" : "Sync with Strava"}
         </button>
-{/* Leaders + Featured zone */}
+
+        {/* Leaders + Featured zone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {topRiders.length > 0 && (
@@ -336,12 +350,11 @@ export default function DashboardPage() {
               </p>
               <div className="space-y-2">
                 {topRiders.map((entry, i) => {
-                  const medals = ["ðŸ¥‡", "ðŸ¥ˆ", "ðŸ¥‰"];
                   const isMe = entry.user.id === currentUser.id;
                   return (
                     <div key={entry.user.id} className="flex items-center gap-3 glass-card p-3"
                       style={isMe ? { borderColor: "rgba(255,75,53,0.4)", background: "rgba(255,75,53,0.05)" } : {}}>
-                      <span className="text-lg w-6 text-center">{medals[i]}</span>
+                      <span className="text-xs font-black w-6 text-center text-[#ff4b35]">#{i + 1}</span>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={entry.user.avatar} alt={entry.user.name}
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0"
@@ -390,7 +403,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Recent Rides</p>
             {syncing
-              ? <span className="text-[10px] text-[#b8b8b8]">Syncingâ€¦</span>
+              ? <span className="text-[10px] text-[#b8b8b8]">Syncing…</span>
               : <PoweredByStrava />}
           </div>
           {syncing && userActivities.length === 0 ? (
@@ -411,14 +424,14 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
                 >
                   <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-base flex-shrink-0">
-                    {activity.type === "VirtualRide" ? "ðŸ " : activity.type === "Run" ? "ðŸƒ" : "ðŸš´"}
+                    <Bike size={16} className="text-[#ff4b35]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-[#ffffff] truncate">{activity.name}</p>
                     <p className="text-[10px] text-[#b8b8b8]">
                       {format(new Date(activity.date), "MMM d")}
                       {activity.detectedZoneId && (
-                        <span className="ml-1.5 text-[#ffffff]/70">Â· {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
+                        <span className="ml-1.5 text-[#ffffff]/70">· {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
                       )}
                     </p>
                   </div>

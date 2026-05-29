@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = [200, 400, 800, 1000];
 
-const MEDAL_STYLES: Record<number, { border: string; glow: string; emoji: string }> = {
-  1: { border: "#FFD700", glow: "0 0 12px rgba(255,215,0,0.4)",  emoji: "🥇" },
-  2: { border: "#C0C0C0", glow: "0 0 12px rgba(192,192,192,0.3)", emoji: "🥈" },
-  3: { border: "#CD7F32", glow: "0 0 12px rgba(205,127,50,0.3)",  emoji: "🥉" },
+const MEDAL_STYLES: Record<number, { border: string; glow: string }> = {
+  1: { border: "#FFD700", glow: "0 0 12px rgba(255,215,0,0.4)" },
+  2: { border: "#C0C0C0", glow: "0 0 12px rgba(192,192,192,0.3)" },
+  3: { border: "#CD7F32", glow: "0 0 12px rgba(205,127,50,0.3)" },
 };
 
 export default function LeaderboardPage() {
@@ -118,10 +118,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center gap-3">
                     {/* Rank / medal */}
                     <div className="flex items-center justify-center w-7 flex-shrink-0">
-                      {medal
-                        ? <span className="text-xl">{medal.emoji}</span>
-                        : <span className="text-sm font-bold text-[#b8b8b8] w-6 text-center">{entry.rank}</span>
-                      }
+                      <span className="text-sm font-bold text-[#b8b8b8] w-6 text-center">#{entry.rank}</span>
                     </div>
 
                     {/* Avatar */}

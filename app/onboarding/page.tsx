@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { Tier, UserRole, TIER_LABELS, TIER_COLORS } from "@/lib/types";
-import { ChevronRight, CheckCircle2 } from "lucide-react";
+import { Bike, ChevronRight, CheckCircle2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TIERS: { km: Tier; description: string }[] = [
@@ -129,7 +129,7 @@ function OnboardingContent() {
 
             <div className="space-y-4">
               <RoleCard
-                emoji="🏆"
+                icon={<Trophy size={20} />}
                 title="Champion"
                 subtitle="I organise & lead the challenge"
                 bullets={[
@@ -143,7 +143,7 @@ function OnboardingContent() {
                 onClick={() => handleRoleSelect("champion")}
               />
               <RoleCard
-                emoji="🚴"
+                icon={<Bike size={20} />}
                 title="Member"
                 subtitle="I'm participating in the challenge"
                 bullets={[
@@ -334,14 +334,14 @@ export default function OnboardingPage() {
 }
 
 function RoleCard({
-  emoji,
+  icon,
   title,
   subtitle,
   bullets,
   accent,
   onClick,
 }: {
-  emoji: string;
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
   bullets: string[];
@@ -358,7 +358,7 @@ function RoleCard({
           className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
           style={{ background: `${accent}20` }}
         >
-          {emoji}
+          {icon}
         </div>
         <div className="flex-1">
           <p className="font-black text-white">{title}</p>
