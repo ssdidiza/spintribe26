@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const db = supabaseAdmin();
   const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1";
   const athleteId = String(session.athleteId);
+  const refreshedAt = new Date().toISOString();
 
   const { data: cachedUser, error: cacheError } = await db
     .from("users")
@@ -69,8 +70,8 @@ export async function GET(req: NextRequest) {
       .update({
         ftp: athlete.ftp ?? null,
         country: athlete.country ?? null,
-        ftp_cached_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        ftp_cached_at: refreshedAt,
+        updated_at: refreshedAt,
       })
       .eq("strava_id", athleteId);
   } catch {
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
     ftp: athlete.ftp ?? null,
     country: athlete.country ?? null,
     name: `${athlete.firstname} ${athlete.lastname}`,
-    cachedAt: new Date().toISOString(),
+    cachedAt: refreshedAt,
     source: "strava",
   });
 }

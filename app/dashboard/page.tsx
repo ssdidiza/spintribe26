@@ -38,6 +38,7 @@ export default function DashboardPage() {
   } = useStore();
   const [syncing, setSyncing] = useState(false);
   const [refreshingFtp, setRefreshingFtp] = useState(false);
+  const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -57,7 +58,7 @@ export default function DashboardPage() {
     if (!isOnboarded) { router.replace("/onboarding"); return; }
     Promise.all([hydrateChampionSessions(), hydrateAthleteData(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, currentUser, isOnboarded]);
+  }, [hydrated, currentUserId, isOnboarded]);
 
   const userActivities = useMemo(
     () => activities

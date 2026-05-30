@@ -263,13 +263,14 @@ export const useStore = create<AppState>()(
         try {
           const res = await fetch(`/api/strava/athlete${forceRefresh ? "?refresh=1" : ""}`);
           if (!res.ok) return;
-          const { ftp, country, cachedAt } = await res.json();
+          const { ftp, country, cachedAt, source } = await res.json();
           const user = get().currentUser;
           if (!user) return;
+          const shouldClearFtp = forceRefresh || source === "strava";
           const updated = {
             ...user,
-            ftp: ftp ?? undefined,
-            ftpCachedAt: cachedAt ?? undefined,
+            ftp: ftp ?? (shouldClearFtp ? undefined : user.ftp),
+            ftpCachedAt: cachedAt ?? (shouldClearFtp ? undefined : user.ftpCachedAt),
             country: country ?? user.country,
           };
           set((s) => ({
