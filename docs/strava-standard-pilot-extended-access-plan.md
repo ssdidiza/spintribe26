@@ -33,6 +33,23 @@ These are operating roles for the first 10 connected athletes. One person can he
 | 9 | Privacy-sensitive rider | Member | Uses private or limited-visibility activities where possible and checks what appears. | Forces privacy-first defaults before scale. | Documents that private details and raw GPS are not exposed in UI. |
 | 10 | New joiner | Member | Tests onboarding from scratch with no coaching. | Measures whether the app can scale without hand-holding. | Provides onboarding friction notes and consent clarity feedback. |
 
+## If Siphe Owns Seats 1-4
+
+If one person owns product, technical admin, compliance review, and champion lead, the 10-athlete pilot should be rebalanced around field evidence instead of internal control. Use this roster:
+
+| Athlete | Pilot Role | App Role | Primary Job | Scaling Contribution | Extended Access Evidence |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Founder operator | Admin + Champion | Own product, technical triage, compliance review, and champion workflow proof. | Keeps the pilot fast and coherent. | Single accountable owner for Strava review narrative, bug fixes, and operational decisions. |
+| 2 | Zone captain A | Champion | Runs one real zone ride flow from invite to check-in. | Creates the first repeatable zone playbook. | Shows real-world champion check-ins tied to Strava rides. |
+| 3 | Zone captain B | Champion | Tests a second zone/region and edge cases around region naming. | Proves the model works beyond one local group. | Shows multi-zone readiness without Strava Club APIs. |
+| 4 | High-volume rider | Member | Tests frequent riding, large monthly distance, and sync cooldowns. | Finds rate-limit and dashboard performance issues early. | Demonstrates API efficiency under active-user behavior. |
+| 5 | Casual rider | Member | Tests low-volume usage, missed weeks, and return after inactivity. | Ensures the app works for ordinary club members. | Demonstrates inclusive use across ability levels. |
+| 6 | Privacy-sensitive rider | Member | Uses private or limited-visibility activities where possible and checks what appears. | Forces privacy-first defaults before scale. | Documents that private details and raw GPS are not exposed in UI. |
+| 7 | New joiner | Member | Tests onboarding from scratch with no coaching. | Measures whether the app can scale without hand-holding. | Provides onboarding friction notes and consent clarity feedback. |
+| 8 | Club sponsor | Member or Admin | Represents Team Vitality/club authority and validates that the challenge model matches club operations. | Gives the app organizational legitimacy before expansion. | Evidence that Spera has a real club use case and a responsible operating owner. |
+| 9 | Device diversity tester | Member | Tests a different recording setup, such as Garmin, Wahoo, Apple Watch, Zwift, or manual upload to Strava. | Finds activity-sync edge cases before broader rollout. | Shows Spera works across common athlete recording workflows without extra API scopes. |
+| 10 | Support and comms tester | Member | Acts like a future community support lead: gathers questions, tracks confusion, and tests help copy. | Proves support can scale beyond the founder answering every message. | Produces FAQ items, onboarding objections, and support burden evidence for Extended Access. |
+
 ## Pilot Rules for the 10 People
 
 - Every participant must explicitly know this is a Standard tier pilot capped at 10 athletes.
