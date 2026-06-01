@@ -30,7 +30,7 @@ export default function LeaderboardPage() {
     else if (!isOnboarded) router.replace("/onboarding");
   }, [hydrated, currentUser, isOnboarded, router]);
 
-  const realUsers = useMemo(() => users.filter((u) => u.isConnected), [users]);
+  const realUsers = useMemo(() => users.filter((u) => u.isConnected && u.leaderboardConsent), [users]);
   const activeTier = selectedTier ?? currentUser?.tier ?? 400;
   const entries   = useMemo(
     () => buildLeaderboard(activeTier, realUsers, activities),

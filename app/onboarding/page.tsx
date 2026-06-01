@@ -30,6 +30,7 @@ function OnboardingContent() {
   const [inviteCode, setInviteCode] = useState<string>("");
   const [inviteError, setInviteError] = useState<string>("");
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [leaderboardConsent, setLeaderboardConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -81,10 +82,10 @@ function OnboardingContent() {
     const res = await fetch("/api/users/onboard", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, tier, zone: zone.trim() || region }),
+      body: JSON.stringify({ role, tier, zone: zone.trim() || region, leaderboardConsent }),
     });
     if (!res.ok) { setSubmitting(false); return; }
-    completeOnboarding(role, tier, zone.trim() || region);
+    completeOnboarding(role, tier, zone.trim() || region, leaderboardConsent);
     router.push(role === "champion" ? "/champion" : "/dashboard");
   }
 
@@ -304,6 +305,30 @@ function OnboardingContent() {
                 </div>
               </div>
             )}
+
+            {/* Leaderboard consent — Strava compliance */}
+            <button
+              type="button"
+              onClick={() => setLeaderboardConsent((v) => !v)}
+              className="w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
+              style={{
+                borderColor: leaderboardConsent ? "rgba(255,101,0,0.5)" : "rgba(255,255,255,0.1)",
+                background: leaderboardConsent ? "rgba(255,101,0,0.08)" : "rgba(255,255,255,0.04)",
+              }}
+            >
+              <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                style={{ borderColor: leaderboardConsent ? "#FF6500" : "rgba(255,255,255,0.3)", background: leaderboardConsent ? "#FF6500" : "transparent" }}>
+                {leaderboardConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-white/80 leading-snug">
+                  Share my progress on the SpinTribe leaderboard
+                </p>
+                <p className="text-[10px] text-white/40 mt-1 leading-relaxed">
+                  Others in my tier can see my monthly km and ranking. You can change this later from your profile.
+                </p>
+              </div>
+            </button>
 
             <button
               onClick={handleFinish}

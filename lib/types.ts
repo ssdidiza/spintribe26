@@ -17,6 +17,7 @@ export interface User {
   region?: string;
   zone?: string;
   onboarded?: boolean;
+  leaderboardConsent?: boolean;
   ftp?: number;        // Functional Threshold Power (watts) from Strava
   ftpCachedAt?: string;
   country?: string;
