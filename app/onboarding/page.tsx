@@ -37,12 +37,26 @@ function OnboardingContent() {
     const stravaId = searchParams.get("strava_id");
     const name = searchParams.get("name");
     const avatar = searchParams.get("avatar");
+    const returning = searchParams.get("returning") === "1";
+
+    if (returning && stravaId && name) {
+      // Returning user after logout — restore Zustand state then go straight to dashboard
+      const role = (searchParams.get("role") as UserRole | null) ?? "member";
+      const tier = (Number(searchParams.get("tier")) || 400) as Tier;
+      const zone = searchParams.get("zone") ?? undefined;
+      const leaderboardConsent = searchParams.get("leaderboard_consent") === "1";
+      login(stravaId, name, avatar ?? "", { role, tier, zone, onboarded: true });
+      completeOnboarding(role, tier, zone, leaderboardConsent);
+      router.replace("/dashboard");
+      return;
+    }
+
     if (stravaId && name && !currentUser) {
       login(stravaId, name, avatar ?? "");
     } else if (!stravaId && !currentUser) {
       router.replace("/");
     }
-  }, [searchParams, currentUser, login, router]);
+  }, [searchParams, currentUser, login, completeOnboarding, router]);
 
   function handleRoleSelect(r: UserRole) {
     setRole(r);

@@ -98,6 +98,7 @@ export const useStore = create<AppState>()(
 
       logout: () => {
         set({ currentUser: null, isOnboarded: false });
+        fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       },
 
       completeOnboarding: (role, tier, zone, leaderboardConsent) => {

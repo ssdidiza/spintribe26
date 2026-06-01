@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
 
     const { data: existingUser } = await db
       .from("users")
-      .select("onboarded")
+      .select("onboarded, role, tier, zone, leaderboard_consent")
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
 
@@ -114,7 +114,18 @@ export async function GET(req: NextRequest) {
 
     let redirectUrl: URL;
     if (existingUser?.onboarded) {
-      redirectUrl = new URL("/dashboard", req.url);
+      // Returning user: route through /onboarding?returning=1 so the client
+      // can restore Zustand state (which was cleared on logout) before entering
+      // the dashboard. The dashboard redirects to / when currentUser is null.
+      redirectUrl = new URL("/onboarding", req.url);
+      redirectUrl.searchParams.set("returning", "1");
+      redirectUrl.searchParams.set("strava_id", String(tokens.athleteId));
+      redirectUrl.searchParams.set("name", displayName);
+      redirectUrl.searchParams.set("avatar", tokens.athleteProfile);
+      if (existingUser.role) redirectUrl.searchParams.set("role", existingUser.role);
+      if (existingUser.tier) redirectUrl.searchParams.set("tier", String(existingUser.tier));
+      if (existingUser.zone) redirectUrl.searchParams.set("zone", existingUser.zone);
+      redirectUrl.searchParams.set("leaderboard_consent", existingUser.leaderboard_consent ? "1" : "0");
     } else {
       redirectUrl = new URL("/onboarding", req.url);
       redirectUrl.searchParams.set("strava_id", String(tokens.athleteId));
