@@ -8,7 +8,18 @@ import { TIER_LABELS } from "@/lib/types";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
-import { RefreshCw, Clock, Bike, TrendingUp, Trophy, ChevronRight } from "lucide-react";
+import {
+  AlertTriangle,
+  Bike,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Flame,
+  PartyPopper,
+  RefreshCw,
+  TrendingUp,
+  Trophy,
+} from "lucide-react";
 import { format } from "date-fns";
 
 function formatDuration(seconds: number) {
@@ -25,6 +36,8 @@ export default function DashboardPage() {
     syncStravaActivities, hydrateChampionSessions, hydrateAthleteData, hydrateActivities,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
+  const [refreshingFtp, setRefreshingFtp] = useState(false);
+  const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -32,13 +45,19 @@ export default function DashboardPage() {
     setSyncing(false);
   }, [syncStravaActivities]);
 
+  const handleFtpRefresh = useCallback(async () => {
+    setRefreshingFtp(true);
+    await hydrateAthleteData();
+    setRefreshingFtp(false);
+  }, [hydrateAthleteData]);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
     Promise.all([hydrateChampionSessions(), hydrateAthleteData(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, currentUser, isOnboarded]);
+  }, [hydrated, currentUserId, isOnboarded]);
 
   const userActivities = useMemo(
     () => activities
@@ -76,6 +95,7 @@ export default function DashboardPage() {
   const avgKm       = userActivities.length
     ? Math.round(userActivities.reduce((s, a) => s + a.distance, 0) / 1000 / userActivities.length)
     : 0;
+  const ftp = currentUser.ftp;
   const now = new Date();
 
   // ── Progress pace calculations ────────────────────────────────────────────
@@ -95,13 +115,14 @@ export default function DashboardPage() {
     paceRatio >= 0.82 ? "on_track" :
                         "behind";
 
-  const STATUS_CONFIG: Record<ProgressStatus, { label: string; emoji: string; color: string; bg: string; border: string }> = {
-    complete: { label: "Challenge Complete!", emoji: "🎉", color: "#ff4b35", bg: "rgba(255,75,53,0.12)",   border: "rgba(255,75,53,0.35)"   },
-    great:    { label: "Doing Great",         emoji: "🔥", color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
-    on_track: { label: "On Track",            emoji: "✅", color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.25)" },
-    behind:   { label: "Falling Behind",      emoji: "⚠️", color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)"  },
+  const STATUS_CONFIG: Record<ProgressStatus, { label: string; Icon: typeof Trophy; color: string; bg: string; border: string }> = {
+    complete: { label: "Challenge Complete!", Icon: PartyPopper,   color: "#ff4b35", bg: "rgba(255,75,53,0.12)",   border: "rgba(255,75,53,0.35)"   },
+    great:    { label: "Doing Great",         Icon: Flame,         color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
+    on_track: { label: "On Track",            Icon: CheckCircle2,  color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.25)" },
+    behind:   { label: "Falling Behind",      Icon: AlertTriangle, color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)"  },
   };
-  const statusCfg = STATUS_CONFIG[progressStatus];
+  const statusCfg  = STATUS_CONFIG[progressStatus];
+  const StatusIcon = statusCfg.Icon;
 
   const STATS = [
     { label: "Rides",  value: userActivities.length,                               icon: <Bike       size={14} className="text-[#ff4b35]" /> },
@@ -171,10 +192,8 @@ export default function DashboardPage() {
             <span className="text-2xl font-light text-[#b8b8b8]/70 pb-3">km</span>
           </div>
           <p className="text-sm text-[#b8b8b8]/50 mb-4">
-            {currentRankEntry
-              ? `Rank #${currentRankEntry.rank} of ${leaderboardEntries.length} · `
-              : ""}
-            {pct}% of {targetKm} km · {statusCfg.emoji} {statusCfg.label}
+            {currentRankEntry ? `Rank #${currentRankEntry.rank} of ${leaderboardEntries.length} · ` : ""}
+            {pct}% of {targetKm} km
           </p>
           <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto">
             <div className="h-full rounded-full transition-all duration-700"
@@ -182,7 +201,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Team Pulse — horizontal leaderboard strip ──────────────────── */}
+        {/* ── Team Pulse — horizontal leaderboard strip ─────────────────── */}
         {leaderboardEntries.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -240,7 +259,7 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="text-lg leading-none">{statusCfg.emoji}</span>
+              <StatusIcon size={17} style={{ color: statusCfg.color }} />
               <span className="text-sm font-black tracking-tight" style={{ color: statusCfg.color }}>
                 {statusCfg.label}
               </span>
@@ -310,6 +329,50 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ── FTP (only shown when set — personal data, not shared) ────── */}
+        {ftp && (
+          <div className="glass-card p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Fitness Benchmarks</p>
+              <button
+                type="button"
+                onClick={handleFtpRefresh}
+                disabled={refreshingFtp}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-[#b8b8b8] transition-all hover:border-[#ff4b35]/40 hover:text-[#ff4b35] disabled:opacity-40"
+              >
+                <RefreshCw size={10} className={refreshingFtp ? "animate-spin" : ""} />
+                Refresh
+              </button>
+            </div>
+            <div>
+              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP · Functional Threshold Power</p>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-black" style={{ color: "#ff4b35" }}>{ftp}</span>
+                <span className="text-sm text-[#b8b8b8] mb-1">watts</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-2">Power Zones</p>
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { label: "Z1", pct: 55,  from: "#ffffff44", to: "#ffffff66" },
+                  { label: "Z2", pct: 75,  from: "#ffffff66", to: "#ff4b3566" },
+                  { label: "Z3", pct: 90,  from: "#ff4b3566", to: "#ff4b3599" },
+                  { label: "Z4", pct: 105, from: "#ff4b35aa", to: "#da1e67aa" },
+                  { label: "Z5", pct: 120, from: "#da1e6799", to: "#da1e67cc" },
+                ].map((z) => (
+                  <div key={z.label} className="text-center">
+                    <div className="h-2 rounded-full mb-1"
+                      style={{ background: `linear-gradient(90deg, ${z.from}, ${z.to})` }} />
+                    <p className="text-[9px] font-semibold text-[#b8b8b8]">{z.label}</p>
+                    <p className="text-[8px] text-[#b8b8b8]/60">{Math.round(ftp * z.pct / 100)}W</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Recent rides ──────────────────────────────────────────────── */}
         <section>
