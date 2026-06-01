@@ -33,22 +33,32 @@ These are operating roles for the first 10 connected athletes. One person can he
 | 9 | Privacy-sensitive rider | Member | Uses private or limited-visibility activities where possible and checks what appears. | Forces privacy-first defaults before scale. | Documents that private details and raw GPS are not exposed in UI. |
 | 10 | New joiner | Member | Tests onboarding from scratch with no coaching. | Measures whether the app can scale without hand-holding. | Provides onboarding friction notes and consent clarity feedback. |
 
-## If Siphe Owns Seats 1-4
+## Better Pilot Shape: 10 Real Monthly Users
 
-If one person owns product, technical admin, compliance review, and champion lead, the 10-athlete pilot should be rebalanced around field evidence instead of internal control. Use this roster:
+The 10 Strava-connected seats should be reserved for real Team Vitality riders who will use Spera every month. Siphe is one of those 10 because he is a real Team Vitality champ and will use Spera as a champ; his founder, product, technical, compliance, and support responsibilities sit on top of that same athlete seat. Other internal roles such as release manager and support analyst should sit outside the Strava athlete cap and be handled by the founder plus tools:
 
-| Athlete | Pilot Role | App Role | Primary Job | Scaling Contribution | Extended Access Evidence |
+- Sentry for runtime errors, front-end issues, and release health.
+- Vercel for deployment status and build logs.
+- Supabase logs and database checks for auth, sync, and deletion verification.
+- GitHub for issue tracking, review evidence, and release notes.
+- Claude/Codex for code review, docs, policy checklists, and Extended Access submission drafting. Do not paste raw Strava activity exports or sensitive athlete data into AI tools.
+
+Use this 10-athlete roster instead:
+
+| Athlete | Pilot Role | App Role | Monthly Usage Pattern | What They Prove | Extended Access Evidence |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Founder operator | Admin + Champion | Own product, technical triage, compliance review, and champion workflow proof. | Keeps the pilot fast and coherent. | Single accountable owner for Strava review narrative, bug fixes, and operational decisions. |
-| 2 | Zone captain A | Champion | Runs one real zone ride flow from invite to check-in. | Creates the first repeatable zone playbook. | Shows real-world champion check-ins tied to Strava rides. |
-| 3 | Zone captain B | Champion | Tests a second zone/region and edge cases around region naming. | Proves the model works beyond one local group. | Shows multi-zone readiness without Strava Club APIs. |
-| 4 | High-volume rider | Member | Tests frequent riding, large monthly distance, and sync cooldowns. | Finds rate-limit and dashboard performance issues early. | Demonstrates API efficiency under active-user behavior. |
-| 5 | Casual rider | Member | Tests low-volume usage, missed weeks, and return after inactivity. | Ensures the app works for ordinary club members. | Demonstrates inclusive use across ability levels. |
-| 6 | Privacy-sensitive rider | Member | Uses private or limited-visibility activities where possible and checks what appears. | Forces privacy-first defaults before scale. | Documents that private details and raw GPS are not exposed in UI. |
-| 7 | New joiner | Member | Tests onboarding from scratch with no coaching. | Measures whether the app can scale without hand-holding. | Provides onboarding friction notes and consent clarity feedback. |
-| 8 | Club sponsor | Member or Admin | Represents Team Vitality/club authority and validates that the challenge model matches club operations. | Gives the app organizational legitimacy before expansion. | Evidence that Spera has a real club use case and a responsible operating owner. |
-| 9 | Device diversity tester | Member | Tests a different recording setup, such as Garmin, Wahoo, Apple Watch, Zwift, or manual upload to Strava. | Finds activity-sync edge cases before broader rollout. | Shows Spera works across common athlete recording workflows without extra API scopes. |
-| 10 | Support and comms tester | Member | Acts like a future community support lead: gathers questions, tracks confusion, and tests help copy. | Proves support can scale beyond the founder answering every message. | Produces FAQ items, onboarding objections, and support burden evidence for Extended Access. |
+| 1 | Siphe - founder champ | Admin + Champion | Uses the app weekly as a real champ and validates end-to-end flows. | The accountable owner is also a true target user, not only an internal tester. | Founder-owned screenshots, champ workflow proof, bug notes, and final review narrative. |
+| 2 | Champion lead | Champion | Logs monthly champion progress and checks in after weekend rides. | Champion system works for annual and monthly expectations. | Evidence of 2 monthly/10 annual champion tracking tied to real rides. |
+| 3 | Zone captain A | Champion | Runs one zone's ride/check-in flow monthly. | One zone can operate without manual founder intervention. | Zone playbook and check-in screenshots. |
+| 4 | Zone captain B | Champion | Runs a second zone or region monthly. | The model works beyond one local group. | Multi-zone proof without Strava Club endpoints. |
+| 5 | High-volume rider | Member | Rides often and syncs multiple times per month. | API cooldowns, caching, and dashboard performance hold up under active use. | Rate-limit/caching evidence from a heavy but realistic rider. |
+| 6 | Consistent mid-pack rider | Member | Rides most weeks and checks rank/progress monthly. | The core monthly challenge works for the typical participant. | Evidence that monthly distance goals are understandable and useful. |
+| 7 | Casual rider | Member | Has low or irregular activity and returns near month end. | The app still makes sense when someone is behind or inactive. | UX evidence for ordinary members, not only serious riders. |
+| 8 | Privacy-sensitive rider | Member | Uses stricter Strava privacy settings where possible. | The app does not expose private details or raw GPS to others. | Privacy review notes and screenshots showing conservative display. |
+| 9 | Device diversity rider | Member | Records through Garmin, Wahoo, Apple Watch, Zwift, or another normal workflow. | Activity sync handles common recording sources without extra scopes. | Device/source compatibility notes. |
+| 10 | New monthly user | Member | Joins with no coaching and uses the app through one full month. | Onboarding, consent, progress, and support copy can scale. | Friction log and support FAQ items. |
+
+This roster creates better Extended Access evidence because every connected athlete represents a real future user type. Internal evidence still matters, but it should come from observability and operations tools rather than consuming Strava athlete slots.
 
 ## Pilot Rules for the 10 People
 
