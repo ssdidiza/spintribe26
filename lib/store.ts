@@ -35,7 +35,7 @@ interface AppState {
 
   login: (stravaId?: string, name?: string, avatar?: string) => void;
   logout: () => void;
-  completeOnboarding: (role: UserRole, tier: Tier, zone?: string) => void;
+  completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean) => void;
   addChampionSession: (
     type: "ftp_improver" | "champing",
     notes: string,
@@ -94,10 +94,10 @@ export const useStore = create<AppState>()(
         set({ currentUser: null, isOnboarded: false });
       },
 
-      completeOnboarding: (role, tier, zone) => {
+      completeOnboarding: (role, tier, zone, leaderboardConsent) => {
         const user = get().currentUser;
         if (!user) return;
-        const updated = { ...user, role, tier, onboarded: true, ...(zone ? { zone, region: zone } : {}) };
+        const updated = { ...user, role, tier, onboarded: true, leaderboardConsent: leaderboardConsent ?? false, ...(zone ? { zone, region: zone } : {}) };
         set({
           currentUser: updated,
           isOnboarded: true,

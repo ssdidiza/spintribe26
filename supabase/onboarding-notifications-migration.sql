@@ -5,10 +5,11 @@
 -- Truncate all user data (fresh start)
 TRUNCATE public.champion_sessions, public.activities, public.zones, public.users RESTART IDENTITY CASCADE;
 
--- Add onboarded + zone to users
+-- Add onboarded + zone + leaderboard_consent to users
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS onboarded boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS zone text;
+  ADD COLUMN IF NOT EXISTS zone text,
+  ADD COLUMN IF NOT EXISTS leaderboard_consent boolean NOT NULL DEFAULT false;
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (

@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { role, tier, zone, region } = body;
+  const { role, tier, zone, region, leaderboardConsent } = body;
 
   // Validate role
   if (!VALID_ROLES.includes(role)) {
@@ -45,6 +45,7 @@ export async function PATCH(req: NextRequest) {
       tier: Number(tier),
       zone: effectiveZone,
       onboarded: true,
+      leaderboard_consent: leaderboardConsent === true,
       updated_at: new Date().toISOString(),
     })
     .eq("strava_id", userId);
