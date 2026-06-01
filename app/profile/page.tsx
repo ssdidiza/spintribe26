@@ -8,6 +8,7 @@ import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap } from "lucide-react";
 
 export default function ProfilePage() {
@@ -41,7 +42,11 @@ export default function ProfilePage() {
   const roleLabel = isAdmin ? "Admin" : isChamp ? "Champion" : "Member";
   const roleColor = isAdmin ? "#ff4b35" : isChamp ? "#ffffff" : "#a0a0a0";
 
-  function handleLogout() {
+  async function handleLogout() {
+    await Promise.allSettled([
+      supabase.auth.signOut(),
+      fetch("/api/auth/logout", { method: "POST" }),
+    ]);
     logout();
     router.push("/");
   }

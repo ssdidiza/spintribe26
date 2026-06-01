@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { getEffectiveUserId, getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// GET /api/champion-sessions — hydrate current user's sessions from Supabase
+// GET /api/champion-sessions - hydrate current user's sessions from Supabase.
 export async function GET() {
   const session = await getSession();
-  if (!session.athleteId) {
+  const userId = getEffectiveUserId(session);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -13,7 +14,7 @@ export async function GET() {
   const { data, error } = await db
     .from("champion_sessions")
     .select("*")
-    .eq("user_strava_id", String(session.athleteId))
+    .eq("user_strava_id", userId)
     .order("date", { ascending: false })
     .limit(50);
 
@@ -21,10 +22,11 @@ export async function GET() {
   return NextResponse.json({ sessions: data ?? [] });
 }
 
-// POST /api/champion-sessions — persist a new session to Supabase
+// POST /api/champion-sessions - persist a new session to Supabase.
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session.athleteId) {
+  const userId = getEffectiveUserId(session);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,14 +36,14 @@ export async function POST(req: NextRequest) {
   const { data, error } = await db
     .from("champion_sessions")
     .insert({
-      user_strava_id:       String(session.athleteId),
-      type:                 body.type,
-      notes:                body.notes ?? "",
-      zone_id:              body.zoneId   ? Number(body.zoneId) : null,
-      zone_name:            body.zoneName ?? "",
-      strava_activity_id:   body.stravaActivityId   ?? null,
-      strava_activity_name: body.stravaActivityName  ?? "",
-      strava_activity_km:   body.stravaActivityKm    ?? null,
+      user_strava_id: userId,
+      type: body.type,
+      notes: body.notes ?? "",
+      zone_id: body.zoneId ? Number(body.zoneId) : null,
+      zone_name: body.zoneName ?? "",
+      strava_activity_id: body.stravaActivityId ?? null,
+      strava_activity_name: body.stravaActivityName ?? "",
+      strava_activity_km: body.stravaActivityKm ?? null,
     })
     .select()
     .single();

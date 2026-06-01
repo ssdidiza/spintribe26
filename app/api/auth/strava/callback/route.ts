@@ -109,6 +109,7 @@ export async function GET(req: NextRequest) {
 
     const session = await getSession();
     session.athleteId = tokens.athleteId;
+    session.userId = undefined;
     await session.save();
 
     let redirectUrl: URL;

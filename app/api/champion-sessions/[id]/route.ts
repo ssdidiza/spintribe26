@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { getEffectiveUserId, getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// DELETE /api/champion-sessions/:id — Rule B: remove an erroneous check-in
+// DELETE /api/champion-sessions/:id - remove an erroneous check-in.
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session.athleteId) {
+  const userId = getEffectiveUserId(session);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -19,7 +20,7 @@ export async function DELETE(
     .from("champion_sessions")
     .delete()
     .eq("id", id)
-    .eq("user_strava_id", String(session.athleteId)); // ownership enforced server-side
+    .eq("user_strava_id", userId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });

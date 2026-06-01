@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
 
     const session = await getSession();
     session.userId = data.user.id;
+    session.athleteId = undefined;
     await session.save();
 
     return NextResponse.json({ ok: true });

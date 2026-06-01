@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getSession } from "@/lib/session";
+import { getEffectiveUserId, getSession } from "@/lib/session";
 
-/** GET /api/activities — return current user's persisted activities from Supabase */
+/** GET /api/activities - return current user's persisted activities from Supabase */
 export async function GET() {
   const session = await getSession();
-  if (!session.athleteId) {
+  const userId = getEffectiveUserId(session);
+  if (!userId) {
     return NextResponse.json({ activities: [] });
   }
 
@@ -13,7 +14,7 @@ export async function GET() {
   const { data, error } = await db
     .from("activities")
     .select("id,strava_id,user_strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id,created_at")
-    .eq("user_strava_id", String(session.athleteId))
+    .eq("user_strava_id", userId)
     .order("date", { ascending: false })
     .limit(200);
 

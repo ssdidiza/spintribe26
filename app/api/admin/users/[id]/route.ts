@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { getEffectiveUserId, getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// PATCH /api/admin/users/:id — update a user's role or tier (admin only)
+// PATCH /api/admin/users/:id - update a user's role or tier (admin only).
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session.athleteId) {
+  const userId = getEffectiveUserId(session);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const db = supabaseAdmin();
 
-  // Verify the caller is an admin
   const { data: caller } = await db
     .from("users")
     .select("role")
-    .eq("strava_id", String(session.athleteId))
+    .eq("strava_id", userId)
     .single();
 
   if (caller?.role !== "admin") {
