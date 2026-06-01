@@ -106,6 +106,7 @@ export default function DashboardPage() {
   const paceKmPerDay    = dayOfMonth > 0 ? monthlyKm / dayOfMonth : 0;
   const projectedTotal  = Math.round(paceKmPerDay * daysInMonth);
   const kmNeededPerDay  = daysLeft > 0 ? Math.ceil(remainingKm / daysLeft) : 0;
+  const targetPacePerDay = targetKm / daysInMonth;
   const paceRatio       = expectedKmByNow > 0 ? monthlyKm / expectedKmByNow : (monthlyKm > 0 ? 2 : 0);
 
   type ProgressStatus = "complete" | "great" | "on_track" | "behind";
@@ -295,8 +296,8 @@ export default function DashboardPage() {
                   <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">of pace</p>
                 </div>
                 <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
-                  <p className="text-lg font-black text-[#ffffff]">{kmNeededPerDay}</p>
-                  <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">km/day needed</p>
+                  <p className="text-lg font-black text-[#ffffff]">{targetPacePerDay.toFixed(1)}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">target pace</p>
                 </div>
                 <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
                   <p className="text-lg font-black text-[#ffffff]">{projectedTotal}</p>
@@ -309,7 +310,7 @@ export default function DashboardPage() {
                   ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
                   : progressStatus === "great"
                   ? `At your current pace you'll finish around ${projectedTotal} km — ${projectedTotal - targetKm} km over target.`
-                  : `You're right on pace. Keep riding ${kmNeededPerDay} km/day to secure your ${targetKm} km goal.`}
+                  : `You're right on pace. Keep riding near ${targetPacePerDay.toFixed(1)} km/day to secure your ${targetKm} km goal.`}
               </p>
             </>
           ) : (
