@@ -1,7 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Health Disclaimer â€” spera",
+  title: "Health Disclaimer — spera",
 };
 
 export default function HealthDisclaimer() {

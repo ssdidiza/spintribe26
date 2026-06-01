@@ -14,7 +14,7 @@ import ZoneSelector from "@/components/ZoneSelector";
 import ActivityPicker from "@/components/ActivityPicker";
 import NotificationBanner from "@/components/NotificationBanner";
 import {
-  Star, MapPin, X, CheckCircle2, AlertCircle, ChevronRight, Trash2,
+  Star, MapPin, X, CheckCircle2, AlertCircle, ChevronRight, Trash2, Bike,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export default function ChampionPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const {
-    currentUser, isOnboarded, users, activities, zones,
+    currentUser, isOnboarded, users, activities,
     championSessions, addChampionSession, deleteChampionSession,
     hydrateChampionSessions,
   } = useStore();
@@ -135,7 +135,7 @@ export default function ChampionPage() {
 
         <NotificationBanner />
 
-        {/* ── Annual progress + check-in ───────────────────────────── */}
+        {/* Annual progress + check-in */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Annual Progress</p>
@@ -162,7 +162,7 @@ export default function ChampionPage() {
           </button>
         </div>
 
-        {/* ── Recent check-ins ─────────────────────────────────────── */}
+        {/* Recent check-ins */}
         <section>
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Recent Check-ins</p>
           {recentSessions.length === 0 ? (
@@ -183,8 +183,8 @@ export default function ChampionPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-[#ffffff]">Champing Session</p>
                       {s.stravaActivityName && (
-                        <p className="text-[10px] text-[#b8b8b8] truncate mt-0.5">
-                          🚴 {s.stravaActivityName}{s.stravaActivityKm ? ` · ${s.stravaActivityKm} km` : ""}
+                        <p className="text-[10px] text-[#b8b8b8] truncate">
+                          {s.stravaActivityName}{s.stravaActivityKm ? ` - ${s.stravaActivityKm} km` : ""}
                         </p>
                       )}
                       {s.zoneName && (
@@ -228,7 +228,7 @@ export default function ChampionPage() {
           )}
         </section>
 
-        {/* ── Tier members ─────────────────────────────────────────── */}
+        {/* Tier members */}
         {tierMembers.length > 0 && (
           <section>
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">
@@ -258,7 +258,7 @@ export default function ChampionPage() {
         )}
       </main>
 
-      {/* ── Check-in modal ───────────────────────────────────────────── */}
+      {/* Check-in modal */}
       {open && (
         <div
           className="fixed inset-0 z-[70] bg-black/70 flex items-end sm:items-center justify-center"
@@ -331,11 +331,11 @@ export default function ChampionPage() {
                   {selectedActivity && (
                     <div className="rounded-xl p-3.5 flex items-center gap-3"
                       style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.18)" }}>
-                      <span className="text-base">🚴</span>
+                      <Bike size={16} className="text-[#ff4b35]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-[#ffffff] truncate">{selectedActivity.name}</p>
                         <p className="text-[10px] text-[#b8b8b8]">
-                          {(selectedActivity.distance / 1000).toFixed(1)} km · {format(new Date(selectedActivity.date), "MMM d")}
+                          {(selectedActivity.distance / 1000).toFixed(1)} km - {format(new Date(selectedActivity.date), "MMM d")}
                         </p>
                       </div>
                     </div>
@@ -344,7 +344,7 @@ export default function ChampionPage() {
                   {/* Zone (optional) */}
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#b8b8b8] mb-2">
-                      Zone <span className="normal-case text-[#b8b8b8]/45 font-normal">· optional</span>
+                      Zone <span className="normal-case text-[#b8b8b8]/45 font-normal">- optional</span>
                     </p>
                     <ZoneSelector region={currentUser.region ?? currentUser.zone ?? "Gauteng"} value={selectedZone} onChange={setSelectedZone} />
                   </div>
@@ -352,7 +352,7 @@ export default function ChampionPage() {
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notes (optional)…"
+                    placeholder="Notes (optional)..."
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-[#ffffff] placeholder:text-[#b8b8b8]/40 resize-none focus:outline-none focus:border-[#ff4b35]/50 transition-colors"
                     rows={3}
                   />

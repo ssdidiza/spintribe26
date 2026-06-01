@@ -8,7 +8,7 @@ import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
-import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2 } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap } from "lucide-react";
 
 export default function ProfilePage() {
   const router   = useRouter();
@@ -247,7 +247,9 @@ export default function ProfilePage() {
               className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-[#b8b8b8]/70"
               style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.2)" }}
             >
-              <span className="font-bold text-[#ff4b35]">⚡ FTP not showing?</span>{" "}
+              <span className="inline-flex items-center gap-1 font-bold text-[#ff4b35]">
+                <Zap size={11} /> FTP not showing?
+              </span>{" "}
               First set a value in{" "}
               <a
                 href="https://www.strava.com/settings/performance"
