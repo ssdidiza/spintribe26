@@ -118,6 +118,16 @@ export default function DashboardPage() {
           <h1 className="font-bold text-[#ffffff] text-base leading-tight truncate max-w-[200px]">
             {currentUser.name.split(/[\s"]/)[0]}
           </h1>
+          <a
+            href="https://open.spotify.com/playlist/05H398jB0GTyf6M30oi2Nv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 mt-0.5 rounded-full px-2 py-0.5 transition-opacity hover:opacity-100 opacity-70"
+            style={{ background: "rgba(30,215,96,0.12)", border: "1px solid rgba(30,215,96,0.25)" }}
+          >
+            <span style={{ color: "#1ED760", fontSize: 9 }}>▶</span>
+            <span className="text-[9px] font-semibold tracking-wide" style={{ color: "#1ED760" }}>Now Playing</span>
+          </a>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
