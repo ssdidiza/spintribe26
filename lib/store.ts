@@ -59,7 +59,7 @@ interface AppState {
   addZone: (zone: Omit<Zone, "id" | "usageCount" | "createdAt">) => Zone;
   incrementZoneUsage: (zoneId: string) => void;
   decrementZoneUsage: (zoneId: string) => void;
-  syncStravaActivities: () => void;
+  syncStravaActivities: (opts?: { scope?: "month" | "year" }) => Promise<void>;
 }
 
 export const useStore = create<AppState>()(
@@ -320,9 +320,10 @@ export const useStore = create<AppState>()(
         }
       },
 
-      syncStravaActivities: async () => {
+      syncStravaActivities: async (opts) => {
         try {
           const now = new Date();
+          const scope = opts?.scope ?? "month";
           const res = await fetch("/api/strava/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -330,6 +331,7 @@ export const useStore = create<AppState>()(
               year: now.getFullYear(),
               month: now.getMonth() + 1,
               force: true,
+              scope,
             }),
           });
           if (!res.ok) return;
@@ -359,14 +361,14 @@ export const useStore = create<AppState>()(
               detectedZoneId: a.detected_zone_id ?? undefined,
             })
           );
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+          const rangeStart = new Date(now.getFullYear(), scope === "year" ? 0 : now.getMonth(), 1).getTime();
+          const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
           set((s) => ({
             activities: [
               ...s.activities.filter((a) => {
                 if (a.userId !== user.id) return true;
                 const activityTime = new Date(a.date).getTime();
-                return activityTime < monthStart || activityTime >= monthEnd;
+                return activityTime < rangeStart || activityTime >= rangeEnd;
               }),
               ...mapped,
             ],

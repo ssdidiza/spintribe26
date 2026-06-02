@@ -164,7 +164,7 @@ export async function getStravaActivitiesForMonth(
   const params = new URLSearchParams({
     after: String(after),
     before: String(before),
-    per_page: "100",
+    per_page: "200",
   });
   const res = await fetch(`${STRAVA_BASE}/athlete/activities?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },

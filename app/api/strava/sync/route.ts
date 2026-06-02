@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const forceRefresh = body.force === true;
+  const scope = body.scope === "year" ? "year" : "month";
   const now = new Date();
   const rawYear = Number(body.year ?? now.getFullYear());
   const rawMonth = Number(body.month ?? now.getMonth() + 1);
@@ -74,8 +75,11 @@ export async function POST(req: NextRequest) {
   const m = Number.isInteger(rawMonth) && rawMonth >= 1 && rawMonth <= 12 ? rawMonth : now.getMonth() + 1;
 
   const db = supabaseAdmin();
-  const monthStart = new Date(Date.UTC(y, m - 1, 1)).toISOString();
-  const monthEnd = new Date(Date.UTC(y, m, 1)).toISOString();
+  const syncMonths = scope === "year"
+    ? Array.from({ length: y === now.getFullYear() ? now.getMonth() + 1 : 12 }, (_, i) => i + 1)
+    : [m];
+  const rangeStart = new Date(Date.UTC(y, syncMonths[0] - 1, 1)).toISOString();
+  const rangeEnd = new Date(Date.UTC(y, syncMonths[syncMonths.length - 1], 1)).toISOString();
 
   const { data: user } = await db
     .from("users")
@@ -87,13 +91,13 @@ export async function POST(req: NextRequest) {
     .from("activities")
     .select("strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id")
     .eq("user_strava_id", String(session.athleteId))
-    .gte("date", monthStart)
-    .lt("date", monthEnd)
+    .gte("date", rangeStart)
+    .lt("date", rangeEnd)
     .order("date", { ascending: false });
 
   const lastSyncAt = user?.last_strava_sync_at ? new Date(user.last_strava_sync_at).getTime() : 0;
   const sameMonth = user?.last_strava_sync_year === y && user?.last_strava_sync_month === m;
-  const withinCooldown = !forceRefresh && sameMonth && Date.now() - lastSyncAt < SYNC_COOLDOWN_MS;
+  const withinCooldown = scope === "month" && !forceRefresh && sameMonth && Date.now() - lastSyncAt < SYNC_COOLDOWN_MS;
 
   if (withinCooldown && cached.data) {
     return NextResponse.json({
@@ -110,7 +114,9 @@ export async function POST(req: NextRequest) {
 
   let sanitized: SanitizedStravaActivity[];
   try {
-    const stravaActivities = await getStravaActivitiesForMonth(accessToken, y, m);
+    const stravaActivities = (
+      await Promise.all(syncMonths.map((month) => getStravaActivitiesForMonth(accessToken, y, month)))
+    ).flat();
     sanitized = stravaActivities.map(sanitizeActivity);
   } catch (e) {
     if (e instanceof StravaApiError) {

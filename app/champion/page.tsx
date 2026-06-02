@@ -14,20 +14,24 @@ import ZoneSelector from "@/components/ZoneSelector";
 import ActivityPicker from "@/components/ActivityPicker";
 import NotificationBanner from "@/components/NotificationBanner";
 import {
-  Star, MapPin, X, CheckCircle2, AlertCircle, ChevronRight, Trash2, Bike,
+  Star, MapPin, X, CheckCircle2, AlertCircle, ChevronRight, Trash2, Bike, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 type ModalStep = "activity" | "notes";
 
+function normalizeZoneName(value?: string) {
+  return value?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
+}
+
 export default function ChampionPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const {
-    currentUser, isOnboarded, users, activities,
+    currentUser, isOnboarded, users, activities, zones,
     championSessions, addChampionSession, deleteChampionSession,
-    hydrateChampionSessions,
+    hydrateChampionSessions, hydrateActivities, syncStravaActivities,
   } = useStore();
 
   const [open,             setOpen]            = useState(false);
@@ -37,15 +41,16 @@ export default function ChampionPage() {
   const [notes,            setNotes]           = useState("");
   const [saved,            setSaved]           = useState(false);
   const [confirmDeleteId,  setConfirmDeleteId] = useState<string | null>(null);
+  const [syncingYear,      setSyncingYear]     = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) router.replace("/");
     else if (!isOnboarded) router.replace("/onboarding");
     else if (!canAccessChampionFeatures(currentUser)) router.replace("/dashboard");
-    else hydrateChampionSessions();
+    else Promise.all([hydrateChampionSessions(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, currentUser, isOnboarded]);
+  }, [hydrated, currentUser?.id, isOnboarded]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -85,6 +90,11 @@ export default function ChampionPage() {
     [championSessions, currentUser?.id]
   );
 
+  const championZone = useMemo(() => {
+    const zoneName = normalizeZoneName(currentUser?.zone ?? currentUser?.region);
+    return zones.find((z) => normalizeZoneName(z.name) === zoneName) ?? null;
+  }, [zones, currentUser?.zone, currentUser?.region]);
+
   const tierMembers = useMemo(
     () => users.filter((u) => u.isConnected && u.tier === currentUser?.tier && u.id !== currentUser?.id),
     [users, currentUser?.tier, currentUser?.id]
@@ -98,6 +108,20 @@ export default function ChampionPage() {
     setNotes("");
     setSaved(false);
   }, []);
+
+  const handleYearSync = useCallback(async () => {
+    setSyncingYear(true);
+    await syncStravaActivities({ scope: "year" });
+    setSyncingYear(false);
+  }, [syncStravaActivities]);
+
+  const handleActivitySelect = useCallback((activity: Activity) => {
+    setSelectedActivity(activity);
+    const detectedZone = activity.detectedZoneId
+      ? zones.find((z) => z.id === activity.detectedZoneId)
+      : null;
+    setSelectedZone(detectedZone ?? championZone);
+  }, [zones, championZone]);
 
   const handleSubmit = useCallback(() => {
     if (!selectedActivity) return;
@@ -114,7 +138,7 @@ export default function ChampionPage() {
 
   if (!hydrated || !currentUser || !canAccessChampionFeatures(currentUser)) return null;
 
-  const annualPct = Math.min(100, Math.round((champingThisYear / 22) * 100));
+  const annualPct = Math.min(100, Math.round((champingThisYear / 10) * 100));
 
   return (
     <div className="min-h-screen bg-[#020202] mb-nav">
@@ -159,6 +183,15 @@ export default function ChampionPage() {
           >
             <Star size={13} fill="currentColor" />
             LOG CHECK-IN
+          </button>
+
+          <button
+            onClick={handleYearSync}
+            disabled={syncingYear}
+            className="mt-2 w-full rounded-2xl py-3 font-bold text-xs tracking-widest text-[#ffffff] flex items-center justify-center gap-2 transition-all active:scale-[0.98] border border-white/10 bg-white/[0.04] hover:border-[#ff4b35]/40 disabled:opacity-60"
+          >
+            <RefreshCw size={13} className={syncingYear ? "animate-spin" : ""} />
+            {syncingYear ? "IMPORTING YEAR RIDES" : "IMPORT YEAR RIDES"}
           </button>
         </div>
 
@@ -299,14 +332,16 @@ export default function ChampionPage() {
                     style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.2)" }}>
                     <AlertCircle size={13} style={{ color: "#ff4b35" }} className="mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-[#b8b8b8] leading-relaxed">
-                      Link a <strong className="text-[#ffffff]">Strava ride</strong> as proof of your champing session.
+                      Link a <strong className="text-[#ffffff]">year-to-date Strava ride</strong> only if you were actually champing in that zone.
                     </p>
                   </div>
                   <ActivityPicker
                     activities={userActivities}
                     value={selectedActivity}
-                    onChange={setSelectedActivity}
+                    onChange={handleActivitySelect}
                     usedActivityIds={usedActivityIds}
+                    preferredZoneId={championZone?.id}
+                    preferredZoneName={championZone?.name}
                   />
                   <button
                     onClick={() => setStep("notes")}

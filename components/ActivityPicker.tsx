@@ -1,17 +1,17 @@
 "use client";
+
 import { Activity } from "@/lib/types";
-import { Check, Bike, Zap, Activity as ActivityIcon, Ban } from "lucide-react";
+import { Check, Bike, MapPin, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   Ride: <Bike size={14} />,
-  VirtualRide: <Zap size={14} />,
-  EBikeRide: <Zap size={14} />,
-  Run: <ActivityIcon size={14} />,
+  EBikeRide: <Bike size={14} />,
+  Velomobile: <Bike size={14} />,
 };
 
-const ELIGIBLE_TYPES = ["Ride", "VirtualRide", "EBikeRide", "Run"];
+const ELIGIBLE_TYPES = ["Ride", "EBikeRide", "Velomobile"];
 
 interface ActivityPickerProps {
   activities: Activity[];
@@ -19,6 +19,8 @@ interface ActivityPickerProps {
   onChange: (a: Activity) => void;
   /** Strava activity IDs already linked to existing champion sessions (Rule D) */
   usedActivityIds?: Set<string>;
+  preferredZoneId?: string;
+  preferredZoneName?: string;
 }
 
 export default function ActivityPicker({
@@ -26,17 +28,28 @@ export default function ActivityPicker({
   value,
   onChange,
   usedActivityIds = new Set(),
+  preferredZoneId,
+  preferredZoneName,
 }: ActivityPickerProps) {
+  const currentYear = new Date().getFullYear();
   const eligible = activities
-    .filter((a) => ELIGIBLE_TYPES.includes(a.type))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 10);
+    .filter((a) => {
+      const activityYear = new Date(a.date).getFullYear();
+      return activityYear === currentYear && ELIGIBLE_TYPES.includes(a.type);
+    })
+    .sort((a, b) => {
+      const aZoneMatch = preferredZoneId && a.detectedZoneId === preferredZoneId ? 1 : 0;
+      const bZoneMatch = preferredZoneId && b.detectedZoneId === preferredZoneId ? 1 : 0;
+      if (aZoneMatch !== bZoneMatch) return bZoneMatch - aZoneMatch;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    })
+    .slice(0, 40);
 
   if (eligible.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-        <p className="text-xs text-white/40">No eligible activities found.</p>
-        <p className="text-[10px] text-white/30 mt-1">Sync Strava on the dashboard first.</p>
+        <p className="text-xs text-white/40">No year-to-date rides found.</p>
+        <p className="text-[10px] text-white/30 mt-1">Import year rides or sync Strava first.</p>
       </div>
     );
   }
@@ -46,6 +59,8 @@ export default function ActivityPicker({
       {eligible.map((a) => {
         const selected = value?.id === a.id;
         const alreadyLogged = usedActivityIds.has(a.stravaId ?? a.id);
+        const zoneMatch = preferredZoneId && a.detectedZoneId === preferredZoneId;
+        const detectedZone = a.detectedZoneId?.replace(/^[a-z]+-/, "").replace(/-/g, " ");
         const km = (a.distance / 1000).toFixed(1);
 
         return (
@@ -59,14 +74,16 @@ export default function ActivityPicker({
                 ? "border-white/5 bg-white/[0.02] cursor-not-allowed opacity-50"
                 : selected
                 ? "border-orange-500/50 bg-orange-500/10"
+                : zoneMatch
+                ? "border-[#ff4b35]/40 bg-[#ff4b35]/10 hover:border-[#ff4b35]/60"
                 : "border-white/10 bg-white/5 hover:border-white/20"
             )}
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{
-                background: alreadyLogged ? "#ffffff05" : selected ? "#FF650020" : "#ffffff10",
-                color: alreadyLogged ? "#ffffff20" : selected ? "#FF6500" : "#ffffff40",
+                background: alreadyLogged ? "#ffffff05" : selected || zoneMatch ? "#FF650020" : "#ffffff10",
+                color: alreadyLogged ? "#ffffff20" : selected || zoneMatch ? "#FF6500" : "#ffffff40",
               }}
             >
               {alreadyLogged ? <Ban size={14} /> : (TYPE_ICON[a.type] ?? <Bike size={14} />)}
@@ -80,10 +97,18 @@ export default function ActivityPicker({
               >
                 {a.name}
               </p>
-              <p className="text-[10px] text-white/30">
-                {format(new Date(a.date), "MMM d")} · {km} km
+              <p className="text-[10px] text-white/30 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                <span>{format(new Date(a.date), "MMM d")} - {km} km</span>
+                {zoneMatch && (
+                  <span className="text-[#ff4b35] inline-flex items-center gap-1">
+                    <MapPin size={9} /> {preferredZoneName ?? "zone match"}
+                  </span>
+                )}
+                {!zoneMatch && detectedZone && (
+                  <span className="text-white/35">- {detectedZone}</span>
+                )}
                 {alreadyLogged && (
-                  <span className="ml-1.5 text-white/20">· already logged</span>
+                  <span className="text-white/20">- already logged</span>
                 )}
               </p>
             </div>
