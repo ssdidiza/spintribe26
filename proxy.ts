@@ -1,7 +1,7 @@
 /**
  * Server-side route protection via iron-session.
  * Redirects unauthenticated requests on protected routes to the landing page.
- * (Renamed from middleware.ts — Next.js 16 uses proxy.ts convention)
+ * Next.js 16 uses the proxy.ts convention.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
@@ -9,7 +9,7 @@ import type { SessionData } from "@/lib/session";
 
 const sessionOptions = {
   cookieName: "spintribe_session",
-  password: process.env.NEXTAUTH_SECRET!,
+  password: (process.env.NEXTAUTH_SECRET ?? process.env.SESSION_SECRET)!,
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
@@ -20,11 +20,9 @@ const sessionOptions = {
 
 export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
-
-  // Read session from the incoming request cookies
   const session = await getIronSession<SessionData>(req.cookies as never, sessionOptions);
 
-  if (!session.athleteId) {
+  if (!session.athleteId && !session.userId) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
@@ -38,6 +36,5 @@ export const config = {
     "/leaderboard/:path*",
     "/profile/:path*",
     "/admin/:path*",
-    // Note: /onboarding excluded — the session IS set at this point (just came from OAuth)
   ],
 };
