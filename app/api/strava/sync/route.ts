@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
+  const forceRefresh = body.force === true;
   const now = new Date();
   const rawYear = Number(body.year ?? now.getFullYear());
   const rawMonth = Number(body.month ?? now.getMonth() + 1);
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   const lastSyncAt = user?.last_strava_sync_at ? new Date(user.last_strava_sync_at).getTime() : 0;
   const sameMonth = user?.last_strava_sync_year === y && user?.last_strava_sync_month === m;
-  const withinCooldown = sameMonth && Date.now() - lastSyncAt < SYNC_COOLDOWN_MS;
+  const withinCooldown = !forceRefresh && sameMonth && Date.now() - lastSyncAt < SYNC_COOLDOWN_MS;
 
   if (withinCooldown && cached.data) {
     return NextResponse.json({
@@ -146,6 +147,25 @@ export async function POST(req: NextRequest) {
     }));
 
     await db.from("activities").upsert(rows, { onConflict: "strava_id" });
+  }
+
+  const currentStravaIds = new Set(sanitized.map((a) => String(a.id)));
+  const staleActivityIds = (cached.data ?? [])
+    .map((a) => String(a.strava_id))
+    .filter((id) => !currentStravaIds.has(id));
+
+  if (staleActivityIds.length > 0) {
+    await db
+      .from("champion_sessions")
+      .delete()
+      .eq("user_strava_id", String(session.athleteId))
+      .in("strava_activity_id", staleActivityIds);
+
+    await db
+      .from("activities")
+      .delete()
+      .eq("user_strava_id", String(session.athleteId))
+      .in("strava_id", staleActivityIds);
   }
 
   await db

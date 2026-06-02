@@ -289,7 +289,7 @@ export const useStore = create<AppState>()(
           if (!res.ok) return;
           const { activities: rows } = await res.json();
           const user = get().currentUser;
-          if (!user || !Array.isArray(rows) || rows.length === 0) return;
+          if (!user || !Array.isArray(rows)) return;
           const mapped = rows.map((a: {
             strava_id: string; name: string; distance: number;
             moving_time: number; type: string; date: string;
@@ -329,12 +329,13 @@ export const useStore = create<AppState>()(
             body: JSON.stringify({
               year: now.getFullYear(),
               month: now.getMonth() + 1,
+              force: true,
             }),
           });
           if (!res.ok) return;
           const { activities } = await res.json();
           const user = get().currentUser;
-          if (!user || !activities?.length) return;
+          if (!user || !Array.isArray(activities)) return;
           const mapped: Activity[] = activities.map(
             (a: {
               id: number;
@@ -358,9 +359,15 @@ export const useStore = create<AppState>()(
               detectedZoneId: a.detected_zone_id ?? undefined,
             })
           );
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
           set((s) => ({
             activities: [
-              ...s.activities.filter((a) => a.userId !== user.id),
+              ...s.activities.filter((a) => {
+                if (a.userId !== user.id) return true;
+                const activityTime = new Date(a.date).getTime();
+                return activityTime < monthStart || activityTime >= monthEnd;
+              }),
               ...mapped,
             ],
           }));

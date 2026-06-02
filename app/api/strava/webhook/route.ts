@@ -30,6 +30,12 @@ export async function POST(req: NextRequest) {
 
   if (event.aspect_type === "delete") {
     await db
+      .from("champion_sessions")
+      .delete()
+      .eq("user_strava_id", athleteId)
+      .eq("strava_activity_id", String(event.object_id));
+
+    await db
       .from("activities")
       .delete()
       .eq("user_strava_id", athleteId)
