@@ -129,10 +129,10 @@ export default function DashboardPage() {
     { label: "Rides",  value: userActivities.length,                               icon: <Bike       size={14} className="text-[#ff4b35]" /> },
     { label: "Avg km", value: avgKm,                                                icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
     { label: "Time",   value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
-    { label: "Rank",   value: currentRankEntry ? `#${currentRankEntry.rank}` : "—", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
+    { label: "Rank",   value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
   ];
 
-  const MEDALS = ["🥇", "🥈", "🥉"];
+  const MEDALS = ["#1", "#2", "#3"];
 
   return (
     <div className="min-h-screen bg-[#020202] mb-nav">
@@ -153,14 +153,14 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-1 mt-0.5 rounded-full px-2 py-0.5 transition-opacity hover:opacity-100 opacity-70"
             style={{ background: "rgba(30,215,96,0.12)", border: "1px solid rgba(30,215,96,0.25)" }}
           >
-            <span style={{ color: "#1ED760", fontSize: 9 }}>▶</span>
+            <span style={{ color: "#1ED760", fontSize: 9 }}>Play</span>
             <span className="text-[9px] font-semibold tracking-wide" style={{ color: "#1ED760" }}>Now Playing</span>
           </a>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
-            {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km
+            {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
           </span>
           <button onClick={handleSync} disabled={syncing}
             className="w-8 h-8 rounded-full glass flex items-center justify-center text-[#b8b8b8] disabled:opacity-40 hover:text-[#ff4b35] transition-colors">
@@ -176,7 +176,7 @@ export default function DashboardPage() {
         {/* ── Cinematic hero ────────────────────────────────────────────── */}
         <div className="relative text-center pt-4 pb-2">
           <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#b8b8b8]/50 mb-3">
-            {format(now, "MMMM yyyy")} · {TIER_LABELS[currentUser.tier]}
+            {format(now, "MMMM yyyy")} - {TIER_LABELS[currentUser.tier]}
           </p>
           <div className="flex items-end justify-center gap-2 mb-1">
             <span
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             <span className="text-2xl font-light text-[#b8b8b8]/70 pb-3">km</span>
           </div>
           <p className="text-sm text-[#b8b8b8]/50 mb-4">
-            {currentRankEntry ? `Rank #${currentRankEntry.rank} of ${leaderboardEntries.length} · ` : ""}
+            {currentRankEntry ? `Rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
             {pct}% of {targetKm} km
           </p>
           <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto">
@@ -291,7 +291,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
                   <p className="text-lg font-black" style={{ color: statusCfg.color }}>
-                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "—"}
+                    {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "-"}
                   </p>
                   <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">of pace</p>
                 </div>
@@ -309,13 +309,13 @@ export default function DashboardPage() {
                 {progressStatus === "behind"
                   ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
                   : progressStatus === "great"
-                  ? `At your current pace you'll finish around ${projectedTotal} km — ${projectedTotal - targetKm} km over target.`
+                  ? `At your current pace you'll finish around ${projectedTotal} km - ${projectedTotal - targetKm} km over target.`
                   : `You're right on pace. Keep riding near ${targetPacePerDay.toFixed(1)} km/day to secure your ${targetKm} km goal.`}
               </p>
             </>
           ) : (
             <p className="text-sm text-[#b8b8b8] leading-relaxed">
-              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding — every km now is a bonus.
+              You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding - every km now is a bonus.
             </p>
           )}
         </div>
@@ -347,7 +347,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <div>
-              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP · Functional Threshold Power</p>
+              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP - Functional Threshold Power</p>
               <div className="flex items-end gap-2">
                 <span className="text-4xl font-black" style={{ color: "#ff4b35" }}>{ftp}</span>
                 <span className="text-sm text-[#b8b8b8] mb-1">watts</span>
@@ -380,7 +380,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Recent Rides</p>
             {syncing
-              ? <span className="text-[10px] text-[#b8b8b8]">Syncing…</span>
+              ? <span className="text-[10px] text-[#b8b8b8]">Syncing...</span>
               : <PoweredByStrava />}
           </div>
           {syncing && userActivities.length === 0 ? (
@@ -400,15 +400,15 @@ export default function DashboardPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-base flex-shrink-0">
-                    {activity.type === "VirtualRide" ? "🖥" : activity.type === "Run" ? "🏃" : "🚴"}
+                  <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-[#ff4b35] flex-shrink-0">
+                    <Bike size={15} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-[#ffffff] truncate">{activity.name}</p>
                     <p className="text-[10px] text-[#b8b8b8]">
                       {format(new Date(activity.date), "MMM d")}
                       {activity.detectedZoneId && (
-                        <span className="ml-1.5 text-[#ffffff]/70">· {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
+                        <span className="ml-1.5 text-[#ffffff]/70">- {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
                       )}
                     </p>
                   </div>
@@ -430,7 +430,7 @@ export default function DashboardPage() {
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing Strava…" : "Sync with Strava"}
+          {syncing ? "Syncing Strava..." : "Sync with Strava"}
         </button>
 
       </main>

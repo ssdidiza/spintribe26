@@ -9,7 +9,7 @@ import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap, MessageSquare } from "lucide-react";
 
 export default function ProfilePage() {
   const router   = useRouter();
@@ -140,7 +140,7 @@ export default function ProfilePage() {
                 <span className="text-sm font-semibold" style={{ color: roleColor }}>{roleLabel}</span>
                 {(currentUser.zone || currentUser.region) && (
                   <>
-                    <span className="text-white/30">·</span>
+                    <span className="text-white/30">-</span>
                     <span className="flex items-center gap-1 text-sm text-[#b8b8b8]">
                       <MapPin size={11} />
                       {currentUser.zone || currentUser.region}
@@ -157,11 +157,11 @@ export default function ProfilePage() {
                 style={{ background: `${tierColor}18`, color: tierColor, border: `1px solid ${tierColor}40` }}
               >
                 <Lock size={10} />
-                {TIER_LABELS[currentUser.tier]} · {currentUser.tier} km target
+                {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km target
               </span>
               {isChamp && (
                 <p className="text-[9px] text-[#b8b8b8]/40">
-                  Distance locked — disconnect account to change tier
+                  Distance locked - disconnect account to change tier
                 </p>
               )}
             </div>
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                 rel="noopener noreferrer"
                 className="text-[11px] font-semibold text-[#FC4C02]/80 hover:text-[#FC4C02] transition-colors underline underline-offset-2"
               >
-                View Strava Profile ↗
+                View Strava Profile
               </a>
             )}
           </div>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 text-[#ff4b35]/80 hover:text-[#ff4b35]"
               >
-                Strava → Settings → My Performance
+                Strava Settings / My Performance
               </a>
               , then tap <span className="font-semibold text-[#ff4b35]">Reconnect Strava</span> below to grant profile access.
             </div>
@@ -295,6 +295,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        <a
+          href={`mailto:ssdidiza@gmail.com?subject=${encodeURIComponent("spera beta feedback")}&body=${encodeURIComponent(`Name: ${currentUser.name}\nStrava ID: ${currentUser.stravaId}\nPage/flow:\nWhat happened:\nWhat did you expect:\n`)}`}
+          className="glass-card p-4 flex items-center justify-between gap-3 hover:border-[#ff4b35]/40 transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-1">Feedback</p>
+            <p className="text-sm font-semibold text-[#ffffff]">Send beta feedback</p>
+            <p className="text-[11px] text-[#b8b8b8]/60 mt-0.5">Bugs, confusing screens, missing champ flows, or launch ideas.</p>
+          </div>
+          <MessageSquare size={16} className="text-[#ff4b35] flex-shrink-0" />
+        </a>
+
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-3 border-b border-white/[0.06]">
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Data Controls</p>
@@ -321,7 +333,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <p className="text-center text-[10px] text-[#b8b8b8]/40">spera · Team Vitality · 2026</p>
+        <p className="text-center text-[10px] text-[#b8b8b8]/40">spera - Team Vitality - 2026</p>
       </main>
       <NavBar />
     </div>
