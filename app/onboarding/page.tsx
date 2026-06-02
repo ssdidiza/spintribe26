@@ -7,17 +7,19 @@ import { Bike, ChevronRight, CheckCircle2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TIERS: { km: Tier; description: string }[] = [
-  { km: 200, description: "Building consistency — 50 km/week" },
-  { km: 400, description: "Solid commitment — 100 km/week" },
-  { km: 800, description: "Serious training — 200 km/week" },
-  { km: 1000, description: "Elite distance — 250 km/week" },
+  { km: 200, description: "Building consistency - 50 km/week" },
+  { km: 400, description: "Solid commitment - 100 km/week" },
+  { km: 800, description: "Serious training - 200 km/week" },
+  { km: 1000, description: "Elite distance - 250 km/week" },
 ];
 
 const REGIONS = ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Other"];
 
 type Step = "role" | "invite" | "tier";
+const VALID_ROLES: UserRole[] = ["champion", "member"];
+const VALID_TIERS: Tier[] = [200, 400, 800, 1000];
 
-// Inner component that uses useSearchParams — must be wrapped in Suspense
+// Inner component that uses useSearchParams - must be wrapped in Suspense
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,16 +40,24 @@ function OnboardingContent() {
     const name = searchParams.get("name");
     const avatar = searchParams.get("avatar");
     const returning = searchParams.get("returning") === "1";
+    const roleParam = searchParams.get("role") as UserRole | null;
+    const parsedTier = Number(searchParams.get("tier")) as Tier;
+    const zoneParam = searchParams.get("zone") ?? undefined;
+    const consentParam = searchParams.get("leaderboard_consent") === "1";
+    const restoredRole = roleParam && VALID_ROLES.includes(roleParam) ? roleParam : "member";
+    const restoredTier = VALID_TIERS.includes(parsedTier) ? parsedTier : 400;
 
     if (returning && stravaId && name) {
-      // Returning user after logout — restore Zustand state then go straight to dashboard
-      const role = (searchParams.get("role") as UserRole | null) ?? "member";
-      const tier = (Number(searchParams.get("tier")) || 400) as Tier;
-      const zone = searchParams.get("zone") ?? undefined;
-      const leaderboardConsent = searchParams.get("leaderboard_consent") === "1";
-      login(stravaId, name, avatar ?? "", { role, tier, zone, onboarded: true });
-      completeOnboarding(role, tier, zone, leaderboardConsent);
-      router.replace("/dashboard");
+      login(stravaId, name, avatar ?? "", {
+        role: restoredRole,
+        tier: restoredTier,
+        zone: zoneParam,
+        region: zoneParam,
+        onboarded: true,
+        leaderboardConsent: consentParam,
+      });
+      completeOnboarding(restoredRole, restoredTier, zoneParam, consentParam);
+      router.replace(restoredRole === "champion" ? "/champion" : "/dashboard");
       return;
     }
 
@@ -106,7 +116,6 @@ function OnboardingContent() {
   // Determine step labels and progress
   const isChampion = role === "champion";
   const steps: Step[] = isChampion ? ["role", "invite", "tier"] : ["role", "tier"];
-  const currentStepIndex = steps.indexOf(step);
   const totalSteps = steps.length;
 
   return (
@@ -180,7 +189,7 @@ function OnboardingContent() {
               onClick={() => setStep("role")}
               className="text-white/40 text-sm mb-6 text-left hover:text-white/70 transition-colors flex items-center gap-1"
             >
-              ← Back
+              Back
             </button>
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
               Step 2 of {totalSteps}
@@ -224,7 +233,7 @@ function OnboardingContent() {
                 )}
                 style={{ background: inviteCode.trim() && !inviteLoading ? "#FF6500" : "#ffffff10" }}
               >
-                {inviteLoading ? "Verifying…" : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
+                {inviteLoading ? "Verifying..." : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
               </button>
             </div>
           </div>
@@ -236,7 +245,7 @@ function OnboardingContent() {
               onClick={() => setStep(role === "champion" ? "invite" : "role")}
               className="text-white/40 text-sm mb-6 text-left hover:text-white/70 transition-colors flex items-center gap-1"
             >
-              ← Back
+              Back
             </button>
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
               Step {totalSteps} of {totalSteps}
@@ -320,7 +329,7 @@ function OnboardingContent() {
               </div>
             )}
 
-            {/* Leaderboard consent — Strava compliance */}
+            {/* Leaderboard consent - Strava compliance */}
             <button
               type="button"
               onClick={() => setLeaderboardConsent((v) => !v)}
@@ -355,7 +364,7 @@ function OnboardingContent() {
               )}
               style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "#FF6500" : "#ffffff10" }}
             >
-              {submitting ? "Setting up…" : <>START CHALLENGE <ChevronRight size={16} /></>}
+              {submitting ? "Setting up..." : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>
           </div>
         )}

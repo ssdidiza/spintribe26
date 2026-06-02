@@ -37,7 +37,7 @@ interface AppState {
     stravaId?: string,
     name?: string,
     avatar?: string,
-    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded">
+    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded" | "leaderboardConsent">
   ) => void;
   logout: () => void;
   completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean) => void;
