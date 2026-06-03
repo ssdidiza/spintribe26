@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import NavBar from "@/components/NavBar";
 import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
-import { Tier, TIER_LABELS, UserRole, hasAdminRole } from "@/lib/types";
+import { Tier, TIER_LABELS, UserRole } from "@/lib/types";
 import {
   Bell,
   Check,
@@ -91,6 +91,14 @@ type AdminNotification = {
   created_at: string;
 };
 
+type AdminCaller = {
+  role: UserRole;
+  tier: Tier;
+  zone?: string;
+  leaderboard_consent?: boolean;
+  rewards_export_consent?: boolean;
+};
+
 const ROLES: UserRole[] = ["member", "champion", "admin"];
 
 const TAB_META: Record<AdminTab, { label: string; Icon: typeof Users }> = {
@@ -109,7 +117,7 @@ function csvEscape(value: string | number | boolean | undefined) {
 export default function AdminPage() {
   const router = useRouter();
   const hydrated = useHydrated();
-  const { currentUser, isOnboarded } = useStore();
+  const { currentUser, isOnboarded, completeOnboarding } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("riders");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -134,6 +142,7 @@ export default function AdminPage() {
 
     if (!usersRes.ok) {
       setLoading(false);
+      router.replace(usersRes.status === 401 ? "/" : "/dashboard");
       return;
     }
 
@@ -145,6 +154,17 @@ export default function AdminPage() {
       notificationsRes.ok ? notificationsRes.json() : Promise.resolve({ notifications: [] }),
     ]);
 
+    const caller = usersData.caller as AdminCaller | undefined;
+    if (caller?.role === "admin") {
+      completeOnboarding(
+        caller.role,
+        caller.tier,
+        caller.zone,
+        caller.leaderboard_consent ?? false,
+        caller.rewards_export_consent ?? false
+      );
+    }
+
     setUsers(usersData.users ?? []);
     setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
     setRewards(rewardsData.rows ?? []);
@@ -152,13 +172,12 @@ export default function AdminPage() {
     setChamping(champingData.sessions ?? []);
     setNotifications(notificationsData.notifications ?? []);
     setLoading(false);
-  }, []);
+  }, [completeOnboarding, router]);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
-    if (!hasAdminRole(currentUser)) { router.replace("/dashboard"); return; }
     const timer = window.setTimeout(() => { void loadAdminData(); }, 0);
     return () => window.clearTimeout(timer);
   }, [hydrated, currentUser, isOnboarded, router, loadAdminData]);
@@ -252,7 +271,7 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (!hydrated || !currentUser || !hasAdminRole(currentUser)) return null;
+  if (!hydrated || !currentUser) return null;
 
   return (
     <div className="min-h-screen bg-[#020202] mb-nav">
