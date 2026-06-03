@@ -17,7 +17,7 @@ const RELEASE_NOTIFICATIONS: Omit<AppNotification, "userId">[] = [
     id: "release-beta-feedback",
     type: "info",
     title: "Beta feedback is open",
-    body: "Use the Profile feedback card to send bugs, confusing flows, or feature ideas during the first 10-user beta.",
+    body: "Use the Profile feedback board to send suggestions, vote on member ideas, and see admin replies.",
     createdAt: "2026-06-02T00:00:00.000Z",
   },
 ];

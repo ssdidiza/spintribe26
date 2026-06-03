@@ -35,6 +35,38 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export type FeedbackCategory = "bug" | "idea" | "confusing" | "request" | "other";
+
+export type FeedbackStatus = "open" | "planned" | "shipped" | "closed";
+
+export interface FeedbackMessage {
+  id: string;
+  feedbackItemId: string;
+  userId: string;
+  authorName: string;
+  body: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
+export interface FeedbackItem {
+  id: string;
+  userId: string;
+  authorName: string;
+  title: string;
+  body: string;
+  category: FeedbackCategory;
+  status: FeedbackStatus;
+  adminSummary?: string;
+  voteCount: number;
+  hasVoted: boolean;
+  isOwn: boolean;
+  messages: FeedbackMessage[];
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type TierUpgradeStatus = "pending" | "approved" | "rejected";
 
 export interface TierUpgradeRequest {

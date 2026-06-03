@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import NavBar from "@/components/NavBar";
+import FeedbackBoard from "@/components/FeedbackBoard";
 import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
 import { Tier, TIER_LABELS, UserRole } from "@/lib/types";
 import {
@@ -476,11 +477,7 @@ export default function AdminPage() {
             )}
 
             {activeTab === "feedback" && (
-              <section className="glass-card p-5">
-                <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">Beta feedback</p>
-                <p className="text-sm text-[#b8b8b8] leading-relaxed">Feedback currently routes through the Profile mailto flow. Use this tab as the ops reminder to triage bugs, confusing screens, champ flows, and launch ideas from the first testers.</p>
-                <a href="mailto:ssdidiza@gmail.com?subject=spera beta feedback triage" className="mt-4 inline-flex rounded-full px-4 py-2 text-xs font-bold text-white bg-[#ff4b35]">Open feedback inbox</a>
-              </section>
+              <FeedbackBoard admin />
             )}
           </>
         )}

@@ -7,9 +7,10 @@ import { getMonthlyKm } from "@/lib/mock-data";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
+import FeedbackBoard from "@/components/FeedbackBoard";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap, MessageSquare } from "lucide-react";
+import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap } from "lucide-react";
 
 export default function ProfilePage() {
   const router   = useRouter();
@@ -312,17 +313,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <a
-          href={`mailto:ssdidiza@gmail.com?subject=${encodeURIComponent("spera beta feedback")}&body=${encodeURIComponent(`Name: ${currentUser.name}\nStrava ID: ${currentUser.stravaId}\nPage/flow:\nWhat happened:\nWhat did you expect:\n`)}`}
-          className="glass-card p-4 flex items-center justify-between gap-3 hover:border-[#ff4b35]/40 transition-colors"
-        >
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-1">Feedback</p>
-            <p className="text-sm font-semibold text-[#ffffff]">Send beta feedback</p>
-            <p className="text-[11px] text-[#b8b8b8]/60 mt-0.5">Bugs, confusing screens, missing champ flows, or launch ideas.</p>
-          </div>
-          <MessageSquare size={16} className="text-[#ff4b35] flex-shrink-0" />
-        </a>
+        <FeedbackBoard />
 
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-3 border-b border-white/[0.06]">
