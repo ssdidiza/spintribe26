@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
@@ -138,6 +138,13 @@ export default function AdminPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, completeOnboarding } = useStore();
+  const currentUserId = currentUser?.id;
+  const currentUserRole = currentUser?.role;
+  const currentUserTier = currentUser?.tier;
+  const currentUserZone = currentUser?.zone;
+  const currentUserLeaderboardConsent = currentUser?.leaderboardConsent;
+  const currentUserRewardsConsent = currentUser?.rewardsExportConsent;
+  const currentUserOnboarded = currentUser?.onboarded;
   const [activeTab, setActiveTab] = useState<AdminTab>("riders");
   const [loading, setLoading] = useState(true);
   const [adminNotice, setAdminNotice] = useState("");
@@ -150,9 +157,10 @@ export default function AdminPage() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [commTitle, setCommTitle] = useState("");
   const [commBody, setCommBody] = useState("");
+  const hasRenderedAdminData = useRef(false);
 
   const loadAdminData = useCallback(async () => {
-    setLoading(true);
+    if (!hasRenderedAdminData.current) setLoading(true);
     setAdminNotice("");
 
     try {
@@ -167,13 +175,25 @@ export default function AdminPage() {
         { users: [] }
       );
       const caller = usersData.caller;
-      if (caller?.role === "admin") {
+      const callerZone = caller?.zone ?? undefined;
+      const callerLeaderboardConsent = caller?.leaderboard_consent ?? false;
+      const callerRewardsConsent = caller?.rewards_export_consent ?? false;
+      const shouldSyncLocalCaller = caller?.role === "admin" && currentUserId && (
+        !isOnboarded ||
+        currentUserRole !== caller.role ||
+        currentUserTier !== caller.tier ||
+        currentUserZone !== callerZone ||
+        currentUserLeaderboardConsent !== callerLeaderboardConsent ||
+        currentUserRewardsConsent !== callerRewardsConsent ||
+        currentUserOnboarded !== true
+      );
+      if (shouldSyncLocalCaller) {
         completeOnboarding(
           caller.role,
           caller.tier,
-          caller.zone,
-          caller.leaderboard_consent ?? false,
-          caller.rewards_export_consent ?? false
+          callerZone,
+          callerLeaderboardConsent,
+          callerRewardsConsent
         );
       }
 
@@ -202,6 +222,7 @@ export default function AdminPage() {
       setUpgrades(upgradesData.requests ?? []);
       setChamping(champingData.sessions ?? []);
       setNotifications(notificationsData.notifications ?? []);
+      hasRenderedAdminData.current = true;
 
       const nonOkPanels = [rewardsRes, upgradesRes, champingRes, notificationsRes]
         .filter((response) => response && !response.ok).length;
@@ -213,15 +234,26 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [completeOnboarding, router]);
+  }, [
+    completeOnboarding,
+    currentUserId,
+    currentUserRole,
+    currentUserTier,
+    currentUserZone,
+    currentUserLeaderboardConsent,
+    currentUserRewardsConsent,
+    currentUserOnboarded,
+    isOnboarded,
+    router,
+  ]);
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!currentUser) { router.replace("/"); return; }
+    if (!currentUserId) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
     const timer = window.setTimeout(() => { void loadAdminData(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [hydrated, currentUser, isOnboarded, router, loadAdminData]);
+  }, [hydrated, currentUserId, isOnboarded, router, loadAdminData]);
 
   const founder = useMemo(
     () => users.find((user) => user.isCurrentUser),

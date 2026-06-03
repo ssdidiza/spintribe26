@@ -134,6 +134,18 @@ export interface LeaderboardEntry {
   sessions?: number;
 }
 
+export interface LeaderboardTierResult {
+  tier: Tier;
+  count: number;
+  entries: LeaderboardEntry[];
+}
+
+export interface LeaderboardApiResponse {
+  monthKey: string;
+  generatedAt: string;
+  tiers: Record<string, LeaderboardTierResult>;
+}
+
 // ─── Role utility functions ───────────────────────────────────────────────────
 
 /** True only for superuser admins */

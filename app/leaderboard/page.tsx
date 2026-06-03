@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { buildLeaderboard } from "@/lib/mock-data";
-import { Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
+import { LeaderboardApiResponse, Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
 import { CHALLENGE_TIERS } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
@@ -19,11 +19,29 @@ const MEDAL_STYLES: Record<number, { border: string; glow: string }> = {
   3: { border: "#CD7F32", glow: "0 0 12px rgba(205,127,50,0.3)" },
 };
 
+function formatMonthKey(monthKey?: string) {
+  if (!monthKey) {
+    return new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  }
+  const [year, month] = monthKey.split("-").map(Number);
+  if (!year || !month) {
+    return new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  }
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function LeaderboardPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, users, activities } = useStore();
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardApiResponse | null>(null);
+  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardError, setBoardError] = useState("");
+  const currentUserId = currentUser?.id;
 
   useEffect(() => {
     if (!hydrated) return;
@@ -31,13 +49,43 @@ export default function LeaderboardPage() {
     else if (!isOnboarded) router.replace("/onboarding");
   }, [hydrated, currentUser, isOnboarded, router]);
 
+  useEffect(() => {
+    if (!hydrated || !currentUserId || !isOnboarded) return;
+    const controller = new AbortController();
+
+    async function loadLeaderboard() {
+      setBoardLoading(true);
+      setBoardError("");
+      try {
+        const res = await fetch("/api/leaderboard", { signal: controller.signal });
+        if (!res.ok) {
+          setBoardError("Live leaderboard unavailable. Showing local fallback.");
+          return;
+        }
+        const data = await res.json() as LeaderboardApiResponse;
+        setLiveLeaderboard(data);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setBoardError("Live leaderboard unavailable. Showing local fallback.");
+        }
+      } finally {
+        setBoardLoading(false);
+      }
+    }
+
+    void loadLeaderboard();
+    return () => controller.abort();
+  }, [hydrated, currentUserId, isOnboarded]);
+
   const realUsers = useMemo(() => users.filter((u) => u.isConnected && u.leaderboardConsent), [users]);
   const activeTier = selectedTier ?? currentUser?.tier ?? 400;
-  const entries   = useMemo(
+  const localEntries = useMemo(
     () => buildLeaderboard(activeTier, realUsers, activities),
     [activeTier, realUsers, activities]
   );
-  const monthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  const liveTier = liveLeaderboard?.tiers[String(activeTier)];
+  const entries = liveTier?.entries ?? localEntries;
+  const monthLabel = formatMonthKey(liveLeaderboard?.monthKey);
 
   if (!hydrated || !currentUser) return null;
 
@@ -60,6 +108,7 @@ export default function LeaderboardPage() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {TIERS.map((t) => {
             const active = activeTier === t;
+            const count = liveLeaderboard?.tiers[String(t)]?.count;
             return (
               <button
                 key={t}
@@ -76,6 +125,9 @@ export default function LeaderboardPage() {
                 } : undefined}
               >
                 {t} km - {TIER_LABELS[t]}
+                {count !== undefined && (
+                  <span className="ml-1 text-[10px] opacity-70">({count})</span>
+                )}
               </button>
             );
           })}
@@ -92,11 +144,19 @@ export default function LeaderboardPage() {
               </p>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <p className="text-[10px] text-[#b8b8b8]">{entries.length} riders</p>
+              <p className="text-[10px] text-[#b8b8b8]">
+                {boardLoading ? "Refreshing" : `${entries.length} riders`}
+              </p>
               <PoweredByStrava />
             </div>
           </div>
         </div>
+
+        {boardError && (
+          <div className="glass-card p-3 text-[11px] text-[#b8b8b8]">
+            {boardError}
+          </div>
+        )}
 
         {/* Entries */}
         {entries.length === 0 ? (

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
-import { TIER_LABELS } from "@/lib/types";
+import { LeaderboardApiResponse, TIER_LABELS } from "@/lib/types";
 import { canRequestTierUpgrade, getNextTier } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [refreshingFtp, setRefreshingFtp] = useState(false);
   const [upgradeState, setUpgradeState] = useState<"idle" | "sending" | "sent" | "blocked">("idle");
+  const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardApiResponse | null>(null);
   const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
@@ -60,6 +61,27 @@ export default function DashboardPage() {
     if (!isOnboarded) { router.replace("/onboarding"); return; }
     Promise.all([hydrateChampionSessions(), hydrateAthleteData(), hydrateActivities()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, currentUserId, isOnboarded]);
+
+  useEffect(() => {
+    if (!hydrated || !currentUserId || !isOnboarded) return;
+    const controller = new AbortController();
+
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch("/api/leaderboard", { signal: controller.signal });
+        if (!res.ok) return;
+        const data = await res.json() as LeaderboardApiResponse;
+        setLiveLeaderboard(data);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setLiveLeaderboard(null);
+        }
+      }
+    }
+
+    void loadLeaderboard();
+    return () => controller.abort();
   }, [hydrated, currentUserId, isOnboarded]);
 
   const userActivities = useMemo(
@@ -89,13 +111,18 @@ export default function DashboardPage() {
     [users]
   );
 
-  const leaderboardEntries = useMemo(
+  const localLeaderboardEntries = useMemo(
     () => currentUser ? buildLeaderboard(currentUser.tier, consentedUsers, activities) : [],
     [currentUser, consentedUsers, activities]
   );
+  const currentTier = currentUser?.tier;
+  const leaderboardEntries = useMemo(() => {
+    if (!currentTier) return [];
+    return liveLeaderboard?.tiers[String(currentTier)]?.entries ?? localLeaderboardEntries;
+  }, [currentTier, liveLeaderboard, localLeaderboardEntries]);
   const currentRankEntry = useMemo(
-    () => leaderboardEntries.find((e) => e.user.id === currentUser?.id),
-    [leaderboardEntries, currentUser?.id]
+    () => leaderboardEntries.find((e) => e.user.id === currentUserId),
+    [leaderboardEntries, currentUserId]
   );
 
   if (!hydrated || !currentUser) return null;
