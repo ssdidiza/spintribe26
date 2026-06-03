@@ -14,7 +14,7 @@ import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unpl
 export default function ProfilePage() {
   const router   = useRouter();
   const hydrated = useHydrated();
-  const { currentUser, isOnboarded, activities, zones, championSessions, logout } = useStore();
+  const { currentUser, isOnboarded, activities, zones, championSessions, logout, completeOnboarding } = useStore();
   const [disconnecting, setDisconnecting] = useState<"disconnect" | "delete" | null>(null);
 
   useEffect(() => {
@@ -62,6 +62,23 @@ export default function ProfilePage() {
     } finally {
       logout();
       router.push("/");
+    }
+  }
+
+  async function updateConsent(kind: "leaderboard" | "rewards") {
+    if (!currentUser) return;
+    const nextLeaderboard = kind === "leaderboard" ? !currentUser.leaderboardConsent : currentUser.leaderboardConsent ?? false;
+    const nextRewards = kind === "rewards" ? !currentUser.rewardsExportConsent : currentUser.rewardsExportConsent ?? false;
+    const res = await fetch("/api/users/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboardConsent: nextLeaderboard,
+        rewardsExportConsent: nextRewards,
+      }),
+    });
+    if (res.ok) {
+      completeOnboarding(currentUser.role, currentUser.tier, currentUser.zone || currentUser.region, nextLeaderboard, nextRewards);
     }
   }
 
@@ -306,6 +323,26 @@ export default function ProfilePage() {
           </div>
           <MessageSquare size={16} className="text-[#ff4b35] flex-shrink-0" />
         </a>
+
+        <div className="glass-card overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Sharing Preferences</p>
+          </div>
+          <button
+            onClick={() => updateConsent("leaderboard")}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06]"
+          >
+            <span className="text-sm font-semibold text-[#ffffff]">Leaderboard sharing</span>
+            <span className="text-xs font-bold text-[#ff4b35]">{currentUser.leaderboardConsent ? "On" : "Off"}</span>
+          </button>
+          <button
+            onClick={() => updateConsent("rewards")}
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors"
+          >
+            <span className="text-sm font-semibold text-[#ffffff]">Rewards export consent</span>
+            <span className="text-xs font-bold text-[#ff4b35]">{currentUser.rewardsExportConsent ? "On" : "Off"}</span>
+          </button>
+        </div>
 
         <div className="glass-card overflow-hidden">
           <div className="px-5 py-3 border-b border-white/[0.06]">

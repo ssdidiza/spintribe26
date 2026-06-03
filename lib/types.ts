@@ -1,6 +1,6 @@
 export type UserRole = "champion" | "member" | "admin";
 
-export type Tier = 200 | 400 | 800 | 1000;
+export type Tier = 200 | 400 | 600 | 800 | 1000;
 
 export type SessionType = "ftp_improver" | "champing";
 
@@ -18,6 +18,7 @@ export interface User {
   zone?: string;
   onboarded?: boolean;
   leaderboardConsent?: boolean;
+  rewardsExportConsent?: boolean;
   ftp?: number;        // Functional Threshold Power (watts) from Strava
   ftpCachedAt?: string;
   country?: string;
@@ -32,6 +33,24 @@ export interface AppNotification {
   dismissedAt?: string;
   completedAt?: string;
   createdAt: string;
+}
+
+export type TierUpgradeStatus = "pending" | "approved" | "rejected";
+
+export interface TierUpgradeRequest {
+  id: string;
+  userId: string;
+  currentTier: Tier;
+  requestedTier: Tier;
+  monthKey: string;
+  monthlyKm: number;
+  status: TierUpgradeStatus;
+  requestedAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  effectiveOn: string;
+  appliedAt?: string;
+  adminNote?: string;
 }
 
 export interface Activity {
@@ -103,15 +122,17 @@ export function isAuthenticated(user: User | null | undefined): boolean {
 // ─── Tier metadata ────────────────────────────────────────────────────────────
 
 export const TIER_LABELS: Record<Tier, string> = {
-  200: "Rookie",
-  400: "Contender",
-  800: "Elite",
-  1000: "Pinnacle",
+  200: "Beginner",
+  400: "Intermediate",
+  600: "Intermediate 2",
+  800: "Advanced",
+  1000: "Unicorn",
 };
 
 export const TIER_COLORS: Record<Tier, string> = {
   200: "#b8b8b8",
   400: "#ffffff",
+  600: "#ffb1c1",
   800: "#ff7a2f",
   1000: "#ff4b35",
 };
@@ -119,6 +140,7 @@ export const TIER_COLORS: Record<Tier, string> = {
 export const TIER_GRADIENT: Record<Tier, string> = {
   200: "from-zinc-400 to-zinc-600",
   400: "from-white to-zinc-300",
+  600: "from-rose-200 to-orange-400",
   800: "from-orange-400 to-red-500",
   1000: "from-red-500 to-pink-700",
 };

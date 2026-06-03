@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getSession, getEffectiveUserId } from "@/lib/session";
 
 const VALID_ROLES = ["champion", "member"];
-const VALID_TIERS = [200, 400, 800, 1000];
+const VALID_TIERS = [200, 400, 600, 800, 1000];
 
 export async function PATCH(req: NextRequest) {
   const session = await getSession();
@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { role, tier, zone, region, leaderboardConsent } = body;
+  const { role, tier, zone, region, leaderboardConsent, rewardsExportConsent } = body;
 
   // Validate role
   if (!VALID_ROLES.includes(role)) {
@@ -46,6 +46,7 @@ export async function PATCH(req: NextRequest) {
       zone: effectiveZone,
       onboarded: true,
       leaderboard_consent: leaderboardConsent === true,
+      rewards_export_consent: rewardsExportConsent === true,
       updated_at: new Date().toISOString(),
     })
     .eq("strava_id", userId);

@@ -54,7 +54,7 @@ export default function LandingPage() {
           // Check if user already onboarded in DB
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded, ftp, country")
+            .select("name, role, tier, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
@@ -64,10 +64,12 @@ export default function LandingPage() {
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,
+              leaderboardConsent: row.leaderboard_consent ?? false,
+              rewardsExportConsent: row.rewards_export_consent ?? false,
               ftp: row.ftp ?? undefined,
               country: row.country ?? undefined,
             });
-            completeOnboarding(row.role, row.tier, row.zone);
+            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
             router.push("/dashboard");
           } else {
             login(data.user.id, displayName);
@@ -88,7 +90,7 @@ export default function LandingPage() {
           // Fetch display name and onboarding status from Supabase users table
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded, ftp, country")
+            .select("name, role, tier, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
@@ -98,10 +100,12 @@ export default function LandingPage() {
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,
+              leaderboardConsent: row.leaderboard_consent ?? false,
+              rewardsExportConsent: row.rewards_export_consent ?? false,
               ftp: row.ftp ?? undefined,
               country: row.country ?? undefined,
             });
-            completeOnboarding(row.role, row.tier, row.zone);
+            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
             router.push("/dashboard");
           } else {
             login(data.user.id, row?.name || displayName);
@@ -159,10 +163,11 @@ export default function LandingPage() {
           {/* Tier pills */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { km: 200,  label: "Rookie",    color: "#b8b8b8" },
-              { km: 400,  label: "Contender", color: "#ffffff" },
-              { km: 800,  label: "Elite",     color: "#ff7a2f" },
-              { km: 1000, label: "Pinnacle",  color: "#ff4b35" },
+              { km: 200,  label: "Beginner",       color: "#b8b8b8" },
+              { km: 400,  label: "Intermediate",   color: "#ffffff" },
+              { km: 600,  label: "Intermediate 2", color: "#ffb1c1" },
+              { km: 800,  label: "Advanced",       color: "#ff7a2f" },
+              { km: 1000, label: "Unicorn",        color: "#ff4b35" },
             ].map((t) => (
               <span key={t.km} className="rounded-full px-3 py-1 text-xs font-bold border"
                 style={{ borderColor: `${t.color}40`, color: t.color, background: `${t.color}10` }}>

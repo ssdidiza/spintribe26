@@ -5,9 +5,11 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
 import { TIER_LABELS } from "@/lib/types";
+import { canRequestTierUpgrade, getGhostPacerKm, getNextTier } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
+import { SperaIcon } from "@/components/SperaLogo";
 import {
   AlertTriangle,
   Bike,
@@ -37,6 +39,11 @@ export default function DashboardPage() {
   } = useStore();
   const [syncing, setSyncing] = useState(false);
   const [refreshingFtp, setRefreshingFtp] = useState(false);
+  const [ghostUnlocked, setGhostUnlocked] = useState(() => (
+    typeof window !== "undefined" && localStorage.getItem("spera-ghost-rider") === "1"
+  ));
+  const [ghostTapCount, setGhostTapCount] = useState(0);
+  const [upgradeState, setUpgradeState] = useState<"idle" | "sending" | "sent" | "blocked">("idle");
   const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
@@ -134,6 +141,30 @@ export default function DashboardPage() {
   const statusCfg  = STATUS_CONFIG[progressStatus];
   const StatusIcon = statusCfg.Icon;
   const leaderboardScope = `${monthLabel} Strava distance - ${TIER_LABELS[currentUser.tier]} ${currentUser.tier} km tier - opted-in riders`;
+  const ghostTargetKm = getGhostPacerKm(leaderboardEntries, currentUser.tier, now);
+  const ghostGapKm = Math.max(0, ghostTargetKm - monthlyKm);
+  const upgradeOffer = canRequestTierUpgrade(currentUser, activities, now);
+  const pinnaclePush = !getNextTier(currentUser.tier) && pct >= 100;
+
+  function handleGhostTap() {
+    const next = ghostTapCount + 1;
+    setGhostTapCount(next);
+    if (next >= 3) {
+      setGhostUnlocked(true);
+      localStorage.setItem("spera-ghost-rider", "1");
+    }
+  }
+
+  async function requestUpgrade() {
+    if (!upgradeOffer || upgradeState === "sending") return;
+    setUpgradeState("sending");
+    const res = await fetch("/api/tier-upgrades", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestedTier: upgradeOffer.requestedTier }),
+    });
+    setUpgradeState(res.ok || res.status === 409 ? "sent" : "blocked");
+  }
 
   const STATS = [
     { label: "Month rides", value: monthlyActivities.length,                             icon: <Bike       size={14} className="text-[#ff4b35]" /> },
@@ -168,6 +199,14 @@ export default function DashboardPage() {
           </a>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleGhostTap}
+            className="w-8 h-8 rounded-full glass flex items-center justify-center hover:border-[#ff4b35]/40 transition-colors"
+            aria-label="Unlock Ghost Rider"
+          >
+            <SperaIcon className="h-4 w-4" />
+          </button>
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
             {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
@@ -266,6 +305,30 @@ export default function DashboardPage() {
           </div>
         )}
 
+        <div
+          className="glass-card p-4"
+          style={{
+            borderColor: ghostUnlocked ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.08)",
+            background: ghostUnlocked ? "linear-gradient(135deg, rgba(255,75,53,0.12), rgba(255,255,255,0.04))" : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
+                {ghostUnlocked ? "Ghost Rider unlocked" : "Ghost Rider pacer"}
+              </p>
+              <p className="mt-1 text-sm font-bold text-[#ffffff]">Target to chase: {ghostTargetKm} km</p>
+              <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
+                Pacer only. Not a real rider. Not counted in rank. {ghostGapKm > 0 ? `${ghostGapKm} km to catch it.` : "You are ahead of the ghost."}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-2xl font-black text-[#ff4b35]">{ghostTargetKm}</p>
+              <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">pacer km</p>
+            </div>
+          </div>
+        </div>
+
         {/* ── Progress tracking card ────────────────────────────────────── */}
         <div
           className="glass-card p-5"
@@ -334,6 +397,37 @@ export default function DashboardPage() {
         </div>
 
         {/* ── 4-stat bento ─────────────────────────────────────────────── */}
+        {(upgradeOffer || pinnaclePush) && (
+          <div className="glass-card p-5" style={{ borderColor: "rgba(255,75,53,0.35)" }}>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">
+              {pinnaclePush ? "Unicorn mode" : "You have outgrown this league"}
+            </p>
+            {upgradeOffer ? (
+              <>
+                <p className="text-sm text-[#b8b8b8] leading-relaxed">
+                  You completed {upgradeOffer.currentTier} km. Request a next-month move to {upgradeOffer.requestedTier} km so this month&apos;s leaderboard stays fair.
+                </p>
+                <button
+                  type="button"
+                  onClick={requestUpgrade}
+                  disabled={upgradeState === "sending" || upgradeState === "sent"}
+                  className="mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)" }}
+                >
+                  {upgradeState === "sent" ? "REQUEST SENT" : upgradeState === "sending" ? "SENDING..." : `REQUEST ${upgradeOffer.requestedTier} KM LEAGUE`}
+                </button>
+                {upgradeState === "blocked" && (
+                  <p className="mt-2 text-[10px] text-[#ffb4ab]">Could not send the request. Try again after your next sync.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-[#b8b8b8] leading-relaxed">
+                You are riding beyond the official leagues. Unicorn is club-only stretch mode unless Team Vitality confirms it for rewards.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-4 gap-2">
           {STATS.map(({ label, value, icon }) => (
             <div key={label} className="glass-card p-3 text-center">

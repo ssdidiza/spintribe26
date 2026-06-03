@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
       <ul>
         <li><strong>Account data:</strong> name, email address, and encrypted password when you register.</li>
         <li><strong>Strava data:</strong> if you connect Strava, we receive your Strava athlete profile (name, profile photo), and cycling activity data needed for the challenge (distance, duration, date, activity type, kudos, and activity ID) via the official Strava API.</li>
-        <li><strong>Challenge data:</strong> tier selection, champion session logs, zone submissions, and notes you enter.</li>
+        <li><strong>Challenge data:</strong> league selection, champion session logs, zone submissions, reward export consent, leaderboard consent, and notes you enter.</li>
         <li><strong>Technical data:</strong> browser type, IP address, and session tokens stored in browser cookies for authentication purposes.</li>
         <li><strong>FTP / fitness data:</strong> functional threshold power (FTP) values fetched from your Strava profile if available. Route GPS points are used only server-side to match broad club zones and are not returned to the browser or stored as raw coordinates.</li>
       </ul>
@@ -33,6 +33,7 @@ export default function PrivacyPolicy() {
         <li>To authenticate you and maintain your session securely.</li>
         <li>To display Team Vitality monthly distance progress, tier leaderboard rankings, and champ check-in proof.</li>
         <li>To enable zone check-ins and champion session tracking.</li>
+        <li>To prepare consent-based reward eligibility exports for club or Team Vitality administration. These exports may include name, Strava ID, selected league, monthly distance, indoor/outdoor distance split, and completion status.</li>
         <li>To send transactional emails (e.g. email confirmation on sign-up).</li>
       </ul>
 
@@ -53,6 +54,7 @@ export default function PrivacyPolicy() {
           . You may revoke access via your Strava settings or the in-app disconnect control at any time.
         </li>
         <li><strong>Supabase:</strong> our database and authentication provider. Data is stored on Supabase-managed infrastructure.</li>
+        <li><strong>Discovery / Team Vitality:</strong> official Built for the Season reward eligibility and prizes are governed by Discovery&apos;s terms. spera may help prepare admin exports when you consent, but does not decide official rewards.</li>
       </ul>
 
       <h2>5. Cookies</h2>
@@ -68,6 +70,7 @@ export default function PrivacyPolicy() {
         <li>Correct inaccurate data.</li>
         <li>Request deletion of your account and associated data.</li>
         <li>Withdraw consent for Strava data access by using the in-app disconnect control or revoking the integration in Strava.</li>
+        <li>Withdraw leaderboard or reward-export consent from your Profile sharing preferences.</li>
         <li>Lodge a complaint with the Information Regulator (South Africa) or your local data protection authority.</li>
       </ul>
       <p>

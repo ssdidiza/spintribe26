@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
 
     const { data: existingUser } = await db
       .from("users")
-      .select("onboarded, role, tier, zone, leaderboard_consent")
+      .select("onboarded, role, tier, zone, leaderboard_consent, rewards_export_consent")
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
 
@@ -126,6 +126,7 @@ export async function GET(req: NextRequest) {
       if (existingUser.tier) redirectUrl.searchParams.set("tier", String(existingUser.tier));
       if (existingUser.zone) redirectUrl.searchParams.set("zone", existingUser.zone);
       redirectUrl.searchParams.set("leaderboard_consent", existingUser.leaderboard_consent ? "1" : "0");
+      redirectUrl.searchParams.set("rewards_export_consent", existingUser.rewards_export_consent ? "1" : "0");
     } else {
       redirectUrl = new URL("/onboarding", req.url);
       redirectUrl.searchParams.set("strava_id", String(tokens.athleteId));

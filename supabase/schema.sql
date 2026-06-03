@@ -9,7 +9,7 @@ create table if not exists public.users (
   name                  text not null,
   avatar                text,
   role                  text not null default 'member',   -- 'champion' | 'member' | 'admin'
-  tier                  int  not null default 200,        -- 200 | 400 | 800 | 1000
+  tier                  int  not null default 200,        -- 200 | 400 | 600 | 800 | 1000
   strava_access_token   text,
   strava_refresh_token  text,
   strava_token_expires_at bigint,
@@ -21,6 +21,7 @@ create table if not exists public.users (
   last_strava_sync_at   timestamptz,
   last_strava_sync_year int,
   last_strava_sync_month int,
+  rewards_export_consent boolean not null default false,
   created_at            timestamptz default now(),
   updated_at            timestamptz default now()
 );
@@ -93,7 +94,7 @@ create index if not exists idx_champ_sessions_user on public.champion_sessions(u
 -- query: supabase.from("users").select() in app/page.tsx after email login.
 -- ============================================================
 revoke select on public.users from anon, authenticated;
-grant select (strava_id, name, avatar, role, tier, onboarded, zone, ftp, ftp_cached_at, country, created_at, updated_at)
+grant select (strava_id, name, avatar, role, tier, onboarded, zone, ftp, ftp_cached_at, country, leaderboard_consent, rewards_export_consent, created_at, updated_at)
   on public.users
   to anon, authenticated;
 
@@ -146,6 +147,53 @@ create policy "zones_read_all"      on public.zones for select using (true);
 create policy "zones_insert_own"    on public.zones for insert
   with check (created_by = current_setting('app.strava_id', true));
 create policy "zones_update_usage"  on public.zones for update using (true);
+
+-- TIER UPGRADE REQUESTS
+create table if not exists public.tier_upgrade_requests (
+  id                    bigserial primary key,
+  user_strava_id        text not null references public.users(strava_id) on delete cascade,
+  current_tier          int not null check (current_tier in (200, 400, 600, 800, 1000)),
+  requested_tier        int not null check (requested_tier in (200, 400, 600, 800, 1000)),
+  month_key             text not null check (month_key ~ '^\d{4}-\d{2}$'),
+  monthly_km            int not null default 0,
+  status                text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  requested_at          timestamptz not null default now(),
+  decided_at            timestamptz,
+  decided_by            text references public.users(strava_id) on delete set null,
+  effective_on          date not null,
+  applied_at            timestamptz,
+  admin_note            text default ''
+);
+
+create unique index if not exists idx_tier_upgrade_pending_unique
+  on public.tier_upgrade_requests (user_strava_id, month_key)
+  where status = 'pending';
+
+create index if not exists idx_tier_upgrade_status
+  on public.tier_upgrade_requests(status, effective_on);
+
+create index if not exists idx_tier_upgrade_decided_by
+  on public.tier_upgrade_requests(decided_by)
+  where decided_by is not null;
+
+alter table public.tier_upgrade_requests enable row level security;
+
+grant select, insert, update, delete
+  on public.tier_upgrade_requests
+  to authenticated;
+
+grant usage, select
+  on sequence public.tier_upgrade_requests_id_seq
+  to authenticated;
+
+drop policy if exists "tier_upgrade_read_own" on public.tier_upgrade_requests;
+drop policy if exists "tier_upgrade_insert_own" on public.tier_upgrade_requests;
+
+create policy "tier_upgrade_read_own" on public.tier_upgrade_requests for select
+  using (user_strava_id = (select current_setting('app.strava_id', true)));
+
+create policy "tier_upgrade_insert_own" on public.tier_upgrade_requests for insert
+  with check (user_strava_id = (select current_setting('app.strava_id', true)));
 
 -- ============================================================
 -- NOTIFICATIONS

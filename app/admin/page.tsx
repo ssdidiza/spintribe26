@@ -1,388 +1,537 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
-import { getMonthlyKm } from "@/lib/mock-data";
 import NavBar from "@/components/NavBar";
-import { TIER_LABELS, Tier, UserRole, hasAdminRole, canAccessChampionFeatures } from "@/lib/types";
-import { ShieldCheck, Users, Zap, MapPin, ChevronDown, Check, X, Calendar, TrendingUp } from "lucide-react";
+import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
+import { Tier, TIER_LABELS, UserRole, hasAdminRole } from "@/lib/types";
+import {
+  Bell,
+  Check,
+  ClipboardList,
+  Download,
+  MessageSquare,
+  ShieldCheck,
+  Star,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 
-const ROLES: UserRole[] = ["member", "champion", "admin"];
-const TIERS: Tier[] = [200, 400, 800, 1000];
+type AdminTab = "riders" | "rewards" | "upgrades" | "champing" | "notifications" | "feedback";
 
-const ROLE_COLORS: Record<UserRole, string> = {
-  member:   "#b8b8b8",
-  champion: "#ff4b35",
-  admin:    "#ffffff",
+type AdminUser = {
+  id: string;
+  stravaId: string;
+  name: string;
+  avatar?: string;
+  role: UserRole;
+  tier: Tier;
+  onboarded: boolean;
+  zone?: string;
+  country?: string;
+  leaderboardConsent: boolean;
+  rewardsExportConsent: boolean;
+  lastStravaSyncAt?: string;
+  createdAt?: string;
+  isCurrentUser: boolean;
+  monthlyKm: number;
+  indoorKm: number;
+  outdoorKm: number;
+  activityCount: number;
 };
 
-function isInCurrentMonth(isoDate: string, now = new Date()) {
-  const date = new Date(isoDate);
-  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+type RewardRow = {
+  stravaId: string;
+  name: string;
+  role: UserRole;
+  tier: Tier;
+  zone?: string;
+  totalKm: number;
+  outdoorKm: number;
+  indoorKm: number;
+  complete: boolean;
+  consent: boolean;
+  officialRewardTier: boolean;
+  eligibleForExport: boolean;
+  overTierReview: boolean;
+};
+
+type UpgradeRequest = {
+  id: string;
+  userName: string;
+  avatar?: string;
+  currentTier: Tier;
+  requestedTier: Tier;
+  monthKey: string;
+  monthlyKm: number;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  effectiveOn: string;
+  adminNote?: string;
+};
+
+type ChampingSession = {
+  id: string;
+  userName: string;
+  type: string;
+  date: string;
+  zoneName?: string;
+  stravaActivityName?: string;
+  stravaActivityKm?: number;
+};
+
+type AdminNotification = {
+  id: number;
+  user_strava_id: string;
+  title: string;
+  body: string;
+  created_at: string;
+};
+
+const ROLES: UserRole[] = ["member", "champion", "admin"];
+
+const TAB_META: Record<AdminTab, { label: string; Icon: typeof Users }> = {
+  riders: { label: "Riders", Icon: Users },
+  rewards: { label: "Rewards", Icon: Trophy },
+  upgrades: { label: "Upgrades", Icon: ClipboardList },
+  champing: { label: "Champing", Icon: Star },
+  notifications: { label: "Comms", Icon: Bell },
+  feedback: { label: "Feedback", Icon: MessageSquare },
+};
+
+function csvEscape(value: string | number | boolean | undefined) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
 export default function AdminPage() {
-  const router   = useRouter();
+  const router = useRouter();
   const hydrated = useHydrated();
-  const { currentUser, isOnboarded, users, activities, championSessions, zones } = useStore();
+  const { currentUser, isOnboarded } = useStore();
+  const [activeTab, setActiveTab] = useState<AdminTab>("riders");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [monthKey, setMonthKey] = useState("");
+  const [rewards, setRewards] = useState<RewardRow[]>([]);
+  const [upgrades, setUpgrades] = useState<UpgradeRequest[]>([]);
+  const [champing, setChamping] = useState<ChampingSession[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [commTitle, setCommTitle] = useState("");
+  const [commBody, setCommBody] = useState("");
 
-  const [saving, setSaving]     = useState<string | null>(null);
-  const [saved, setSaved]       = useState<string | null>(null);
-  const [editUser, setEditUser] = useState<string | null>(null);
-  const [pendingRole, setPendingRole] = useState<Record<string, UserRole>>({});
-  const [pendingTier, setPendingTier] = useState<Record<string, Tier>>({});
-  const [activeTab, setActiveTab] = useState<"users" | "sessions" | "zones">("users");
+  const loadAdminData = useCallback(async () => {
+    setLoading(true);
+    const [usersRes, rewardsRes, upgradesRes, champingRes, notificationsRes] = await Promise.all([
+      fetch("/api/admin/users"),
+      fetch("/api/admin/rewards"),
+      fetch("/api/admin/tier-upgrades"),
+      fetch("/api/admin/champing"),
+      fetch("/api/admin/notifications"),
+    ]);
+
+    if (!usersRes.ok) {
+      setLoading(false);
+      return;
+    }
+
+    const [usersData, rewardsData, upgradesData, champingData, notificationsData] = await Promise.all([
+      usersRes.json(),
+      rewardsRes.ok ? rewardsRes.json() : Promise.resolve({ rows: [] }),
+      upgradesRes.ok ? upgradesRes.json() : Promise.resolve({ requests: [] }),
+      champingRes.ok ? champingRes.json() : Promise.resolve({ sessions: [] }),
+      notificationsRes.ok ? notificationsRes.json() : Promise.resolve({ notifications: [] }),
+    ]);
+
+    setUsers(usersData.users ?? []);
+    setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
+    setRewards(rewardsData.rows ?? []);
+    setUpgrades(upgradesData.requests ?? []);
+    setChamping(champingData.sessions ?? []);
+    setNotifications(notificationsData.notifications ?? []);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
     if (!hasAdminRole(currentUser)) { router.replace("/dashboard"); return; }
-  }, [hydrated, currentUser, isOnboarded, router]);
+    const timer = window.setTimeout(() => { void loadAdminData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [hydrated, currentUser, isOnboarded, router, loadAdminData]);
 
-  if (!hydrated || !currentUser || !hasAdminRole(currentUser)) return null;
+  const founder = useMemo(
+    () => users.find((user) => user.isCurrentUser),
+    [users]
+  );
+  const pendingUpgrades = upgrades.filter((request) => request.status === "pending");
+  const eligibleRewards = rewards.filter((row) => row.eligibleForExport);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  const now = new Date();
-  const sessionsThisMonth = championSessions.filter((s) => isInCurrentMonth(s.date, now));
-  const activeRiders = users.filter((u) => u.isConnected && activities.some((a) => a.userId === u.id && isInCurrentMonth(a.date, now)));
-  const champUsers   = users.filter((u) => canAccessChampionFeatures(u));
-
-  // ── Role / tier save ───────────────────────────────────────────────────────
-  async function handleSave(userId: string, stravaId: string) {
-    const role = pendingRole[userId];
-    const tier = pendingTier[userId];
-    if (!role && !tier) { setEditUser(null); return; }
-
-    setSaving(userId);
+  async function patchUser(stravaId: string, patch: Record<string, unknown>) {
+    setSaving(stravaId);
     try {
       const res = await fetch(`/api/admin/users/${stravaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, tier }),
+        body: JSON.stringify(patch),
       });
-      if (res.ok) {
-        setSaved(userId);
-        setTimeout(() => setSaved(null), 2000);
-      }
-    } catch (e) {
-      console.error(e);
+      if (res.ok) await loadAdminData();
     } finally {
       setSaving(null);
-      setEditUser(null);
-      setPendingRole((p) => { const n = { ...p }; delete n[userId]; return n; });
-      setPendingTier((p) => { const n = { ...p }; delete n[userId]; return n; });
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  async function decideUpgrade(id: string, status: "approved" | "rejected") {
+    setSaving(id);
+    try {
+      const res = await fetch(`/api/admin/tier-upgrades/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) await loadAdminData();
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function sendNotification() {
+    if (!commTitle.trim() || !commBody.trim()) return;
+    setSaving("notification");
+    try {
+      const res = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: commTitle, body: commBody }),
+      });
+      if (res.ok) {
+        setCommTitle("");
+        setCommBody("");
+        await loadAdminData();
+      }
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  function exportRewardsCsv() {
+    const headers = [
+      "month",
+      "rider_name",
+      "strava_id",
+      "league",
+      "total_km",
+      "outdoor_km",
+      "indoor_km",
+      "completion_status",
+      "over_tier_review",
+      "rewards_export_consent",
+    ];
+    const rows = eligibleRewards.map((row) => [
+      monthKey,
+      row.name,
+      row.stravaId,
+      `${row.tier} km ${TIER_LABELS[row.tier]}`,
+      row.totalKm,
+      row.outdoorKm,
+      row.indoorKm,
+      row.complete ? "complete" : "incomplete",
+      row.overTierReview,
+      row.consent,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `spera-rewards-${monthKey || "month"}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (!hydrated || !currentUser || !hasAdminRole(currentUser)) return null;
+
   return (
     <div className="min-h-screen bg-[#020202] mb-nav">
-      {/* Header */}
-      <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #ff4b35, #ffffff)" }}>
-          <ShieldCheck size={15} color="#fff" />
+      <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)" }}>
+            <ShieldCheck size={15} color="#fff" />
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Founder Admin</p>
+            <h1 className="font-bold text-[#ffffff] text-xl leading-tight">spera ops</h1>
+          </div>
         </div>
-        <div>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Admin Console</p>
-          <h1 className="font-bold text-[#ffffff] text-xl leading-tight">spera</h1>
-        </div>
+        <span className="text-[10px] font-bold text-[#ff4b35]">{monthKey || "loading"}</span>
       </header>
 
-      <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-6 space-y-5">
-
-        {/* Stats row */}
+      <main className="mx-auto w-full max-w-lg md:max-w-4xl px-5 py-6 space-y-5">
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "Users",    value: users.filter((u) => u.isConnected).length, icon: <Users size={13} className="text-[#ff4b35]" /> },
-            { label: "Champs",   value: champUsers.length,                          icon: <Zap size={13} className="text-[#ff4b35]" /> },
-            { label: "Sessions", value: sessionsThisMonth.length,                   icon: <Calendar size={13} className="text-[#ffffff]" /> },
-            { label: "Active",   value: activeRiders.length,                        icon: <TrendingUp size={13} className="text-[#ffffff]" /> },
-          ].map(({ label, value, icon }) => (
+            { label: "Riders", value: users.length, Icon: Users },
+            { label: "Eligible", value: eligibleRewards.length, Icon: Trophy },
+            { label: "Pending", value: pendingUpgrades.length, Icon: ClipboardList },
+            { label: "Champing", value: champing.length, Icon: Star },
+          ].map(({ label, value, Icon }) => (
             <div key={label} className="glass-card p-3 text-center">
-              <div className="flex justify-center mb-1">{icon}</div>
+              <div className="flex justify-center mb-1"><Icon size={13} className="text-[#ff4b35]" /></div>
               <p className="text-lg font-bold text-[#ffffff]">{value}</p>
-              <p className="text-[9px] text-[#b8b8b8] uppercase tracking-wider mt-0.5">{label}</p>
+              <p className="text-[9px] text-[#b8b8b8] uppercase tracking-wider">{label}</p>
             </div>
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2">
-          {(["users", "sessions", "zones"] as const).map((tab) => {
+        {founder && (
+          <div className="glass-card p-4">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">Founder admin status</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <MiniMetric label="League" value={`${founder.tier} km`} />
+              <MiniMetric label="Monthly km" value={founder.monthlyKm} />
+              <MiniMetric label="Rewards consent" value={founder.rewardsExportConsent ? "yes" : "no"} />
+              <MiniMetric label="Last sync" value={founder.lastStravaSyncAt ? format(new Date(founder.lastStravaSyncAt), "MMM d") : "-"} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {(Object.keys(TAB_META) as AdminTab[]).map((tab) => {
+            const { label, Icon } = TAB_META[tab];
             const active = activeTab === tab;
             return (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className="flex-1 rounded-xl py-2 text-[11px] font-semibold border transition-all"
-                style={active ? {
-                  background: "rgba(255,75,53,0.15)",
-                  borderColor: "rgba(255,75,53,0.5)",
-                  color: "#ff4b35",
-                } : {
-                  background: "transparent",
-                  borderColor: "rgba(255,255,255,0.08)",
-                  color: "#b8b8b8",
-                }}>
-                {tab === "users" ? "Users" : tab === "sessions" ? "Sessions" : "Zones"}
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold border transition-all"
+                style={{
+                  color: active ? "#ff4b35" : "#b8b8b8",
+                  borderColor: active ? "rgba(255,75,53,0.5)" : "rgba(255,255,255,0.1)",
+                  background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.03)",
+                }}
+              >
+                <Icon size={12} /> {label}
               </button>
             );
           })}
         </div>
 
-        {/* ── USERS TAB ───────────────────────────────────────────────────── */}
-        {activeTab === "users" && (
-          <section className="space-y-2">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-              {users.filter((u) => u.isConnected).length} registered riders
-            </p>
-            {users.filter((u) => u.isConnected).map((u) => {
-              const isEditing = editUser === u.id;
-              const currentRole = pendingRole[u.id] ?? u.role;
-              const currentTier = pendingTier[u.id] ?? u.tier;
-              const monthKm = getMonthlyKm(u.id, activities);
-              const isSelf = u.id === currentUser.id;
-
-              return (
-                <div key={u.id} className="glass-card overflow-hidden transition-all"
-                  style={isSelf ? { borderColor: "rgba(255,255,255,0.3)" } : undefined}>
-                  {/* User row */}
-                  <div className="flex items-center gap-3 p-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={u.avatar} alt={u.name}
-                      className="w-9 h-9 rounded-full object-cover flex-shrink-0"
-                      style={{ border: "1.5px solid rgba(255,75,53,0.4)" }} />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-[#ffffff] truncate">{u.name}</p>
-                        {isSelf && (
-                          <span className="text-[9px] rounded-full px-1.5 py-0.5 font-bold"
-                            style={{ background: "rgba(255,255,255,0.15)", color: "#ffffff" }}>YOU</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-[10px] font-semibold" style={{ color: ROLE_COLORS[u.role] }}>
-                          {u.role.toUpperCase()}
-                        </span>
-                        <span className="text-[#b8b8b8]/40 text-[10px]">·</span>
-                        <span className="text-[10px] text-[#b8b8b8]">{TIER_LABELS[u.tier]} · {u.tier} km</span>
-                        {u.region && (
-                          <>
-                            <span className="text-[#b8b8b8]/40 text-[10px]">·</span>
-                            <span className="text-[10px] text-[#b8b8b8]">{u.region}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* km + edit toggle */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-[#ff4b35]">{monthKm}</p>
-                        <p className="text-[9px] text-[#b8b8b8]">km</p>
-                      </div>
-                      {!isSelf && (
-                        <button
-                          onClick={() => setEditUser(isEditing ? null : u.id)}
-                          className="w-7 h-7 rounded-lg glass flex items-center justify-center transition-colors hover:bg-white/10"
-                        >
-                          <ChevronDown size={12} className="text-[#b8b8b8]"
-                            style={{ transform: isEditing ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Inline editor */}
-                  {isEditing && (
-                    <div className="border-t border-white/[0.06] p-4 space-y-3">
-                      {/* Role selector */}
-                      <div>
-                        <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-2">Role</p>
-                        <div className="flex gap-2">
-                          {ROLES.map((r) => (
-                            <button key={r} onClick={() => setPendingRole((p) => ({ ...p, [u.id]: r }))}
-                              className="flex-1 rounded-lg py-1.5 text-[11px] font-semibold border transition-all"
-                              style={currentRole === r ? {
-                                background: "rgba(255,75,53,0.2)",
-                                borderColor: "rgba(255,75,53,0.6)",
-                                color: ROLE_COLORS[r],
-                              } : {
-                                background: "transparent",
-                                borderColor: "rgba(255,255,255,0.08)",
-                                color: "#b8b8b8",
-                              }}>
-                              {r}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tier selector */}
-                      <div>
-                        <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-2">Tier</p>
-                        <div className="flex gap-2">
-                          {TIERS.map((t) => (
-                            <button key={t} onClick={() => setPendingTier((p) => ({ ...p, [u.id]: t }))}
-                              className="flex-1 rounded-lg py-1.5 text-[10px] font-semibold border transition-all"
-                              style={currentTier === t ? {
-                                background: "rgba(255,255,255,0.12)",
-                                borderColor: "rgba(255,255,255,0.4)",
-                                color: "#ffffff",
-                              } : {
-                                background: "transparent",
-                                borderColor: "rgba(255,255,255,0.08)",
-                                color: "#b8b8b8",
-                              }}>
-                              {t}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Save / cancel */}
-                      <div className="flex gap-2 pt-1">
-                        <button onClick={() => { setEditUser(null); setPendingRole((p) => { const n = {...p}; delete n[u.id]; return n; }); setPendingTier((p) => { const n = {...p}; delete n[u.id]; return n; }); }}
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 border border-white/10 text-[11px] font-semibold text-[#b8b8b8] transition-colors hover:bg-white/5">
-                          <X size={12} /> Cancel
-                        </button>
-                        <button
-                          onClick={() => handleSave(u.id, u.stravaId)}
-                          disabled={saving === u.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[11px] font-semibold text-white transition-all disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg, #ff4b35, #ffffff)" }}>
-                          {saving === u.id ? (
-                            <span className="animate-pulse">Saving…</span>
-                          ) : saved === u.id ? (
-                            <><Check size={12} /> Saved</>
-                          ) : (
-                            <><Check size={12} /> Save changes</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </section>
-        )}
-
-        {/* ── SESSIONS TAB ────────────────────────────────────────────────── */}
-        {activeTab === "sessions" && (
-          <section className="space-y-2">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-              {championSessions.length} total · {sessionsThisMonth.length} this month
-            </p>
-            {championSessions.length === 0 ? (
-              <div className="glass-card p-10 text-center">
-                <p className="text-[#b8b8b8] text-sm">No champion sessions yet.</p>
-              </div>
-            ) : (
-              [...championSessions]
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((s) => {
-                  const owner = users.find((u) => u.id === s.userId);
-                  const isThisMonth = isInCurrentMonth(s.date, now);
-                  return (
-                    <div key={s.id} className="glass-card p-4 flex items-start gap-3">
-                      {/* Type badge */}
-                      <div className="flex-shrink-0 mt-0.5">
-                        <span className="text-[9px] font-bold rounded-full px-2 py-1 uppercase"
-                          style={s.type === "champing" ? {
-                            background: "rgba(255,75,53,0.2)", color: "#ff4b35",
-                          } : {
-                            background: "rgba(255,255,255,0.15)", color: "#ffffff",
-                          }}>
-                          {s.type === "champing" ? "Champing" : "FTP"}
-                        </span>
-                      </div>
-
+        {loading ? (
+          <div className="glass-card p-8 text-center text-sm text-[#b8b8b8]">Loading founder console...</div>
+        ) : (
+          <>
+            {activeTab === "riders" && (
+              <section className="space-y-2">
+                {users.map((user) => (
+                  <div key={user.stravaId} className="glass-card p-4">
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-[#ffffff] truncate">
-                            {owner?.name ?? "Unknown rider"}
-                          </p>
-                          {isThisMonth && (
-                            <span className="text-[9px] rounded-full px-1.5 py-0.5 font-bold"
-                              style={{ background: "rgba(255,255,255,0.12)", color: "#ffffff" }}>
-                              THIS MONTH
-                            </span>
-                          )}
+                          <p className="text-sm font-bold text-[#ffffff] truncate">{user.name}</p>
+                          {user.isCurrentUser && <span className="text-[9px] rounded-full px-1.5 py-0.5 bg-white/15 text-white font-bold">YOU</span>}
                         </div>
-                        <p className="text-[10px] text-[#b8b8b8] mt-0.5">
-                          {format(new Date(s.date), "MMM d, yyyy")}
-                          {s.zoneName ? ` · ${s.zoneName}` : ""}
-                          {s.stravaActivityKm ? ` · ${s.stravaActivityKm} km` : ""}
-                        </p>
-                        {s.notes && (
-                          <p className="text-[10px] text-[#b8b8b8]/70 mt-1 leading-snug line-clamp-2">{s.notes}</p>
-                        )}
+                        <p className="text-[10px] text-[#b8b8b8]">{user.monthlyKm} km this month - {user.activityCount} rides</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-[#ff4b35]">{user.tier} km</p>
+                        <p className="text-[9px] text-[#b8b8b8]">{TIER_LABELS[user.tier]}</p>
                       </div>
                     </div>
-                  );
-                })
-            )}
-          </section>
-        )}
 
-        {/* ── ZONES TAB ───────────────────────────────────────────────────── */}
-        {activeTab === "zones" && (
-          <section className="space-y-2">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-              {zones.length} zones
-            </p>
-            {zones.map((z) => {
-              const creator = users.find((u) => u.id === z.createdBy);
-              return (
-                <div key={z.id} className="glass-card p-4 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl glass flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <MapPin size={13} style={{ color: "#ff4b35" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-[#ffffff] truncate">{z.name}</p>
-                      <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5"
-                        style={{ background: z.type === "training" ? "rgba(255,255,255,0.12)" : "rgba(255,75,53,0.15)",
-                                 color: z.type === "training" ? "#ffffff" : "#ff4b35" }}>
-                        {z.type}
-                      </span>
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <SelectControl
+                        label="Role"
+                        value={user.role}
+                        options={ROLES}
+                        onChange={(value) => patchUser(user.stravaId, { role: value })}
+                        disabled={saving === user.stravaId}
+                      />
+                      <SelectControl
+                        label="League"
+                        value={String(user.tier)}
+                        options={CHALLENGE_TIERS.map(String)}
+                        onChange={(value) => patchUser(user.stravaId, { tier: Number(value) })}
+                        disabled={saving === user.stravaId}
+                      />
+                      <ToggleButton
+                        label="Leaderboard"
+                        active={user.leaderboardConsent}
+                        onClick={() => patchUser(user.stravaId, { leaderboardConsent: !user.leaderboardConsent })}
+                      />
+                      <ToggleButton
+                        label="Rewards export"
+                        active={user.rewardsExportConsent}
+                        onClick={() => patchUser(user.stravaId, { rewardsExportConsent: !user.rewardsExportConsent })}
+                      />
                     </div>
-                    <p className="text-[10px] text-[#b8b8b8] mt-0.5">
-                      {z.region} · {z.usageCount} sessions
-                    </p>
-                    <p className="text-[10px] text-[#b8b8b8]/60 mt-0.5">
-                      by {creator?.name ?? z.createdByName}
-                    </p>
-                    {z.description && (
-                      <p className="text-[10px] text-[#b8b8b8]/60 mt-1 leading-snug line-clamp-2">{z.description}</p>
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {activeTab === "rewards" && (
+              <section className="space-y-3">
+                <div className="glass-card p-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Rewards export</p>
+                    <p className="text-[11px] text-[#b8b8b8] mt-1">Completion-based, consented riders only. Official reward leagues: {OFFICIAL_REWARD_TIERS.join(", ")} km.</p>
+                  </div>
+                  <button onClick={exportRewardsCsv} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-white bg-[#ff4b35]">
+                    <Download size={13} /> Export
+                  </button>
+                </div>
+                {rewards.map((row) => (
+                  <div key={row.stravaId} className="glass-card p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#ffffff] truncate">{row.name}</p>
+                      <p className="text-[10px] text-[#b8b8b8]">{row.tier} km {TIER_LABELS[row.tier]} - outdoor {row.outdoorKm} km - indoor {row.indoorKm} km</p>
+                    </div>
+                    <StatusPill label={row.eligibleForExport ? "export" : row.complete ? "complete" : "not yet"} active={row.eligibleForExport} />
+                    {row.overTierReview && <StatusPill label="upgrade" active />}
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {activeTab === "upgrades" && (
+              <section className="space-y-2">
+                {upgrades.length === 0 ? <EmptyState text="No league upgrade requests yet." /> : upgrades.map((request) => (
+                  <div key={request.id} className="glass-card p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-[#ffffff]">{request.userName}</p>
+                        <p className="text-[10px] text-[#b8b8b8]">{request.currentTier} km to {request.requestedTier} km - {request.monthlyKm} km in {request.monthKey}</p>
+                        <p className="text-[10px] text-[#b8b8b8]/60">Effective {request.effectiveOn}</p>
+                      </div>
+                      <StatusPill label={request.status} active={request.status === "approved"} />
+                    </div>
+                    {request.status === "pending" && (
+                      <div className="mt-3 flex gap-2">
+                        <button onClick={() => decideUpgrade(request.id, "approved")} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white bg-emerald-500/80">
+                          <Check size={13} /> Approve
+                        </button>
+                        <button onClick={() => decideUpgrade(request.id, "rejected")} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-[#ffb4ab] border border-red-500/30">
+                          <X size={13} /> Reject
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-base font-bold text-[#ff4b35]">{z.usageCount}</p>
-                    <p className="text-[9px] text-[#b8b8b8]">sessions</p>
+                ))}
+              </section>
+            )}
+
+            {activeTab === "champing" && (
+              <section className="space-y-2">
+                {champing.length === 0 ? <EmptyState text="No champing sessions logged yet." /> : champing.map((session) => (
+                  <div key={session.id} className="glass-card p-4 flex items-center gap-3">
+                    <Star size={16} className="text-[#ff4b35]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#ffffff] truncate">{session.userName}</p>
+                      <p className="text-[10px] text-[#b8b8b8]">{format(new Date(session.date), "MMM d, yyyy")} - {session.zoneName || "No zone"} - {session.stravaActivityKm ?? 0} km</p>
+                    </div>
                   </div>
+                ))}
+              </section>
+            )}
+
+            {activeTab === "notifications" && (
+              <section className="space-y-3">
+                <div className="glass-card p-4 space-y-2">
+                  <input value={commTitle} onChange={(e) => setCommTitle(e.target.value)} placeholder="Message title" className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none" />
+                  <textarea value={commBody} onChange={(e) => setCommBody(e.target.value)} placeholder="Message body" rows={3} className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none resize-none" />
+                  <button onClick={sendNotification} disabled={saving === "notification"} className="w-full rounded-xl py-2 text-xs font-bold text-white bg-[#ff4b35] disabled:opacity-50">Send to onboarded riders</button>
                 </div>
-              );
-            })}
-          </section>
+                {notifications.slice(0, 10).map((notification) => (
+                  <div key={notification.id} className="glass-card p-4">
+                    <p className="text-sm font-bold text-[#ffffff]">{notification.title}</p>
+                    <p className="text-[11px] text-[#b8b8b8] mt-1">{notification.body}</p>
+                    <p className="text-[9px] text-[#b8b8b8]/50 mt-2">{format(new Date(notification.created_at), "MMM d, HH:mm")}</p>
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {activeTab === "feedback" && (
+              <section className="glass-card p-5">
+                <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">Beta feedback</p>
+                <p className="text-sm text-[#b8b8b8] leading-relaxed">Feedback currently routes through the Profile mailto flow. Use this tab as the ops reminder to triage bugs, confusing screens, champ flows, and launch ideas from the first testers.</p>
+                <a href="mailto:ssdidiza@gmail.com?subject=spera beta feedback triage" className="mt-4 inline-flex rounded-full px-4 py-2 text-xs font-bold text-white bg-[#ff4b35]">Open feedback inbox</a>
+              </section>
+            )}
+          </>
         )}
-
-        {/* DB note */}
-        <div className="glass rounded-2xl p-4 border border-[#ffffff]/10">
-          <p className="text-[10px] text-[#b8b8b8] leading-relaxed">
-            <span className="text-[#ffffff] font-semibold">Note:</span> Role and tier changes are saved to Supabase.
-            Changes take effect on next login. To set yourself as admin, run{" "}
-            <code className="font-mono text-[#ff4b35]">UPDATE public.users SET role = &apos;admin&apos; WHERE strava_id = &apos;&lt;your_id&gt;&apos;;</code>{" "}
-            in the Supabase SQL editor.
-          </p>
-        </div>
-
       </main>
       <NavBar />
     </div>
   );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+      <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</p>
+      <p className="mt-1 text-sm font-black text-[#ffffff]">{value}</p>
+    </div>
+  );
+}
+
+function SelectControl({ label, value, options, onChange, disabled }: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="mt-1 w-full rounded-xl border border-white/10 bg-[#111] px-2 py-2 text-xs font-bold text-white outline-none"
+      >
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function ToggleButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border px-3 py-2 text-left transition-colors"
+      style={{
+        borderColor: active ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.1)",
+        background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.04)",
+      }}
+    >
+      <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</p>
+      <p className="text-xs font-black text-white">{active ? "enabled" : "off"}</p>
+    </button>
+  );
+}
+
+function StatusPill({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider"
+      style={{
+        color: active ? "#ff4b35" : "#b8b8b8",
+        border: `1px solid ${active ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.12)"}`,
+        background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.04)",
+      }}>
+      {label}
+    </span>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="glass-card p-8 text-center text-sm text-[#b8b8b8]">{text}</div>;
 }

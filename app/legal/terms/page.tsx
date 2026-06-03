@@ -25,8 +25,12 @@ export default function TermsAndConditions() {
 
       <h2>2. Challenge Rules</h2>
       <ul>
-        <li>Monthly km targets are set per tier (200, 400, 800, or 1 000 km). Progress is calculated from Strava-recorded cycling activities only.</li>
+        <li>Monthly cycling targets are set per league: 200 km, 400 km, 600 km, 800 km, and the club-only Unicorn 1 000 km stretch league. Progress is calculated from Strava-recorded cycling activities only.</li>
         <li>Team Vitality champs are expected to attend two zone rides per month or ten annually. Champing and FTP Improver check-ins must be linked to a genuine Strava activity. Each Strava activity may only be logged once.</li>
+        <li>Leaderboard ranking is separate from reward eligibility. Rewards eligibility is based on completing the distance committed to for the month, not finishing first on the leaderboard.</li>
+        <li>spera helps track progress, champ coordination, and reward eligibility preparation. Official Team Vitality Built for the Season rewards remain governed by Discovery&apos;s rules and decisions.</li>
+        <li>Indoor rides such as Zwift or other virtual cycling activities may be tracked in spera, but official eligibility remains subject to Discovery and Team Vitality rules.</li>
+        <li>The Unicorn 1 000 km league is a club stretch category unless Team Vitality confirms it as an official reward category.</li>
         <li>Manipulating activity data, using GPS spoofing, or any other form of cheating will result in immediate account suspension.</li>
         <li>Tier changes are administered by platform operators and take effect at the start of the following month.</li>
       </ul>
@@ -65,6 +69,13 @@ export default function TermsAndConditions() {
         </a>
         . Activity data displayed on this platform is sourced from Strava and attributed
         accordingly. This platform is not affiliated with or endorsed by Strava.
+      </p>
+      <p>
+        Team Vitality Built for the Season is governed by Discovery&apos;s official{" "}
+        <a href="https://www.discovery.co.za/wcm/discoverycoza/assets/vitality/terms-and-conditions/team-vitality-built-for-the-season.pdf" target="_blank" rel="noopener noreferrer">
+          terms and conditions
+        </a>
+        . spera does not guarantee prizes, winner selection, or official campaign acceptance.
       </p>
 
       <h2>6. Limitation of Liability</h2>

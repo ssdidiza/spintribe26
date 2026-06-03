@@ -37,10 +37,10 @@ interface AppState {
     stravaId?: string,
     name?: string,
     avatar?: string,
-    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded" | "leaderboardConsent">
+    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded" | "leaderboardConsent" | "rewardsExportConsent">
   ) => void;
   logout: () => void;
-  completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean) => void;
+  completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean, rewardsExportConsent?: boolean) => void;
   addChampionSession: (
     type: "ftp_improver" | "champing",
     notes: string,
@@ -102,10 +102,18 @@ export const useStore = create<AppState>()(
         fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       },
 
-      completeOnboarding: (role, tier, zone, leaderboardConsent) => {
+      completeOnboarding: (role, tier, zone, leaderboardConsent, rewardsExportConsent) => {
         const user = get().currentUser;
         if (!user) return;
-        const updated = { ...user, role, tier, onboarded: true, leaderboardConsent: leaderboardConsent ?? false, ...(zone ? { zone, region: zone } : {}) };
+        const updated = {
+          ...user,
+          role,
+          tier,
+          onboarded: true,
+          leaderboardConsent: leaderboardConsent ?? false,
+          rewardsExportConsent: rewardsExportConsent ?? false,
+          ...(zone ? { zone, region: zone } : {}),
+        };
         set({
           currentUser: updated,
           isOnboarded: true,

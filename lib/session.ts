@@ -10,9 +10,14 @@ export interface SessionData {
   userId?: string;
 }
 
+const sessionPassword =
+  process.env.NEXTAUTH_SECRET ??
+  process.env.SESSION_SECRET ??
+  (process.env.NODE_ENV === "production" ? undefined : "dev-session-secret-for-local-routes-only-32");
+
 const sessionOptions = {
   cookieName: "spintribe_session",
-  password: (process.env.NEXTAUTH_SECRET ?? process.env.SESSION_SECRET)!,   // min 32 chars
+  password: sessionPassword!, // min 32 chars; required in production env
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,

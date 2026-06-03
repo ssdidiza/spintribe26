@@ -7,17 +7,18 @@ import { Bike, ChevronRight, CheckCircle2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TIERS: { km: Tier; description: string }[] = [
-  { km: 200, description: "Building consistency - 50 km/week" },
-  { km: 400, description: "Solid commitment - 100 km/week" },
-  { km: 800, description: "Serious training - 200 km/week" },
-  { km: 1000, description: "Elite distance - 250 km/week" },
+  { km: 200, description: "Beginner - official Team Vitality challenge" },
+  { km: 400, description: "Intermediate - official Team Vitality challenge" },
+  { km: 600, description: "Intermediate 2 - official Team Vitality challenge" },
+  { km: 800, description: "Advanced - official Team Vitality challenge" },
+  { km: 1000, description: "Unicorn - club-only stretch opt-in" },
 ];
 
 const REGIONS = ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Other"];
 
 type Step = "role" | "invite" | "tier";
 const VALID_ROLES: UserRole[] = ["champion", "member"];
-const VALID_TIERS: Tier[] = [200, 400, 800, 1000];
+const VALID_TIERS: Tier[] = [200, 400, 600, 800, 1000];
 
 // Inner component that uses useSearchParams - must be wrapped in Suspense
 function OnboardingContent() {
@@ -33,6 +34,7 @@ function OnboardingContent() {
   const [inviteError, setInviteError] = useState<string>("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [leaderboardConsent, setLeaderboardConsent] = useState(false);
+  const [rewardsExportConsent, setRewardsExportConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ function OnboardingContent() {
     const parsedTier = Number(searchParams.get("tier")) as Tier;
     const zoneParam = searchParams.get("zone") ?? undefined;
     const consentParam = searchParams.get("leaderboard_consent") === "1";
+    const rewardsConsentParam = searchParams.get("rewards_export_consent") === "1";
     const restoredRole = roleParam && VALID_ROLES.includes(roleParam) ? roleParam : "member";
     const restoredTier = VALID_TIERS.includes(parsedTier) ? parsedTier : 400;
 
@@ -55,8 +58,9 @@ function OnboardingContent() {
         region: zoneParam,
         onboarded: true,
         leaderboardConsent: consentParam,
+        rewardsExportConsent: rewardsConsentParam,
       });
-      completeOnboarding(restoredRole, restoredTier, zoneParam, consentParam);
+      completeOnboarding(restoredRole, restoredTier, zoneParam, consentParam, rewardsConsentParam);
       router.replace(restoredRole === "champion" ? "/champion" : "/dashboard");
       return;
     }
@@ -106,10 +110,10 @@ function OnboardingContent() {
     const res = await fetch("/api/users/onboard", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, tier, zone: zone.trim() || region, leaderboardConsent }),
+      body: JSON.stringify({ role, tier, zone: zone.trim() || region, leaderboardConsent, rewardsExportConsent }),
     });
     if (!res.ok) { setSubmitting(false); return; }
-    completeOnboarding(role, tier, zone.trim() || region, leaderboardConsent);
+    completeOnboarding(role, tier, zone.trim() || region, leaderboardConsent, rewardsExportConsent);
     router.push(role === "champion" ? "/champion" : "/dashboard");
   }
 
@@ -349,6 +353,29 @@ function OnboardingContent() {
                 </p>
                 <p className="text-[10px] text-white/40 mt-1 leading-relaxed">
                   Others in my tier can see my monthly km and ranking. You can change this later from your profile.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRewardsExportConsent((v) => !v)}
+              className="mt-3 w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
+              style={{
+                borderColor: rewardsExportConsent ? "rgba(255,101,0,0.5)" : "rgba(255,255,255,0.1)",
+                background: rewardsExportConsent ? "rgba(255,101,0,0.08)" : "rgba(255,255,255,0.04)",
+              }}
+            >
+              <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                style={{ borderColor: rewardsExportConsent ? "#FF6500" : "rgba(255,255,255,0.3)", background: rewardsExportConsent ? "#FF6500" : "transparent" }}>
+                {rewardsExportConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-white/80 leading-snug">
+                  Include me in reward eligibility exports
+                </p>
+                <p className="text-[10px] text-white/40 mt-1 leading-relaxed">
+                  Admins can export my name, Strava ID, selected league, monthly km, and completion status for Team Vitality reward administration.
                 </p>
               </div>
             </button>

@@ -54,7 +54,7 @@ export const MOCK_USERS: User[] = [
     name: "Casey Sprint",
     avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=CaseySprint",
     role: "member",
-    tier: 800,
+    tier: 600,
     isConnected: true,
   },
   {
@@ -278,7 +278,7 @@ export function buildLeaderboard(
       return {
         user: u,
         totalKm,
-        targetKm: u.tier as 200 | 400 | 800 | 1000,
+        targetKm: u.tier,
         progressPct: Math.min(100, Math.round((totalKm / u.tier) * 100)),
         rank: 0,
       };
