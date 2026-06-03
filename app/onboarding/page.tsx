@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { Tier, UserRole, TIER_LABELS, TIER_COLORS } from "@/lib/types";
+import { Tier, UserRole, TIER_LABELS, TIER_COLORS, getPostLoginRoute } from "@/lib/types";
 import { Bike, ChevronRight, CheckCircle2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ const TIERS: { km: Tier; description: string }[] = [
 const REGIONS = ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Other"];
 
 type Step = "role" | "invite" | "tier";
-const VALID_ROLES: UserRole[] = ["champion", "member"];
+const RESTORABLE_ROLES: UserRole[] = ["champion", "member", "admin"];
 const VALID_TIERS: Tier[] = [200, 400, 600, 800, 1000];
 
 // Inner component that uses useSearchParams - must be wrapped in Suspense
@@ -47,7 +47,7 @@ function OnboardingContent() {
     const zoneParam = searchParams.get("zone") ?? undefined;
     const consentParam = searchParams.get("leaderboard_consent") === "1";
     const rewardsConsentParam = searchParams.get("rewards_export_consent") === "1";
-    const restoredRole = roleParam && VALID_ROLES.includes(roleParam) ? roleParam : "member";
+    const restoredRole = roleParam && RESTORABLE_ROLES.includes(roleParam) ? roleParam : "member";
     const restoredTier = VALID_TIERS.includes(parsedTier) ? parsedTier : 400;
 
     if (returning && stravaId && name) {
@@ -61,7 +61,7 @@ function OnboardingContent() {
         rewardsExportConsent: rewardsConsentParam,
       });
       completeOnboarding(restoredRole, restoredTier, zoneParam, consentParam, rewardsConsentParam);
-      router.replace(restoredRole === "champion" ? "/champion" : "/dashboard");
+      router.replace(getPostLoginRoute({ role: restoredRole }));
       return;
     }
 

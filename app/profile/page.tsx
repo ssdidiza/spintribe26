@@ -39,7 +39,7 @@ export default function ProfilePage() {
   const isChamp       = canAccessChampionFeatures(currentUser);
   const isAdmin       = hasAdminRole(currentUser);
 
-  const roleLabel = isAdmin ? "Admin" : isChamp ? "Champion" : "Member";
+  const roleLabel = isAdmin ? "Admin + Champion" : isChamp ? "Champion" : "Member";
   const roleColor = isAdmin ? "#ff4b35" : isChamp ? "#ffffff" : "#a0a0a0";
 
   async function handleLogout() {

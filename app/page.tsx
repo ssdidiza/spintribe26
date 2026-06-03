@@ -8,6 +8,7 @@ import { useHydrated } from "@/lib/useHydrated";
 import Image from "next/image";
 import LegalFooter from "@/components/LegalFooter";
 import { SperaWordmark } from "@/components/SperaLogo";
+import { getPostLoginRoute } from "@/lib/types";
 
 type Mode = "signin" | "signup";
 
@@ -26,7 +27,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (currentUser && isOnboarded) router.replace("/dashboard");
+    if (currentUser && isOnboarded) router.replace(getPostLoginRoute(currentUser));
     else if (currentUser && !isOnboarded) router.replace("/onboarding");
   }, [hydrated, currentUser, isOnboarded, router]);
 
@@ -70,7 +71,7 @@ export default function LandingPage() {
               country: row.country ?? undefined,
             });
             completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
-            router.push("/dashboard");
+            router.push(getPostLoginRoute({ role: row.role }));
           } else {
             login(data.user.id, displayName);
             router.push("/onboarding");
@@ -106,7 +107,7 @@ export default function LandingPage() {
               country: row.country ?? undefined,
             });
             completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
-            router.push("/dashboard");
+            router.push(getPostLoginRoute({ role: row.role }));
           } else {
             login(data.user.id, row?.name || displayName);
             router.push("/onboarding");

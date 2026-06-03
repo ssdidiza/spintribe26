@@ -105,18 +105,24 @@ export interface LeaderboardEntry {
 // ─── Role utility functions ───────────────────────────────────────────────────
 
 /** True only for superuser admins */
-export function hasAdminRole(user: User | null | undefined): boolean {
+export function hasAdminRole(user: Pick<User, "role"> | null | undefined): boolean {
   return user?.role === "admin";
 }
 
 /** True for champions AND admins (admins can access all champion features) */
-export function canAccessChampionFeatures(user: User | null | undefined): boolean {
+export function canAccessChampionFeatures(user: Pick<User, "role"> | null | undefined): boolean {
   return user?.role === "champion" || user?.role === "admin";
 }
 
 /** True for any authenticated, onboarded user */
 export function isAuthenticated(user: User | null | undefined): boolean {
   return !!user;
+}
+
+export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined): "/admin" | "/champion" | "/dashboard" {
+  if (hasAdminRole(user)) return "/admin";
+  if (canAccessChampionFeatures(user)) return "/champion";
+  return "/dashboard";
 }
 
 // ─── Tier metadata ────────────────────────────────────────────────────────────
