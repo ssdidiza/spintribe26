@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { Tier, UserRole, TIER_LABELS, TIER_COLORS, getPostLoginRoute } from "@/lib/types";
@@ -25,6 +25,7 @@ function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, login, completeOnboarding } = useStore();
+  const handledReturningRef = useRef(false);
   const [step, setStep] = useState<Step>("role");
   const [role, setRole] = useState<UserRole | null>(null);
   const [tier, setTier] = useState<Tier | null>(null);
@@ -51,6 +52,8 @@ function OnboardingContent() {
     const restoredTier = VALID_TIERS.includes(parsedTier) ? parsedTier : 400;
 
     if (returning && stravaId && name) {
+      if (handledReturningRef.current) return;
+      handledReturningRef.current = true;
       login(stravaId, name, avatar ?? "", {
         role: restoredRole,
         tier: restoredTier,
@@ -113,8 +116,9 @@ function OnboardingContent() {
       body: JSON.stringify({ role, tier, zone: zone.trim() || region, leaderboardConsent, rewardsExportConsent }),
     });
     if (!res.ok) { setSubmitting(false); return; }
-    completeOnboarding(role, tier, zone.trim() || region, leaderboardConsent, rewardsExportConsent);
-    router.push(role === "champion" ? "/champion" : "/dashboard");
+    const finalRole = currentUser?.role === "admin" ? "admin" : role;
+    completeOnboarding(finalRole, tier, zone.trim() || region, leaderboardConsent, rewardsExportConsent);
+    router.push(getPostLoginRoute({ role: finalRole }));
   }
 
   // Determine step labels and progress

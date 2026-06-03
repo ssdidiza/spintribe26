@@ -3,6 +3,7 @@ import { exchangeStravaCode, getStravaActivitiesForMonth, getStravaAthlete } fro
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 import { detectZoneFromGPS } from "@/lib/types";
+import { founderDefaults, founderRepairTier, isFounderUserId } from "@/lib/founder";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -101,11 +102,35 @@ export async function GET(req: NextRequest) {
       console.error("Initial activity sync failed (non-fatal):", syncErr);
     }
 
-    const { data: existingUser } = await db
+    let { data: existingUser } = await db
       .from("users")
       .select("onboarded, role, tier, zone, leaderboard_consent, rewards_export_consent")
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
+
+    if (existingUser && isFounderUserId(tokens.athleteId) && existingUser.role !== "admin") {
+      const founder = founderDefaults();
+      const repair = {
+        role: founder.role,
+        tier: founderRepairTier(existingUser.tier),
+        zone: founder.zone,
+        onboarded: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: repairedUser, error: repairError } = await db
+        .from("users")
+        .update(repair)
+        .eq("strava_id", String(tokens.athleteId))
+        .select("onboarded, role, tier, zone, leaderboard_consent, rewards_export_consent")
+        .maybeSingle();
+
+      if (repairError) {
+        console.error("Founder profile repair failed:", repairError);
+      } else {
+        existingUser = repairedUser ?? { ...existingUser, ...repair };
+      }
+    }
 
     const session = await getSession();
     session.athleteId = tokens.athleteId;

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession, getEffectiveUserId } from "@/lib/session";
+import { UserRole } from "@/lib/types";
+import { founderDefaults, founderRepairTier, isFounderUserId } from "@/lib/founder";
 
 const VALID_ROLES = ["champion", "member"];
 const VALID_TIERS = [200, 400, 600, 800, 1000];
@@ -26,23 +28,49 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
   }
 
-  // Champions require zone
-  const effectiveZone: string | null = role === "champion"
-    ? (zone?.trim() || null)
-    : (zone?.trim() || region?.trim() || null);
+  const db = supabaseAdmin();
+  const { data: existingUser, error: existingUserError } = await db
+    .from("users")
+    .select("role,zone")
+    .eq("strava_id", userId)
+    .maybeSingle();
 
-  if (role === "champion" && !effectiveZone) {
-    return NextResponse.json({ error: "Zone is required for champions" }, { status: 400 });
+  if (existingUserError) {
+    console.error("Onboard lookup error:", existingUserError);
+    return NextResponse.json({ error: "DB lookup failed" }, { status: 500 });
   }
 
-  const db = supabaseAdmin();
+  // Founder/admin is an overlay role. If an admin is forced back through
+  // onboarding, keep admin privileges while updating league/consent/zone.
+  const existingRole = existingUser?.role as UserRole | undefined;
+  const isFounder = isFounderUserId(userId);
+  const founder = founderDefaults();
+  const roleForUpdate: UserRole = existingRole === "admin" || isFounder ? "admin" : role;
+  const tierForUpdate = isFounder ? founderRepairTier(tier) : Number(tier);
+
+  // Champions and admins require a champ zone. Preserve the existing zone when
+  // a returning admin accidentally lands on onboarding after logout/login.
+  const needsZone = role === "champion" || roleForUpdate === "admin";
+  const submittedZone = zone?.trim();
+  const existingZone = existingUser?.zone?.trim();
+  const effectiveZone: string | null = needsZone
+    ? (
+        isFounder && existingRole !== "admin"
+          ? founder.zone
+          : submittedZone || existingZone || (isFounder ? founder.zone : null)
+      )
+    : (submittedZone || region?.trim() || existingZone || null);
+
+  if (needsZone && !effectiveZone) {
+    return NextResponse.json({ error: "Zone is required for champions" }, { status: 400 });
+  }
 
   // Update user record
   const { error: updateError } = await db
     .from("users")
     .update({
-      role,
-      tier: Number(tier),
+      role: roleForUpdate,
+      tier: tierForUpdate,
       zone: effectiveZone,
       onboarded: true,
       leaderboard_consent: leaderboardConsent === true,
