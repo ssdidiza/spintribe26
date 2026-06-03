@@ -1,4 +1,4 @@
-import { Activity, LeaderboardEntry, Tier, User } from "./types";
+import { Activity, Tier, User } from "./types";
 
 export const CHALLENGE_TIERS: Tier[] = [200, 400, 600, 800, 1000];
 export const OFFICIAL_REWARD_TIERS: Tier[] = [200, 400, 600, 800];
@@ -65,19 +65,6 @@ export function getRewardStats(user: User, activities: Activity[], date = new Da
     officialRewardTier: isOfficialRewardTier(user.tier),
     overTierReview: nextTier ? totalKm >= nextTier : false,
   };
-}
-
-export function getGhostPacerKm(
-  entries: LeaderboardEntry[],
-  targetKm: Tier,
-  date = new Date()
-) {
-  const topRealKm = entries[0]?.totalKm ?? 0;
-  const bufferKm = Math.max(5, Math.ceil(targetKm * 0.01));
-  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const expectedKm = Math.ceil((targetKm / daysInMonth) * date.getDate());
-
-  return Math.max(topRealKm + bufferKm, expectedKm);
 }
 
 export function canRequestTierUpgrade(user: User, activities: Activity[], date = new Date()) {

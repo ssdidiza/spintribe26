@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { buildLeaderboard } from "@/lib/mock-data";
 import { Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
-import { CHALLENGE_TIERS, getGhostPacerKm } from "@/lib/challenge";
+import { CHALLENGE_TIERS } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
@@ -38,7 +38,6 @@ export default function LeaderboardPage() {
     [activeTier, realUsers, activities]
   );
   const monthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
-  const ghostTargetKm = getGhostPacerKm(entries, activeTier);
 
   if (!hydrated || !currentUser) return null;
 
@@ -96,18 +95,6 @@ export default function LeaderboardPage() {
               <p className="text-[10px] text-[#b8b8b8]">{entries.length} riders</p>
               <PoweredByStrava />
             </div>
-          </div>
-        </div>
-
-        <div className="glass-card p-4" style={{ borderColor: "rgba(255,75,53,0.35)" }}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Ghost Rider pacer</p>
-              <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
-                Target to chase: {ghostTargetKm} km. Pacer only. Not a real rider. Not counted in rank.
-              </p>
-            </div>
-            <p className="text-2xl font-black text-[#ff4b35]">{ghostTargetKm}</p>
           </div>
         </div>
 

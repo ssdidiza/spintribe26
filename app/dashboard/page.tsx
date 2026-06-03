@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
 import { TIER_LABELS } from "@/lib/types";
-import { canRequestTierUpgrade, getGhostPacerKm, getNextTier } from "@/lib/challenge";
+import { canRequestTierUpgrade, getNextTier } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
@@ -39,10 +39,6 @@ export default function DashboardPage() {
   } = useStore();
   const [syncing, setSyncing] = useState(false);
   const [refreshingFtp, setRefreshingFtp] = useState(false);
-  const [ghostUnlocked, setGhostUnlocked] = useState(() => (
-    typeof window !== "undefined" && localStorage.getItem("spera-ghost-rider") === "1"
-  ));
-  const [ghostTapCount, setGhostTapCount] = useState(0);
   const [upgradeState, setUpgradeState] = useState<"idle" | "sending" | "sent" | "blocked">("idle");
   const currentUserId = currentUser?.id;
 
@@ -141,19 +137,8 @@ export default function DashboardPage() {
   const statusCfg  = STATUS_CONFIG[progressStatus];
   const StatusIcon = statusCfg.Icon;
   const leaderboardScope = `${monthLabel} Strava distance - ${TIER_LABELS[currentUser.tier]} ${currentUser.tier} km tier - opted-in riders`;
-  const ghostTargetKm = getGhostPacerKm(leaderboardEntries, currentUser.tier, now);
-  const ghostGapKm = Math.max(0, ghostTargetKm - monthlyKm);
   const upgradeOffer = canRequestTierUpgrade(currentUser, activities, now);
   const pinnaclePush = !getNextTier(currentUser.tier) && pct >= 100;
-
-  function handleGhostTap() {
-    const next = ghostTapCount + 1;
-    setGhostTapCount(next);
-    if (next >= 3) {
-      setGhostUnlocked(true);
-      localStorage.setItem("spera-ghost-rider", "1");
-    }
-  }
 
   async function requestUpgrade() {
     if (!upgradeOffer || upgradeState === "sending") return;
@@ -199,14 +184,9 @@ export default function DashboardPage() {
           </a>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGhostTap}
-            className="w-8 h-8 rounded-full glass flex items-center justify-center hover:border-[#ff4b35]/40 transition-colors"
-            aria-label="Unlock Ghost Rider"
-          >
+          <div className="w-8 h-8 rounded-full glass flex items-center justify-center">
             <SperaIcon className="h-4 w-4" />
-          </button>
+          </div>
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
             {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
@@ -304,30 +284,6 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
-
-        <div
-          className="glass-card p-4"
-          style={{
-            borderColor: ghostUnlocked ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.08)",
-            background: ghostUnlocked ? "linear-gradient(135deg, rgba(255,75,53,0.12), rgba(255,255,255,0.04))" : undefined,
-          }}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
-                {ghostUnlocked ? "Ghost Rider unlocked" : "Ghost Rider pacer"}
-              </p>
-              <p className="mt-1 text-sm font-bold text-[#ffffff]">Target to chase: {ghostTargetKm} km</p>
-              <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
-                Pacer only. Not a real rider. Not counted in rank. {ghostGapKm > 0 ? `${ghostGapKm} km to catch it.` : "You are ahead of the ghost."}
-              </p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-2xl font-black text-[#ff4b35]">{ghostTargetKm}</p>
-              <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">pacer km</p>
-            </div>
-          </div>
-        </div>
 
         {/* ── Progress tracking card ────────────────────────────────────── */}
         <div

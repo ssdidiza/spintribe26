@@ -115,12 +115,32 @@ function csvEscape(value: string | number | boolean | undefined) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
+async function fetchWithTimeout(input: string, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function readJsonOr<T>(response: Response | undefined, fallback: T): Promise<T> {
+  if (!response?.ok) return fallback;
+  try {
+    return await response.json();
+  } catch {
+    return fallback;
+  }
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, completeOnboarding } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>("riders");
   const [loading, setLoading] = useState(true);
+  const [adminNotice, setAdminNotice] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [monthKey, setMonthKey] = useState("");
@@ -133,46 +153,66 @@ export default function AdminPage() {
 
   const loadAdminData = useCallback(async () => {
     setLoading(true);
-    const [usersRes, rewardsRes, upgradesRes, champingRes, notificationsRes] = await Promise.all([
-      fetch("/api/admin/users"),
-      fetch("/api/admin/rewards"),
-      fetch("/api/admin/tier-upgrades"),
-      fetch("/api/admin/champing"),
-      fetch("/api/admin/notifications"),
-    ]);
+    setAdminNotice("");
 
-    if (!usersRes.ok) {
-      setLoading(false);
-      router.replace(usersRes.status === 401 ? "/" : "/dashboard");
-      return;
-    }
+    try {
+      const usersRes = await fetchWithTimeout("/api/admin/users");
+      if (!usersRes.ok) {
+        router.replace(usersRes.status === 401 ? "/" : "/dashboard");
+        return;
+      }
 
-    const [usersData, rewardsData, upgradesData, champingData, notificationsData] = await Promise.all([
-      usersRes.json(),
-      rewardsRes.ok ? rewardsRes.json() : Promise.resolve({ rows: [] }),
-      upgradesRes.ok ? upgradesRes.json() : Promise.resolve({ requests: [] }),
-      champingRes.ok ? champingRes.json() : Promise.resolve({ sessions: [] }),
-      notificationsRes.ok ? notificationsRes.json() : Promise.resolve({ notifications: [] }),
-    ]);
-
-    const caller = usersData.caller as AdminCaller | undefined;
-    if (caller?.role === "admin") {
-      completeOnboarding(
-        caller.role,
-        caller.tier,
-        caller.zone,
-        caller.leaderboard_consent ?? false,
-        caller.rewards_export_consent ?? false
+      const usersData = await readJsonOr<{ caller?: AdminCaller; users?: AdminUser[]; monthKey?: string }>(
+        usersRes,
+        { users: [] }
       );
-    }
+      const caller = usersData.caller;
+      if (caller?.role === "admin") {
+        completeOnboarding(
+          caller.role,
+          caller.tier,
+          caller.zone,
+          caller.leaderboard_consent ?? false,
+          caller.rewards_export_consent ?? false
+        );
+      }
 
-    setUsers(usersData.users ?? []);
-    setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
-    setRewards(rewardsData.rows ?? []);
-    setUpgrades(upgradesData.requests ?? []);
-    setChamping(champingData.sessions ?? []);
-    setNotifications(notificationsData.notifications ?? []);
-    setLoading(false);
+      setUsers(usersData.users ?? []);
+
+      const optionalResults = await Promise.allSettled([
+        fetchWithTimeout("/api/admin/rewards"),
+        fetchWithTimeout("/api/admin/tier-upgrades"),
+        fetchWithTimeout("/api/admin/champing"),
+        fetchWithTimeout("/api/admin/notifications"),
+      ]);
+      const optionalFailures = optionalResults.filter((result) => result.status === "rejected").length;
+      const [rewardsRes, upgradesRes, champingRes, notificationsRes] = optionalResults.map((result) => (
+        result.status === "fulfilled" ? result.value : undefined
+      ));
+
+      const [rewardsData, upgradesData, champingData, notificationsData] = await Promise.all([
+        readJsonOr<{ monthKey?: string; rows?: RewardRow[] }>(rewardsRes, { rows: [] }),
+        readJsonOr<{ requests?: UpgradeRequest[] }>(upgradesRes, { requests: [] }),
+        readJsonOr<{ sessions?: ChampingSession[] }>(champingRes, { sessions: [] }),
+        readJsonOr<{ notifications?: AdminNotification[] }>(notificationsRes, { notifications: [] }),
+      ]);
+
+      setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
+      setRewards(rewardsData.rows ?? []);
+      setUpgrades(upgradesData.requests ?? []);
+      setChamping(champingData.sessions ?? []);
+      setNotifications(notificationsData.notifications ?? []);
+
+      const nonOkPanels = [rewardsRes, upgradesRes, champingRes, notificationsRes]
+        .filter((response) => response && !response.ok).length;
+      if (optionalFailures || nonOkPanels) {
+        setAdminNotice("Some founder panels did not refresh. Feedback and loaded panels are still available.");
+      }
+    } catch {
+      setAdminNotice("Founder console could not refresh. Check your connection, then retry.");
+    } finally {
+      setLoading(false);
+    }
   }, [completeOnboarding, router]);
 
   useEffect(() => {
@@ -338,6 +378,19 @@ export default function AdminPage() {
             );
           })}
         </div>
+
+        {adminNotice && (
+          <div className="glass-card p-4 flex items-center justify-between gap-3">
+            <p className="text-[11px] text-[#b8b8b8] leading-snug">{adminNotice}</p>
+            <button
+              type="button"
+              onClick={loadAdminData}
+              className="flex-shrink-0 rounded-full border border-[#ff4b35]/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#ff4b35]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="glass-card p-8 text-center text-sm text-[#b8b8b8]">Loading founder console...</div>
