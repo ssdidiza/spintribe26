@@ -131,6 +131,7 @@ export default function ChampionPage() {
       stravaActivityId:   selectedActivity.stravaId,
       stravaActivityName: selectedActivity.name,
       stravaActivityKm:   Math.round(selectedActivity.distance / 1000),
+      stravaActivityDate: selectedActivity.date,
     });
     setSaved(true);
     setTimeout(() => { setSaved(false); setOpen(false); }, 1400);
@@ -139,6 +140,8 @@ export default function ChampionPage() {
   if (!hydrated || !currentUser || !canAccessChampionFeatures(currentUser)) return null;
 
   const annualPct = Math.min(100, Math.round((champingThisYear / 10) * 100));
+  const currentMonthLabel = format(new Date(), "MMMM");
+  const currentYearLabel = format(new Date(), "yyyy");
 
   return (
     <div className="min-h-screen bg-[#020202] mb-nav">
@@ -172,8 +175,8 @@ export default function ChampionPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">
-            <MiniStat label="This Month" value={champingThisMonth} target={2}  ok={champingThisMonth >= 2}  caption="/ 2 min" />
-            <MiniStat label="This Year"  value={champingThisYear}  target={10} ok={champingThisYear  >= 10} caption="/ 10 goal" />
+            <MiniStat label={`${currentMonthLabel} ride dates`} value={champingThisMonth} target={2}  ok={champingThisMonth >= 2}  caption="/ 2 min" />
+            <MiniStat label={`${currentYearLabel} ride dates`}  value={champingThisYear}  target={10} ok={champingThisYear  >= 10} caption="/ 10 goal" />
           </div>
 
           <button
@@ -197,7 +200,7 @@ export default function ChampionPage() {
 
         {/* Recent check-ins */}
         <section>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Recent Check-ins</p>
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Recent Check-ins by Ride Date</p>
           {recentSessions.length === 0 ? (
             <div className="glass-card p-10 text-center">
               <Star size={22} className="mx-auto mb-2 text-[#b8b8b8]/25" />
@@ -228,7 +231,7 @@ export default function ChampionPage() {
                       {s.notes && <p className="text-[10px] text-[#b8b8b8] truncate">{s.notes}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className="text-[10px] text-[#b8b8b8]">{format(new Date(s.date), "MMM d")}</p>
+                      <p className="text-[10px] text-[#b8b8b8]">Ride {format(new Date(s.date), "MMM d")}</p>
                       <button
                         onClick={() => setConfirmDeleteId(s.id)}
                         className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/20"
@@ -370,7 +373,7 @@ export default function ChampionPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-[#ffffff] truncate">{selectedActivity.name}</p>
                         <p className="text-[10px] text-[#b8b8b8]">
-                          {(selectedActivity.distance / 1000).toFixed(1)} km - {format(new Date(selectedActivity.date), "MMM d")}
+                          {(selectedActivity.distance / 1000).toFixed(1)} km - {format(new Date(selectedActivity.date), "MMM d, yyyy")}
                         </p>
                       </div>
                     </div>

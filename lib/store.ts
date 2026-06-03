@@ -50,6 +50,7 @@ interface AppState {
       stravaActivityId?: string;
       stravaActivityName?: string;
       stravaActivityKm?: number;
+      stravaActivityDate?: string;
     }
   ) => { success: boolean; reason?: string };
   deleteChampionSession: (sessionId: string) => void;
@@ -128,12 +129,18 @@ export const useStore = create<AppState>()(
           }
         }
 
+        const linkedActivity = opts.stravaActivityId
+          ? get().activities.find(
+              (a) => a.userId === user.id && a.stravaId === opts.stravaActivityId
+            )
+          : undefined;
+        const sessionDate = linkedActivity?.date ?? opts.stravaActivityDate ?? new Date().toISOString();
         const localId = `cs${Date.now()}`;
         const session: ChampionSession = {
           id: localId,
           userId: user.id,
           type,
-          date: new Date().toISOString(),
+          date: sessionDate,
           notes,
           zoneId: opts.zoneId,
           zoneName: opts.zoneName,
@@ -150,7 +157,7 @@ export const useStore = create<AppState>()(
         fetch("/api/champion-sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type, notes, ...opts }),
+          body: JSON.stringify({ type, notes, ...opts, stravaActivityDate: sessionDate }),
         })
           .then(async (res) => {
             if (res.ok) {
@@ -158,7 +165,7 @@ export const useStore = create<AppState>()(
               // Update local ID to match Supabase ID so deletes work cross-device
               set((s) => ({
                 championSessions: s.championSessions.map((cs) =>
-                  cs.id === localId ? { ...cs, id: String(saved.id) } : cs
+                  cs.id === localId ? { ...cs, id: String(saved.id), date: saved.date ?? cs.date } : cs
                 ),
               }));
             }

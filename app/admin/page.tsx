@@ -18,6 +18,11 @@ const ROLE_COLORS: Record<UserRole, string> = {
   admin:    "#ffffff",
 };
 
+function isInCurrentMonth(isoDate: string, now = new Date()) {
+  const date = new Date(isoDate);
+  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+}
+
 export default function AdminPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
@@ -41,9 +46,8 @@ export default function AdminPage() {
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const sessionsThisMonth = championSessions.filter((s) => s.date.startsWith(thisMonth));
-  const activeRiders = users.filter((u) => u.isConnected && activities.some((a) => a.userId === u.id && a.date.startsWith(thisMonth)));
+  const sessionsThisMonth = championSessions.filter((s) => isInCurrentMonth(s.date, now));
+  const activeRiders = users.filter((u) => u.isConnected && activities.some((a) => a.userId === u.id && isInCurrentMonth(a.date, now)));
   const champUsers   = users.filter((u) => canAccessChampionFeatures(u));
 
   // ── Role / tier save ───────────────────────────────────────────────────────
@@ -282,7 +286,7 @@ export default function AdminPage() {
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                 .map((s) => {
                   const owner = users.find((u) => u.id === s.userId);
-                  const isThisMonth = s.date.startsWith(thisMonth);
+                  const isThisMonth = isInCurrentMonth(s.date, now);
                   return (
                     <div key={s.id} className="glass-card p-4 flex items-start gap-3">
                       {/* Type badge */}

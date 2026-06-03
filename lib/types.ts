@@ -63,7 +63,7 @@ export interface ChampionSession {
   id: string;
   userId: string;
   type: SessionType;
-  date: string;
+  date: string; // ISO date of the linked Strava activity, not the day it was logged.
   notes: string;
   // Zone linking
   zoneId?: string;
