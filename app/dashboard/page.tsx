@@ -66,6 +66,15 @@ export default function DashboardPage() {
     [activities, currentUser?.id]
   );
 
+  const monthLabel = format(new Date(), "MMMM yyyy");
+  const monthlyActivities = useMemo(() => {
+    const now = new Date();
+    return userActivities.filter((a) => {
+      const activityDate = new Date(a.date);
+      return activityDate.getMonth() === now.getMonth() && activityDate.getFullYear() === now.getFullYear();
+    });
+  }, [userActivities]);
+
   const monthlyKm = useMemo(
     () => currentUser ? getMonthlyKm(currentUser.id, activities) : 0,
     [currentUser, activities]
@@ -91,9 +100,9 @@ export default function DashboardPage() {
   const targetKm    = currentUser.tier;
   const pct         = Math.min(100, Math.round((monthlyKm / targetKm) * 100));
   const remainingKm = Math.max(0, targetKm - monthlyKm);
-  const totalMoving = userActivities.reduce((s, a) => s + a.movingTime, 0);
-  const avgKm       = userActivities.length
-    ? Math.round(userActivities.reduce((s, a) => s + a.distance, 0) / 1000 / userActivities.length)
+  const totalMoving = monthlyActivities.reduce((s, a) => s + a.movingTime, 0);
+  const avgKm       = monthlyActivities.length
+    ? Math.round(monthlyActivities.reduce((s, a) => s + a.distance, 0) / 1000 / monthlyActivities.length)
     : 0;
   const ftp = currentUser.ftp;
   const now = new Date();
@@ -124,12 +133,13 @@ export default function DashboardPage() {
   };
   const statusCfg  = STATUS_CONFIG[progressStatus];
   const StatusIcon = statusCfg.Icon;
+  const leaderboardScope = `${monthLabel} Strava distance - ${TIER_LABELS[currentUser.tier]} ${currentUser.tier} km tier - opted-in riders`;
 
   const STATS = [
-    { label: "Rides",  value: userActivities.length,                               icon: <Bike       size={14} className="text-[#ff4b35]" /> },
-    { label: "Avg km", value: avgKm,                                                icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
-    { label: "Time",   value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
-    { label: "Rank",   value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
+    { label: "Month rides", value: monthlyActivities.length,                             icon: <Bike       size={14} className="text-[#ff4b35]" /> },
+    { label: "Avg / ride",  value: avgKm,                                                icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
+    { label: "Month time",  value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
+    { label: "Month rank",  value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
   ];
 
   const MEDALS = ["#1", "#2", "#3"];
@@ -141,7 +151,7 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-            {format(now, "MMMM yyyy")}
+            {monthLabel}
           </p>
           <h1 className="font-bold text-[#ffffff] text-base leading-tight truncate max-w-[200px]">
             {currentUser.name.split(/[\s"]/)[0]}
@@ -176,7 +186,7 @@ export default function DashboardPage() {
         {/* ── Cinematic hero ────────────────────────────────────────────── */}
         <div className="relative text-center pt-4 pb-2">
           <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#b8b8b8]/50 mb-3">
-            {format(now, "MMMM yyyy")} - {TIER_LABELS[currentUser.tier]}
+            {monthLabel} monthly distance
           </p>
           <div className="flex items-end justify-center gap-2 mb-1">
             <span
@@ -193,7 +203,7 @@ export default function DashboardPage() {
             <span className="text-2xl font-light text-[#b8b8b8]/70 pb-3">km</span>
           </div>
           <p className="text-sm text-[#b8b8b8]/50 mb-4">
-            {currentRankEntry ? `Rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
+            {currentRankEntry ? `Monthly distance rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
             {pct}% of {targetKm} km
           </p>
           <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto">
@@ -207,7 +217,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-                {TIER_LABELS[currentUser.tier]} Leaderboard
+                {TIER_LABELS[currentUser.tier]} Monthly Distance
               </p>
               <a href="/leaderboard" className="flex items-center gap-0.5 text-[10px] font-semibold text-[#ff4b35]/70 hover:text-[#ff4b35] transition-colors">
                 See all <ChevronRight size={12} />
@@ -250,6 +260,9 @@ export default function DashboardPage() {
                 );
               })}
             </div>
+            <p className="mt-2 text-[10px] text-[#b8b8b8]/60 leading-snug">
+              Ranked by {leaderboardScope}. Not champing, FTP, average pace, or moving time.
+            </p>
           </div>
         )}
 
@@ -383,16 +396,16 @@ export default function DashboardPage() {
               ? <span className="text-[10px] text-[#b8b8b8]">Syncing...</span>
               : <PoweredByStrava />}
           </div>
-          {syncing && userActivities.length === 0 ? (
+          {syncing && monthlyActivities.length === 0 ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl glass animate-pulse" />)}</div>
-          ) : userActivities.length === 0 ? (
+          ) : monthlyActivities.length === 0 ? (
             <div className="glass-card p-8 text-center">
               <p className="text-[#b8b8b8] text-sm">No rides for {format(now, "MMMM")}.</p>
               <button onClick={handleSync} className="mt-3 text-xs underline underline-offset-2 text-[#ff4b35]">Sync Strava</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {userActivities.slice(0, 8).map((activity) => (
+              {monthlyActivities.slice(0, 8).map((activity) => (
                 <a
                   key={activity.id}
                   href={`https://www.strava.com/activities/${activity.stravaId}`}

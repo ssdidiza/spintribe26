@@ -36,6 +36,7 @@ export default function LeaderboardPage() {
     () => buildLeaderboard(activeTier, realUsers, activities),
     [activeTier, realUsers, activities]
   );
+  const monthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
 
   if (!hydrated || !currentUser) return null;
 
@@ -45,7 +46,7 @@ export default function LeaderboardPage() {
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
-            {new Date().toLocaleString("default", { month: "long", year: "numeric" })}
+            {monthLabel} monthly distance
           </p>
           <h1 className="font-bold text-[#ffffff] text-xl">Leaderboard</h1>
         </div>
@@ -73,28 +74,34 @@ export default function LeaderboardPage() {
                   boxShadow: "0 0 12px rgba(255,75,53,0.25)",
                 } : undefined}
               >
-                {t} km · {TIER_LABELS[t]}
+                {t} km - {TIER_LABELS[t]}
               </button>
             );
           })}
         </div>
 
-        {/* Entry count */}
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
-            {TIER_LABELS[activeTier]} - {activeTier} km
-          </p>
-          <div className="flex items-center gap-3">
-            <p className="text-[10px] text-[#b8b8b8]">{entries.length} riders</p>
-            <PoweredByStrava />
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
+                {TIER_LABELS[activeTier]} monthly distance rank
+              </p>
+              <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
+                Ranked by {monthLabel} Strava cycling km in the {activeTier} km tier. Opted-in riders only.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <p className="text-[10px] text-[#b8b8b8]">{entries.length} riders</p>
+              <PoweredByStrava />
+            </div>
           </div>
         </div>
 
         {/* Entries */}
         {entries.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-sm text-[#b8b8b8]">No riders in this tier yet.</p>
-            <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Be the first to sync your rides.</p>
+            <p className="text-sm text-[#b8b8b8]">No opted-in riders in this tier yet.</p>
+            <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Leaderboard rank appears after riders consent and sync monthly rides.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -162,7 +169,7 @@ export default function LeaderboardPage() {
                     {/* KM */}
                     <div className="text-right flex-shrink-0 ml-1">
                       <p className="font-bold text-base text-[#ff4b35]">{entry.totalKm}</p>
-                      <p className="text-[10px] text-[#b8b8b8]">/ {entry.targetKm} km</p>
+                      <p className="text-[10px] text-[#b8b8b8]">monthly km</p>
                     </div>
                   </div>
                 </div>
