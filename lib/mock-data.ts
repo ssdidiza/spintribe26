@@ -263,26 +263,73 @@ export function buildLeaderboard(
   // Single O(n) pass over all activities to aggregate monthly km per user.
   // Avoids the previous O(m×n) pattern where getMonthlyKm scanned all
   // activities once per user.
-  const kmByUser: Record<string, number> = {};
+  const statsByUser: Record<string, {
+    metres: number;
+    rideDays: Set<string>;
+    activityCount: number;
+    longestMetres: number;
+    lastRideAt?: string;
+  }> = {};
   for (const a of activities) {
     const d = new Date(a.date);
     if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-      kmByUser[a.userId] = (kmByUser[a.userId] ?? 0) + a.distance;
+      if (a.type !== "Ride" && a.type !== "VirtualRide") continue;
+      const current = statsByUser[a.userId] ?? {
+        metres: 0,
+        rideDays: new Set<string>(),
+        activityCount: 0,
+        longestMetres: 0,
+      };
+      current.metres += a.distance;
+      current.rideDays.add([
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0"),
+      ].join("-"));
+      current.activityCount += 1;
+      current.longestMetres = Math.max(current.longestMetres, a.distance);
+      if (!current.lastRideAt || new Date(a.date).getTime() > new Date(current.lastRideAt).getTime()) {
+        current.lastRideAt = a.date;
+      }
+      statsByUser[a.userId] = current;
     }
   }
 
-  return users
+  const entries = users
     .filter((u) => u.tier === tier)
     .map((u) => {
-      const totalKm = Math.round((kmByUser[u.id] ?? 0) / 1000);
+      const stats = statsByUser[u.id];
+      const totalKm = Math.round((stats?.metres ?? 0) / 1000);
       return {
         user: u,
         totalKm,
         targetKm: u.tier,
         progressPct: Math.min(100, Math.round((totalKm / u.tier) * 100)),
         rank: 0,
+        activityCount: stats?.activityCount ?? 0,
+        rideDays: stats?.rideDays.size ?? 0,
+        longestRideKm: Math.round((stats?.longestMetres ?? 0) / 1000),
+        averageRideKm: stats?.activityCount
+          ? Math.round(((stats.metres / 1000) / stats.activityCount))
+          : 0,
+        lastRideAt: stats?.lastRideAt,
       };
     })
     .sort((a, b) => b.totalKm - a.totalKm)
     .map((e, i) => ({ ...e, rank: i + 1 }));
+
+  const consistencyRanks = new Map(
+    [...entries]
+      .sort((a, b) =>
+        (b.rideDays ?? 0) - (a.rideDays ?? 0) ||
+        b.totalKm - a.totalKm ||
+        a.user.name.localeCompare(b.user.name)
+      )
+      .map((entry, index) => [entry.user.id, index + 1])
+  );
+
+  return entries.map((entry) => ({
+    ...entry,
+    consistencyRank: consistencyRanks.get(entry.user.id) ?? entry.rank,
+  }));
 }

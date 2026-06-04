@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
 import { LeaderboardApiResponse, TIER_LABELS } from "@/lib/types";
-import { canRequestTierUpgrade, getNextTier } from "@/lib/challenge";
+import { canRequestTierUpgrade, getMonthlyActivityInsights, getNextTier } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
@@ -13,10 +13,12 @@ import { SperaIcon } from "@/components/SperaLogo";
 import {
   AlertTriangle,
   Bike,
+  CalendarCheck,
   CheckCircle2,
   ChevronRight,
   Clock,
   Flame,
+  Route,
   PartyPopper,
   RefreshCw,
   TrendingUp,
@@ -104,6 +106,10 @@ export default function DashboardPage() {
     () => currentUser ? getMonthlyKm(currentUser.id, activities) : 0,
     [currentUser, activities]
   );
+  const monthlyInsights = useMemo(
+    () => currentUser ? getMonthlyActivityInsights(currentUser.id, activities) : null,
+    [currentUser, activities]
+  );
 
   // Only include users who have consented to leaderboard sharing
   const consentedUsers = useMemo(
@@ -130,10 +136,12 @@ export default function DashboardPage() {
   const targetKm    = currentUser.tier;
   const pct         = Math.min(100, Math.round((monthlyKm / targetKm) * 100));
   const remainingKm = Math.max(0, targetKm - monthlyKm);
-  const totalMoving = monthlyActivities.reduce((s, a) => s + a.movingTime, 0);
-  const avgKm       = monthlyActivities.length
-    ? Math.round(monthlyActivities.reduce((s, a) => s + a.distance, 0) / 1000 / monthlyActivities.length)
-    : 0;
+  const totalMoving = monthlyInsights?.totalMovingTime ?? 0;
+  const avgKm       = monthlyInsights?.averageRideKm ?? 0;
+  const longestRideKm = monthlyInsights?.longestRideKm ?? 0;
+  const rideDays = monthlyInsights?.rideDays ?? 0;
+  const activeWeeksThisMonth = monthlyInsights?.activeWeeksThisMonth ?? 0;
+  const lastSyncedRide = monthlyInsights?.lastSyncedRide;
   const ftp = currentUser.ftp;
   const now = new Date();
 
@@ -179,8 +187,9 @@ export default function DashboardPage() {
   }
 
   const STATS = [
-    { label: "Month rides", value: monthlyActivities.length,                             icon: <Bike       size={14} className="text-[#ff4b35]" /> },
-    { label: "Avg / ride",  value: avgKm,                                                icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
+    { label: "Ride days",   value: rideDays,                                             icon: <CalendarCheck size={14} className="text-[#ff4b35]" /> },
+    { label: "Avg ride",    value: avgKm ? `${avgKm} km` : "-",                          icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
+    { label: "Longest",     value: longestRideKm ? `${longestRideKm} km` : "-",          icon: <Route      size={14} className="text-[#ffb1c1]" /> },
     { label: "Month time",  value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
     { label: "Month rank",  value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
   ];
@@ -411,7 +420,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {STATS.map(({ label, value, icon }) => (
             <div key={label} className="glass-card p-3 text-center">
               <div className="flex justify-center mb-1">{icon}</div>
@@ -419,6 +428,55 @@ export default function DashboardPage() {
               <p className="text-[9px] text-[#b8b8b8] mt-0.5 uppercase tracking-wider">{label}</p>
             </div>
           ))}
+        </div>
+
+        <div className="glass-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Personal insights</p>
+              <p className="mt-1 text-[11px] text-[#b8b8b8]/65">From your synced rides this month.</p>
+            </div>
+            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-[#b8b8b8]">
+              You only
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ["Projected", `${projectedTotal} km`],
+              ["Needed / day", pct >= 100 ? "Complete" : `${kmNeededPerDay} km`],
+              ["Active weeks", String(activeWeeksThisMonth)],
+              ["Ride count", String(monthlyActivities.length)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]">{label}</p>
+                <p className="mt-1 text-lg font-black text-white">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {lastSyncedRide ? (
+            <a
+              href={`https://www.strava.com/activities/${lastSyncedRide.stravaId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 transition-colors hover:border-[#FC4C02]/30"
+            >
+              <div className="min-w-0">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]">Last synced ride</p>
+                <p className="mt-1 truncate text-sm font-bold text-white">{lastSyncedRide.name}</p>
+                <p className="mt-0.5 text-[10px] text-[#b8b8b8]/70">{format(new Date(lastSyncedRide.date), "MMM d")}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-black text-[#ff4b35]">{(lastSyncedRide.distance / 1000).toFixed(1)} km</p>
+                <p className="text-[10px] text-[#b8b8b8]">{formatDuration(lastSyncedRide.movingTime)}</p>
+              </div>
+            </a>
+          ) : (
+            <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-sm text-[#b8b8b8]">
+              No synced rides yet this month.
+            </div>
+          )}
         </div>
 
         {/* ── FTP (only shown when set — personal data, not shared) ────── */}
