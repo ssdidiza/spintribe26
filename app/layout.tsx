@@ -11,13 +11,17 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "spera - Team Vitality Challenge",
+  title: "SpinTribe - South Africa's Competitive Cycling Leaderboard",
   description:
-    "Track Team Vitality monthly cycling goals, leaderboards, and champion ride check-ins.",
+    "Connect Strava, track cycling progress, and climb South African distance, climbing, consistency, and club rankings.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "spera",
+    title: "SpinTribe",
   },
   formatDetection: { telephone: false },
 };
@@ -40,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${lexend.variable} antialiased`}>
-        {/* Carbon texture and the Spera pulse stay fixed behind the app. */}
+        {/* Carbon texture and the SpinTribe pulse stay fixed behind the app. */}
         <div
           aria-hidden
           className="pointer-events-none fixed inset-0"
