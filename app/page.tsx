@@ -226,7 +226,7 @@ export default function LandingPage() {
                 South Africa&apos;s Competitive Cycling Leaderboard
               </p>
               <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Connect Strava. Ride your bike. <span className="gradient-text">Climb the rankings.</span>
+                Connect Strava. Ride. <span className="gradient-text">Climb the rankings.</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#b8b8b8] sm:text-lg">
                 SpinTribe turns every ride into a challenge by ranking cyclists across distance, climbing, consistency, and monthly achievements.
