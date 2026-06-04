@@ -23,7 +23,7 @@ export default function LegalFooter() {
           ))}
         </nav>
         <p className="text-[10px] text-[#b8b8b8]/35 text-center">
-          &copy; {new Date().getFullYear()} spera. Participate at your own risk.{" "}
+          &copy; 2026 SpinTribe. Participate at your own risk.{" "}
           Not medical advice.
         </p>
       </div>

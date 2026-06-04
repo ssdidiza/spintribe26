@@ -131,6 +131,12 @@ export interface LeaderboardEntry {
   targetKm: Tier;
   progressPct: number;
   rank: number;
+  activityCount?: number;
+  rideDays?: number;
+  consistencyRank?: number;
+  longestRideKm?: number;
+  averageRideKm?: number;
+  lastRideAt?: string;
   sessions?: number;
 }
 

@@ -20,6 +20,15 @@ type ActivityRow = {
   user_strava_id: string | number;
   distance: number | null;
   type: string | null;
+  date: string | null;
+};
+
+type ActivityAggregate = {
+  metres: number;
+  rideDays: Set<string>;
+  activityCount: number;
+  longestMetres: number;
+  lastRideAt?: string;
 };
 
 function toTier(value: number | null): Tier {
@@ -35,6 +44,23 @@ function rankEntries(entries: LeaderboardEntry[]) {
   return entries
     .sort((a, b) => b.totalKm - a.totalKm || a.user.name.localeCompare(b.user.name))
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
+}
+
+function addConsistencyRanks(entries: LeaderboardEntry[]) {
+  const consistencyRanks = new Map(
+    [...entries]
+      .sort((a, b) =>
+        (b.rideDays ?? 0) - (a.rideDays ?? 0) ||
+        b.totalKm - a.totalKm ||
+        a.user.name.localeCompare(b.user.name)
+      )
+      .map((entry, index) => [entry.user.id, index + 1])
+  );
+
+  return entries.map((entry) => ({
+    ...entry,
+    consistencyRank: consistencyRanks.get(entry.user.id) ?? entry.rank,
+  }));
 }
 
 export async function GET() {
@@ -61,7 +87,7 @@ export async function GET() {
 
   const { data: activities, error: activitiesError } = await db
     .from("activities")
-    .select("user_strava_id,distance,type")
+    .select("user_strava_id,distance,type,date")
     .gte("date", rangeStart)
     .lt("date", rangeEnd);
 
@@ -69,11 +95,27 @@ export async function GET() {
     return NextResponse.json({ error: activitiesError.message }, { status: 500 });
   }
 
-  const metresByUser = new Map<string, number>();
+  const statsByUser = new Map<string, ActivityAggregate>();
   for (const activity of (activities ?? []) as ActivityRow[]) {
     if (activity.type !== "Ride" && activity.type !== "VirtualRide") continue;
     const stravaId = String(activity.user_strava_id);
-    metresByUser.set(stravaId, (metresByUser.get(stravaId) ?? 0) + Number(activity.distance ?? 0));
+    const distance = Number(activity.distance ?? 0);
+    const current = statsByUser.get(stravaId) ?? {
+      metres: 0,
+      rideDays: new Set<string>(),
+      activityCount: 0,
+      longestMetres: 0,
+    };
+    current.metres += distance;
+    current.activityCount += 1;
+    current.longestMetres = Math.max(current.longestMetres, distance);
+    if (activity.date) {
+      current.rideDays.add(new Date(activity.date).toISOString().slice(0, 10));
+      if (!current.lastRideAt || new Date(activity.date).getTime() > new Date(current.lastRideAt).getTime()) {
+        current.lastRideAt = activity.date;
+      }
+    }
+    statsByUser.set(stravaId, current);
   }
 
   const entriesByTier = new Map<Tier, LeaderboardEntry[]>(
@@ -84,7 +126,8 @@ export async function GET() {
     const tier = toTier(row.tier);
     const stravaId = String(row.strava_id);
     const name = row.name?.trim() || "Team Vitality rider";
-    const totalKm = Math.round((metresByUser.get(stravaId) ?? 0) / 1000);
+    const stats = statsByUser.get(stravaId);
+    const totalKm = Math.round((stats?.metres ?? 0) / 1000);
     const user: User = {
       id: stravaId,
       stravaId,
@@ -106,12 +149,19 @@ export async function GET() {
       targetKm: tier,
       progressPct: Math.min(100, Math.round((totalKm / tier) * 100)),
       rank: 0,
+      activityCount: stats?.activityCount ?? 0,
+      rideDays: stats?.rideDays.size ?? 0,
+      longestRideKm: Math.round((stats?.longestMetres ?? 0) / 1000),
+      averageRideKm: stats?.activityCount
+        ? Math.round(((stats.metres / 1000) / stats.activityCount))
+        : 0,
+      lastRideAt: stats?.lastRideAt,
     });
   }
 
   const tiers: LeaderboardApiResponse["tiers"] = {};
   for (const tier of CHALLENGE_TIERS) {
-    const entries = rankEntries(entriesByTier.get(tier) ?? []);
+    const entries = addConsistencyRanks(rankEntries(entriesByTier.get(tier) ?? []));
     tiers[String(tier)] = {
       tier,
       count: entries.length,

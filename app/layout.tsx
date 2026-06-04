@@ -13,7 +13,7 @@ const lexend = Lexend({
 export const metadata: Metadata = {
   title: "SpinTribe - South Africa's Competitive Cycling Leaderboard",
   description:
-    "Connect Strava, track cycling progress, and climb South African distance, climbing, consistency, and club rankings.",
+    "Connect Strava, track cycling progress, and compare opted-in South African riders by monthly distance, ride-day consistency, and region.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],

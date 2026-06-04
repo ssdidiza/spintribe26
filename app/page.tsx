@@ -8,9 +8,7 @@ import {
   BarChart3,
   Bike,
   CalendarCheck,
-  Flag,
-  Gauge,
-  Mountain,
+  MapPin,
   Route,
   Target,
   Trophy,
@@ -34,24 +32,24 @@ type FeatureItem = {
 };
 
 const LEADERBOARD_FEATURES: FeatureItem[] = [
-  { title: "Monthly Distance Rankings", body: "See who is riding the furthest.", Icon: Route },
-  { title: "Climbing Rankings", body: "Compete for elevation gained.", Icon: Mountain },
-  { title: "Consistency Rankings", body: "Reward the cyclists who keep showing up.", Icon: CalendarCheck },
-  { title: "Club Rankings", body: "Compare yourself against riders from your club and region.", Icon: Users },
+  { title: "Monthly Distance Rankings", body: "See opted-in riders by current month kilometres.", Icon: Route },
+  { title: "Consistency Rankings", body: "Reward the cyclists who keep showing up on more ride days.", Icon: CalendarCheck },
+  { title: "Region Filters", body: "Compare your tier nationally or inside your riding region.", Icon: MapPin },
+  { title: "Consent-First Sharing", body: "Leaderboard rows appear only after riders opt in.", Icon: Users },
 ];
 
 const PROGRESS_FEATURES: FeatureItem[] = [
   { title: "Connect Strava", body: "Sync rides automatically in seconds.", Icon: Zap },
-  { title: "Earn Your Position", body: "Every kilometre, climb, and ride contributes to your ranking.", Icon: Trophy },
-  { title: "Track Your Growth", body: "See how your fitness and performance improve over time.", Icon: TrendingUp },
-  { title: "Compete Year Round", body: "New challenges, leaderboards, and achievements every month.", Icon: CalendarCheck },
+  { title: "Earn Your Position", body: "Every synced kilometre contributes to your distance rank.", Icon: Trophy },
+  { title: "Track Your Growth", body: "See your ride days, average ride, longest ride, and pace.", Icon: TrendingUp },
+  { title: "Stay Consistent", body: "Monthly ride-day stats help ordinary training feel visible.", Icon: CalendarCheck },
 ];
 
 const INSIGHT_FEATURES: FeatureItem[] = [
-  { title: "Race Predictions", body: "See estimated finish times for major South African cycling events.", Icon: Gauge },
-  { title: "Event Preparation", body: "Know if your current training supports your target race goals.", Icon: Flag },
-  { title: "Personal Insights", body: "Track distance, climbing, consistency, and progression.", Icon: BarChart3 },
-  { title: "Monthly Challenges", body: "Push yourself further with community-driven goals.", Icon: Target },
+  { title: "Ride Days This Month", body: "See how many days you have actually ridden.", Icon: CalendarCheck },
+  { title: "Personal Insights", body: "Track average ride, longest ride, moving time, and last sync.", Icon: BarChart3 },
+  { title: "Projected Month-End Km", body: "Understand where your current pace is likely to land.", Icon: TrendingUp },
+  { title: "Monthly Challenges", body: "Keep your target visible without overselling future analytics.", Icon: Target },
 ];
 
 const RIDER_TYPES: FeatureItem[] = [
@@ -71,10 +69,10 @@ const EVENTS = [
 ];
 
 const LEADERBOARD_ROWS = [
-  { rank: 1, name: "Mandla", club: "Gauteng", km: "812 km", climb: "9,420 m" },
-  { rank: 2, name: "Anele", club: "Western Cape", km: "786 km", climb: "11,080 m" },
-  { rank: 3, name: "Sipho", club: "KwaZulu-Natal", km: "744 km", climb: "8,190 m" },
-  { rank: 4, name: "Leah", club: "Eastern Cape", km: "691 km", climb: "7,860 m" },
+  { rank: 1, name: "Mandla", club: "Gauteng", km: "812 km", days: "18 days" },
+  { rank: 2, name: "Anele", club: "Western Cape", km: "786 km", days: "16 days" },
+  { rank: 3, name: "Sipho", club: "KwaZulu-Natal", km: "744 km", days: "15 days" },
+  { rank: 4, name: "Leah", club: "Eastern Cape", km: "691 km", days: "14 days" },
 ];
 
 export default function LandingPage() {
@@ -226,13 +224,13 @@ export default function LandingPage() {
                 South Africa&apos;s Competitive Cycling Leaderboard
               </p>
               <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Connect Strava. Ride. <span className="gradient-text">Climb the rankings.</span>
+                Connect Strava. Ride. <span className="gradient-text">Rise through the rankings.</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#b8b8b8] sm:text-lg">
-                SpinTribe turns every ride into a challenge by ranking cyclists across distance, climbing, consistency, and monthly achievements.
+                SpinTribe turns every synced ride into a challenge by ranking opted-in cyclists across distance, ride-day consistency, and monthly progress.
               </p>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/45">
-                See where you stand. Track your progress. Compete with cyclists across South Africa.
+                Launching with selected Team Vitality riders while built for cyclists across South Africa.
               </p>
 
               <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -347,7 +345,7 @@ export default function LandingPage() {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ff4b35]">Live Monthly Board</p>
-                  <p className="mt-1 text-sm text-white/45">Distance, climbing, and consistency</p>
+                  <p className="mt-1 text-sm text-white/45">Distance, consistency, and region filters</p>
                 </div>
                 <div className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-bold text-white/45">
                   SA
@@ -365,13 +363,13 @@ export default function LandingPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-black text-[#ff4b35]">{r.km}</p>
-                      <p className="text-[10px] text-white/35">{r.climb}</p>
+                      <p className="text-[10px] text-white/35">{r.days}</p>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                {["Distance", "Climbing", "Consistency"].map((label) => (
+                {["Distance", "Consistency", "Regions"].map((label) => (
                   <div key={label} className="rounded-xl border border-white/8 bg-white/[0.035] p-3 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">{label}</p>
                   </div>
@@ -381,7 +379,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <Section title="The Leaderboard Never Sleeps" eyebrow="Every ride counts" body="Whether you're chasing 100km weekends, climbing mountains, or building consistency during the week, SpinTribe automatically tracks your progress and updates your rankings.">
+        <Section title="The Leaderboard Never Sleeps" eyebrow="Every ride counts" body="Whether you're chasing 100km weekends or building consistency during the week, SpinTribe tracks synced rides and updates the rankings riders have consented to join.">
           <FeatureGrid items={LEADERBOARD_FEATURES} />
         </Section>
 
@@ -389,7 +387,7 @@ export default function LandingPage() {
           <FeatureGrid items={PROGRESS_FEATURES} />
         </Section>
 
-        <Section title="More Than A Leaderboard" body="SpinTribe helps cyclists understand their riding and prepare for bigger goals.">
+        <Section title="More Than A Leaderboard" body="SpinTribe helps cyclists understand the month they are actually riding now.">
           <FeatureGrid items={INSIGHT_FEATURES} />
         </Section>
 
@@ -421,7 +419,7 @@ export default function LandingPage() {
             {[
               ["1", "Create Your Account", "Get started in under a minute."],
               ["2", "Connect Strava", "Automatically import your cycling activities."],
-              ["3", "Join The Leaderboards", "Compete across distance, elevation, consistency, and challenges."],
+              ["3", "Join The Leaderboards", "Compare distance and consistency with opted-in riders in your tier."],
               ["4", "Keep Riding", "Watch your rankings improve with every ride."],
             ].map(([step, title, body]) => (
               <div key={step} className="glass-card p-5">
@@ -455,7 +453,7 @@ export default function LandingPage() {
           <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 border-t border-white/10 pt-10 sm:flex-row sm:items-center">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ff4b35]">Ready To See Where You Rank?</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Join South African cyclists already climbing the leaderboard.</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Join South African cyclists already building the leaderboard.</h2>
             </div>
             <button
               onClick={handleStrava}

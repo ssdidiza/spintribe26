@@ -49,6 +49,63 @@ export function getMonthlyKmForUser(userId: string, activities: Activity[], date
   return getMonthlyKmForActivities(getMonthlyActivities(userId, activities, date));
 }
 
+function getLocalDateKey(value: string) {
+  const date = new Date(value);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getLocalWeekKey(value: string) {
+  const date = new Date(value);
+  const firstOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  const week = Math.floor((date.getDate() + firstOfMonth.getDay() - 1) / 7) + 1;
+  return `${date.getFullYear()}-${date.getMonth()}-${week}`;
+}
+
+export function getMonthlyActivityInsights(
+  userId: string,
+  activities: Activity[],
+  date = new Date()
+) {
+  const monthActivities = getMonthlyActivities(userId, activities, date).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const totalMetres = monthActivities.reduce((sum, activity) => sum + activity.distance, 0);
+  const monthlyKm = Math.round(totalMetres / 1000);
+  const rideDays = new Set(monthActivities.map((activity) => getLocalDateKey(activity.date))).size;
+  const activeWeeksThisMonth = new Set(monthActivities.map((activity) => getLocalWeekKey(activity.date))).size;
+  const longestRideKm = monthActivities.length
+    ? Math.round(Math.max(...monthActivities.map((activity) => activity.distance)) / 1000)
+    : 0;
+  const averageRideKm = monthActivities.length
+    ? Math.round((totalMetres / 1000) / monthActivities.length)
+    : 0;
+  const totalMovingTime = monthActivities.reduce((sum, activity) => sum + activity.movingTime, 0);
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const dayOfMonth = date.getDate();
+  const daysLeft = Math.max(0, daysInMonth - dayOfMonth);
+  const projectedMonthEndKm = Math.round((monthlyKm / Math.max(1, dayOfMonth)) * daysInMonth);
+
+  return {
+    activityCount: monthActivities.length,
+    rideDays,
+    activeWeeksThisMonth,
+    longestRideKm,
+    averageRideKm,
+    totalMovingTime,
+    monthlyKm,
+    projectedMonthEndKm,
+    kmNeededPerDay: (targetKm: number) => {
+      const remainingKm = Math.max(0, targetKm - monthlyKm);
+      return daysLeft > 0 ? Math.ceil(remainingKm / daysLeft) : 0;
+    },
+    lastSyncedRide: monthActivities[0],
+  };
+}
+
 export function getRewardStats(user: User, activities: Activity[], date = new Date()) {
   const monthActivities = getMonthlyActivities(user.id, activities, date);
   const outdoorKm = getMonthlyKmForActivities(monthActivities.filter((a) => a.type === "Ride"));

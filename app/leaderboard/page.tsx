@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { buildLeaderboard } from "@/lib/mock-data";
-import { LeaderboardApiResponse, Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
+import { LeaderboardApiResponse, LeaderboardEntry, Tier, TIER_LABELS, canAccessChampionFeatures } from "@/lib/types";
 import { CHALLENGE_TIERS } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
@@ -12,6 +12,14 @@ import { SperaIcon } from "@/components/SperaLogo";
 import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = CHALLENGE_TIERS;
+const ALL_REGIONS = "All regions";
+
+type RankingMode = "distance" | "consistency";
+
+const RANKING_MODES: { id: RankingMode; label: string; description: string }[] = [
+  { id: "distance", label: "Distance", description: "Monthly km" },
+  { id: "consistency", label: "Consistency", description: "Ride days" },
+];
 
 const MEDAL_STYLES: Record<number, { border: string; glow: string }> = {
   1: { border: "#FFD700", glow: "0 0 12px rgba(255,215,0,0.4)" },
@@ -33,6 +41,10 @@ function formatMonthKey(monthKey?: string) {
   });
 }
 
+function getRegionLabel(entry: LeaderboardEntry) {
+  return entry.user.region || entry.user.zone || entry.user.country || "Unspecified";
+}
+
 export default function LeaderboardPage() {
   const router   = useRouter();
   const hydrated = useHydrated();
@@ -41,6 +53,8 @@ export default function LeaderboardPage() {
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardApiResponse | null>(null);
   const [boardLoading, setBoardLoading] = useState(false);
   const [boardError, setBoardError] = useState("");
+  const [rankingMode, setRankingMode] = useState<RankingMode>("distance");
+  const [selectedRegion, setSelectedRegion] = useState(ALL_REGIONS);
   const currentUserId = currentUser?.id;
 
   useEffect(() => {
@@ -86,6 +100,35 @@ export default function LeaderboardPage() {
   const liveTier = liveLeaderboard?.tiers[String(activeTier)];
   const entries = liveTier?.entries ?? localEntries;
   const monthLabel = formatMonthKey(liveLeaderboard?.monthKey);
+  const dayOfMonth = new Date().getDate();
+
+  const regionOptions = useMemo(
+    () => Array.from(new Set(entries.map(getRegionLabel))).sort((a, b) => a.localeCompare(b)),
+    [entries]
+  );
+  const activeRegion = selectedRegion === ALL_REGIONS || regionOptions.includes(selectedRegion)
+    ? selectedRegion
+    : ALL_REGIONS;
+
+  const visibleRows = useMemo(() => {
+    const filtered = activeRegion === ALL_REGIONS
+      ? entries
+      : entries.filter((entry) => getRegionLabel(entry) === activeRegion);
+    const sorted = rankingMode === "consistency"
+      ? [...filtered].sort((a, b) =>
+          (b.rideDays ?? 0) - (a.rideDays ?? 0) ||
+          b.totalKm - a.totalKm ||
+          a.user.name.localeCompare(b.user.name)
+        )
+      : filtered;
+
+    return sorted.map((entry, index) => ({
+      entry,
+      displayRank: activeRegion === ALL_REGIONS && rankingMode === "distance"
+        ? entry.rank
+        : index + 1,
+    }));
+  }, [activeRegion, entries, rankingMode]);
 
   if (!hydrated || !currentUser) return null;
 
@@ -133,19 +176,72 @@ export default function LeaderboardPage() {
           })}
         </div>
 
+        <div className="glass-card p-3">
+          <div className="grid grid-cols-2 gap-2">
+            {RANKING_MODES.map((mode) => {
+              const active = rankingMode === mode.id;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setRankingMode(mode.id)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left transition-all",
+                    active
+                      ? "border-[#ff4b35]/55 bg-[#ff4b35]/15"
+                      : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                  )}
+                >
+                  <span className={cn("block text-xs font-black", active ? "text-[#ff4b35]" : "text-white")}>
+                    {mode.label}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] font-semibold text-[#b8b8b8]/70">
+                    {mode.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {[ALL_REGIONS, ...regionOptions].map((region) => {
+              const active = activeRegion === region;
+              return (
+                <button
+                  key={region}
+                  type="button"
+                  onClick={() => setSelectedRegion(region)}
+                  className={cn(
+                    "flex-shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all",
+                    active
+                      ? "border-[#ff4b35]/60 text-[#ff4b35]"
+                      : "border-white/10 text-[#b8b8b8] hover:border-white/20"
+                  )}
+                  style={active ? { background: "rgba(255,75,53,0.12)" } : undefined}
+                >
+                  {region}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="glass-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
-                {TIER_LABELS[activeTier]} monthly distance rank
+                {TIER_LABELS[activeTier]} monthly {rankingMode} rank
               </p>
               <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
-                Ranked by {monthLabel} Strava cycling km in the {activeTier} km tier. Opted-in riders only.
+                {rankingMode === "distance"
+                  ? `Ranked by ${monthLabel} Strava cycling km in the ${activeTier} km tier.`
+                  : `Ranked by unique ride days in ${monthLabel}; ties use monthly km.`}
+                {" "}Opted-in riders only.
               </p>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <p className="text-[10px] text-[#b8b8b8]">
-                {boardLoading ? "Refreshing" : `${entries.length} riders`}
+                {boardLoading ? "Refreshing" : `${visibleRows.length} riders`}
               </p>
               <PoweredByStrava />
             </div>
@@ -159,17 +255,20 @@ export default function LeaderboardPage() {
         )}
 
         {/* Entries */}
-        {entries.length === 0 ? (
+        {visibleRows.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-sm text-[#b8b8b8]">No opted-in riders in this tier yet.</p>
+            <p className="text-sm text-[#b8b8b8]">No opted-in riders match this view yet.</p>
             <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Leaderboard rank appears after riders consent and sync monthly rides.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.map((entry) => {
+            {visibleRows.map(({ entry, displayRank }) => {
               const isMe    = entry.user.id === currentUser.id;
-              const medal   = MEDAL_STYLES[entry.rank];
+              const medal   = MEDAL_STYLES[displayRank];
               const isChamp = canAccessChampionFeatures(entry.user);
+              const modeProgressPct = rankingMode === "consistency"
+                ? Math.min(100, Math.round(((entry.rideDays ?? 0) / Math.max(1, dayOfMonth)) * 100))
+                : entry.progressPct;
 
               return (
                 <div
@@ -186,7 +285,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center gap-3">
                     {/* Rank / medal */}
                     <div className="flex items-center justify-center w-7 flex-shrink-0">
-                      <span className="text-sm font-bold text-[#b8b8b8] w-6 text-center">#{entry.rank}</span>
+                      <span className="text-sm font-bold text-[#b8b8b8] w-6 text-center">#{displayRank}</span>
                     </div>
 
                     {/* Avatar */}
@@ -201,7 +300,7 @@ export default function LeaderboardPage() {
                     {/* Name & progress */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                        <p className="font-bold text-sm text-[#ffffff] truncate max-w-[120px]">
+                        <p className="font-bold text-sm text-[#ffffff] truncate max-w-[150px]">
                           {entry.user.name.split(" ")[0]}
                         </p>
                         {isChamp && (
@@ -217,10 +316,14 @@ export default function LeaderboardPage() {
                           </span>
                         )}
                       </div>
+                      <p className="mb-1.5 truncate text-[10px] text-[#b8b8b8]/60">
+                        {getRegionLabel(entry)}
+                        {rankingMode === "consistency" && entry.totalKm > 0 ? ` - ${entry.totalKm} km` : ""}
+                      </p>
                       <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{
-                            width: `${entry.progressPct}%`,
+                            width: `${modeProgressPct}%`,
                             background: "linear-gradient(90deg, #ff4b35, #ffffff)",
                             boxShadow: "0 0 6px rgba(255,255,255,0.4)",
                           }} />
@@ -229,8 +332,15 @@ export default function LeaderboardPage() {
 
                     {/* KM */}
                     <div className="text-right flex-shrink-0 ml-1">
-                      <p className="font-bold text-base text-[#ff4b35]">{entry.totalKm}</p>
-                      <p className="text-[10px] text-[#b8b8b8]">monthly km</p>
+                      <p className="font-bold text-base text-[#ff4b35]">
+                        {rankingMode === "consistency" ? (entry.rideDays ?? 0) : entry.totalKm}
+                      </p>
+                      <p className="text-[10px] text-[#b8b8b8]">
+                        {rankingMode === "consistency" ? "ride days" : "monthly km"}
+                      </p>
+                      {rankingMode === "consistency" && entry.consistencyRank && activeRegion !== ALL_REGIONS && (
+                        <p className="text-[9px] text-[#b8b8b8]/50">SA #{entry.consistencyRank}</p>
+                      )}
                     </div>
                   </div>
                 </div>
