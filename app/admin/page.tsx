@@ -532,7 +532,7 @@ export default function AdminPage() {
 
             {activeTab === "champing" && (
               <section className="space-y-2">
-                {champing.length === 0 ? <EmptyState text="No champing sessions logged yet." /> : champing.map((session) => (
+                {champing.length === 0 ? <EmptyState text="No champing check-ins logged yet." /> : champing.map((session) => (
                   <div key={session.id} className="glass-card p-4 flex items-center gap-3">
                     <Star size={16} className="text-[#ff4b35]" />
                     <div className="flex-1 min-w-0">

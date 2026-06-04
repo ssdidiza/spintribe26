@@ -9,8 +9,8 @@ const RELEASE_NOTIFICATIONS: Omit<AppNotification, "userId">[] = [
   {
     id: "release-annual-champ-rides",
     type: "info",
-    title: "New: year ride check-ins",
-    body: "Champions can now import year-to-date rides and log earlier zone champing sessions from the Champion tab.",
+    title: "New: year-to-date champing check-ins",
+    body: "Champions can now import year-to-date rides and log earlier ride-linked champing proof from the Champion tab.",
     createdAt: "2026-06-02T00:00:00.000Z",
   },
   {

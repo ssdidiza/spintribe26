@@ -165,8 +165,8 @@ export default function ChampionPage() {
         {/* Annual progress + check-in */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Annual Progress</p>
-            <span className="text-[10px] font-bold" style={{ color: "#ff4b35" }}>{champingThisYear} sessions</span>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Champing Progress</p>
+            <span className="text-[10px] font-bold" style={{ color: "#ff4b35" }}>{champingThisYear} check-ins</span>
           </div>
 
           <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-4">
@@ -175,9 +175,13 @@ export default function ChampionPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">
-            <MiniStat label={`${currentMonthLabel} ride dates`} value={champingThisMonth} target={2}  ok={champingThisMonth >= 2}  caption="/ 2 min" />
-            <MiniStat label={`${currentYearLabel} ride dates`}  value={champingThisYear}  target={10} ok={champingThisYear  >= 10} caption="/ 10 goal" />
+            <MiniStat label={`${currentMonthLabel} champing dates`} value={champingThisMonth} target={2}  ok={champingThisMonth >= 2}  caption="/ 2 min" />
+            <MiniStat label={`${currentYearLabel} champing dates`}  value={champingThisYear}  target={10} ok={champingThisYear  >= 10} caption="/ 10 goal" />
           </div>
+
+          <p className="mb-3 text-[11px] leading-relaxed text-[#b8b8b8]/70">
+            Your Strava rides are already synced. Use this screen only to check in rides where you were champing.
+          </p>
 
           <button
             onClick={openModal}
@@ -185,7 +189,7 @@ export default function ChampionPage() {
             style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", boxShadow: "0 0 16px rgba(255,75,53,0.3)" }}
           >
             <Star size={13} fill="currentColor" />
-            LOG CHECK-IN
+            LOG CHAMPING CHECK-IN
           </button>
 
           <button
@@ -205,7 +209,7 @@ export default function ChampionPage() {
             <div className="glass-card p-10 text-center">
               <Star size={22} className="mx-auto mb-2 text-[#b8b8b8]/25" />
               <p className="text-sm text-[#b8b8b8]">No check-ins yet.</p>
-              <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Log your first session above.</p>
+              <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Log your first champing check-in above.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -217,7 +221,7 @@ export default function ChampionPage() {
                       <Star size={13} style={{ color: "#ff4b35" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#ffffff]">Champing Session</p>
+                      <p className="font-semibold text-sm text-[#ffffff]">Champing Check-in</p>
                       {s.stravaActivityName && (
                         <p className="text-[10px] text-[#b8b8b8] truncate">
                           {s.stravaActivityName}{s.stravaActivityKm ? ` - ${s.stravaActivityKm} km` : ""}
@@ -309,7 +313,7 @@ export default function ChampionPage() {
             <div className="sticky top-0 glass px-6 pt-5 pb-4 border-b border-white/[0.08] rounded-t-3xl">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Champing Session</p>
+                  <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Champing Check-in</p>
                   <h3 className="font-bold text-[#ffffff] text-lg">
                     {step === "activity" ? "Link a Ride" : "Confirm & Log"}
                   </h3>
@@ -335,7 +339,7 @@ export default function ChampionPage() {
                     style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.2)" }}>
                     <AlertCircle size={13} style={{ color: "#ff4b35" }} className="mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-[#b8b8b8] leading-relaxed">
-                      Link a <strong className="text-[#ffffff]">year-to-date Strava ride</strong> only if you were actually champing in that zone.
+                      Choose the Strava ride that proves this champing session. Normal rides stay in your synced ride history. Do not log them here.
                     </p>
                   </div>
                   <ActivityPicker
@@ -412,7 +416,7 @@ export default function ChampionPage() {
                         boxShadow: "0 0 20px rgba(255,75,53,0.4)",
                       } : undefined}
                     >
-                      {saved ? <><CheckCircle2 size={16} /> Logged!</> : "LOG SESSION"}
+                      {saved ? <><CheckCircle2 size={16} /> Logged!</> : "LOG CHECK-IN"}
                     </button>
                   </div>
                 </>

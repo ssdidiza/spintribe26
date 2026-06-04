@@ -58,7 +58,7 @@ export default function TermsAndConditions() {
       <h2>5. Strava Integration</h2>
       <p>
         We access your Strava data under the permissions you grant when connecting your account.
-        We request the minimum scope needed for club challenge progress and ride verification.
+        We request the minimum scope needed for club challenge progress and champing check-in verification.
         You may revoke access from your Strava settings or disconnect in the app; doing so prevents
         further syncing and removes cached ride data from the Platform.
       </p>

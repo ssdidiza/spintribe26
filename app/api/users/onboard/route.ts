@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Create welcome notification
-  const welcomeBody = `Here's how to get started: 1) Sync your Strava rides to track monthly km. 2) Check the leaderboard to see how you rank. 3) Champions: log champing sessions from the Champion tab. Your goal is ${tier}km this month - let's go!`;
+  const welcomeBody = `Here's how to get started: 1) Sync your Strava rides to track monthly km. 2) Check the leaderboard to see how you rank. 3) Champions: log champing check-ins only when a ride was actually champing. Your goal is ${tier}km this month - let's go!`;
 
   const { error: notifError } = await db.from("notifications").insert({
     user_strava_id: userId,

@@ -465,10 +465,10 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Recent rides ──────────────────────────────────────────────── */}
+        {/* ── Synced Strava rides ──────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Recent Rides</p>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Synced Strava Rides</p>
             {syncing
               ? <span className="text-[10px] text-[#b8b8b8]">Syncing...</span>
               : <PoweredByStrava />}

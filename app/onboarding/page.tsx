@@ -168,8 +168,8 @@ function OnboardingContent() {
                   "View all member progress",
                   "Log indoor FTP sessions",
                   "Create and manage Zones",
-                  "Min 2 champing sessions / month",
-                  "Log activity-linked check-ins",
+                  "Min 2 champing check-ins / month",
+                  "Log ride-linked champing proof",
                 ]}
                 accent="#FF6500"
                 onClick={() => handleRoleSelect("champion")}
