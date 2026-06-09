@@ -92,7 +92,7 @@ export async function PATCH(req: NextRequest) {
   const { error: notifError } = await db.from("notifications").insert({
     user_strava_id: userId,
     type: "welcome",
-    title: "Welcome to spera!",
+    title: "Welcome to SpinTribe!",
     body: welcomeBody,
   });
 
