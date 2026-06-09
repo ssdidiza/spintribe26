@@ -401,10 +401,22 @@ export const useStore = create<AppState>()(
       // ghost riders disappear; real data re-hydrates from the API on load.
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppState> | undefined;
-        if (state && version < 1) {
-          state.users = (state.users ?? []).filter((u) => !/^u\d+$/.test(u.id));
-          state.activities = (state.activities ?? []).filter((a) => a.userId !== "u1");
-          state.championSessions = (state.championSessions ?? []).filter((s) => s.userId !== "u1");
+        const v = version as number | undefined;
+        const isMock = (id: string) => /^u\d+$/.test(id) || id === "mock-1";
+        // Pre-v1 stores may report version 0 OR undefined (older/hand-edited
+        // blobs); both need migrating — guard undefined since `undefined < 1`
+        // is false and would otherwise skip the cleanup.
+        if (state && (v === undefined || v < 1)) {
+          state.users = (state.users ?? []).filter((u) => !isMock(u.id));
+          state.activities = (state.activities ?? []).filter((a) => !isMock(a.userId));
+          state.championSessions = (state.championSessions ?? []).filter((s) => !isMock(s.userId));
+          // If the active session itself is a seeded mock user, drop it so the
+          // user re-authenticates as their real account instead of logging new
+          // rides under u1/mock-1 (which would leak back onto the leaderboard).
+          if (state.currentUser && isMock(state.currentUser.id)) {
+            state.currentUser = null;
+            state.isOnboarded = false;
+          }
         }
         return state as AppState;
       },
