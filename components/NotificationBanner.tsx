@@ -7,6 +7,13 @@ import { Bell, X, CheckCircle2 } from "lucide-react";
 
 const RELEASE_NOTIFICATIONS: Omit<AppNotification, "userId">[] = [
   {
+    id: "release-light-mode",
+    type: "info",
+    title: "New: Light mode has arrived",
+    body: "SpinTribe now follows your device's light or dark setting automatically. Want to lock one in? Choose Light, Dark, or Auto under Profile → Appearance.",
+    createdAt: "2026-06-09T00:00:00.000Z",
+  },
+  {
     id: "release-annual-champ-rides",
     type: "info",
     title: "New: year-to-date champing check-ins",
@@ -134,7 +141,7 @@ export default function NotificationBanner() {
         background: "rgba(255,75,53,0.08)",
         border: "1px solid transparent",
         backgroundClip: "padding-box",
-        boxShadow: "inset 0 0 0 1px rgba(255,75,53,0.3), inset 0 0 0 1px rgba(255,255,255,0.15)",
+        boxShadow: "inset 0 0 0 1px rgba(255,75,53,0.3), inset 0 0 0 1px var(--hairline-strong)",
       }}
     >
       {/* Gradient border effect */}
@@ -142,7 +149,7 @@ export default function NotificationBanner() {
         aria-hidden
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{
-          background: "linear-gradient(135deg, rgba(255,75,53,0.3), rgba(255,255,255,0.15)) border-box",
+          background: "linear-gradient(135deg, rgba(255,75,53,0.3), var(--hairline-strong)) border-box",
           WebkitMask: "linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)",
           WebkitMaskComposite: "destination-out",
           maskComposite: "exclude",
@@ -153,14 +160,14 @@ export default function NotificationBanner() {
       <div className="flex items-start gap-3">
         <div
           className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={{ background: "linear-gradient(135deg, #ff4b35, #ffffff)" }}
+          style={{ background: "linear-gradient(135deg, #ff4b35, #e0007a)" }}
         >
           <Bell size={14} className="text-white" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-[#ffffff] mb-1">{active.title}</p>
-          <p className="text-xs text-[#b8b8b8] leading-relaxed">{active.body}</p>
+          <p className="font-bold text-sm text-foreground mb-1">{active.title}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{active.body}</p>
 
           <div className="flex gap-2 mt-3">
             {!isReleaseNotification && (
@@ -168,7 +175,7 @@ export default function NotificationBanner() {
                 onClick={() => handleAction("complete")}
                 disabled={acting}
                 className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-50"
-                style={{ background: "rgba(255,255,255,0.15)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.3)" }}
+                style={{ background: "var(--fill-mid)", color: "var(--foreground)", border: "1px solid var(--border)" }}
               >
                 <CheckCircle2 size={12} />
                 Mark complete
@@ -178,7 +185,7 @@ export default function NotificationBanner() {
               onClick={() => handleAction("dismiss")}
               disabled={acting}
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-50"
-              style={{ background: "rgba(255,255,255,0.05)", color: "#b8b8b8", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "var(--fill-soft)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
             >
               <X size={12} />
               Got it

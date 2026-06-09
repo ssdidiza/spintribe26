@@ -144,11 +144,11 @@ export default function ChampionPage() {
   const currentYearLabel = format(new Date(), "yyyy");
 
   return (
-    <div className="min-h-screen bg-[#020202] mb-nav">
+    <div className="min-h-screen bg-background mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Star size={16} style={{ color: "#ff4b35", filter: "drop-shadow(0 0 6px rgba(255,75,53,0.7))" }} fill="#ff4b35" />
-          <h1 className="font-bold text-[#ffffff]">Champ Console</h1>
+          <h1 className="font-bold text-foreground">Champ Console</h1>
         </div>
         <span
           className="text-[10px] font-bold rounded-full px-2.5 py-1"
@@ -165,13 +165,13 @@ export default function ChampionPage() {
         {/* Annual progress + check-in */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Champing Progress</p>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Champing Progress</p>
             <span className="text-[10px] font-bold" style={{ color: "#ff4b35" }}>{champingThisYear} check-ins</span>
           </div>
 
-          <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-4">
+          <div className="h-1.5 rounded-full bg-foreground/[0.08] overflow-hidden mb-4">
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${annualPct}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)", boxShadow: "0 0 8px rgba(255,255,255,0.4)" }} />
+              style={{ width: `${annualPct}%`, background: "linear-gradient(90deg,#ff4b35,#e0007a)", boxShadow: "0 0 8px rgba(255,75,53,0.4)" }} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">
@@ -179,14 +179,14 @@ export default function ChampionPage() {
             <MiniStat label={`${currentYearLabel} champing dates`}  value={champingThisYear}  target={10} ok={champingThisYear  >= 10} caption="/ 10 goal" />
           </div>
 
-          <p className="mb-3 text-[11px] leading-relaxed text-[#b8b8b8]/70">
+          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground/80">
             Your Strava rides are already synced. Use this screen only to check in rides where you were champing.
           </p>
 
           <button
             onClick={openModal}
             className="w-full rounded-2xl py-3 font-bold text-sm tracking-widest text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", boxShadow: "0 0 16px rgba(255,75,53,0.3)" }}
+            style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)", boxShadow: "0 0 16px rgba(255,75,53,0.3)" }}
           >
             <Star size={13} fill="currentColor" />
             LOG CHAMPING CHECK-IN
@@ -195,7 +195,7 @@ export default function ChampionPage() {
           <button
             onClick={handleYearSync}
             disabled={syncingYear}
-            className="mt-2 w-full rounded-2xl py-3 font-bold text-xs tracking-widest text-[#ffffff] flex items-center justify-center gap-2 transition-all active:scale-[0.98] border border-white/10 bg-white/[0.04] hover:border-[#ff4b35]/40 disabled:opacity-60"
+            className="mt-2 w-full rounded-2xl py-3 font-bold text-xs tracking-widest text-foreground flex items-center justify-center gap-2 transition-all active:scale-[0.98] border border-foreground/10 bg-foreground/[0.04] hover:border-[#ff4b35]/40 disabled:opacity-60"
           >
             <RefreshCw size={13} className={syncingYear ? "animate-spin" : ""} />
             {syncingYear ? "IMPORTING YEAR RIDES" : "IMPORT YEAR RIDES"}
@@ -204,12 +204,12 @@ export default function ChampionPage() {
 
         {/* Recent check-ins */}
         <section>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">Recent Check-ins by Ride Date</p>
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground mb-3">Recent Check-ins by Ride Date</p>
           {recentSessions.length === 0 ? (
             <div className="glass-card p-10 text-center">
-              <Star size={22} className="mx-auto mb-2 text-[#b8b8b8]/25" />
-              <p className="text-sm text-[#b8b8b8]">No check-ins yet.</p>
-              <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Log your first champing check-in above.</p>
+              <Star size={22} className="mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+              <p className="text-[11px] text-muted-foreground/60 mt-1">Log your first champing check-in above.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -221,9 +221,9 @@ export default function ChampionPage() {
                       <Star size={13} style={{ color: "#ff4b35" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-[#ffffff]">Champing Check-in</p>
+                      <p className="font-semibold text-sm text-foreground">Champing Check-in</p>
                       {s.stravaActivityName && (
-                        <p className="text-[10px] text-[#b8b8b8] truncate">
+                        <p className="text-[10px] text-muted-foreground truncate">
                           {s.stravaActivityName}{s.stravaActivityKm ? ` - ${s.stravaActivityKm} km` : ""}
                         </p>
                       )}
@@ -232,25 +232,25 @@ export default function ChampionPage() {
                           <MapPin size={9} /> {s.zoneName}
                         </p>
                       )}
-                      {s.notes && <p className="text-[10px] text-[#b8b8b8] truncate">{s.notes}</p>}
+                      {s.notes && <p className="text-[10px] text-muted-foreground truncate">{s.notes}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <p className="text-[10px] text-[#b8b8b8]">Ride {format(new Date(s.date), "MMM d")}</p>
+                      <p className="text-[10px] text-muted-foreground">Ride {format(new Date(s.date), "MMM d")}</p>
                       <button
                         onClick={() => setConfirmDeleteId(s.id)}
                         className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/20"
                       >
-                        <Trash2 size={11} className="text-[#b8b8b8]/60 hover:text-[#ffb4ab]" />
+                        <Trash2 size={11} className="text-muted-foreground/70 hover:text-destructive" />
                       </button>
                     </div>
                   </div>
                   {confirmDeleteId === s.id && (
                     <div className="flex items-center justify-between gap-2 px-3 pb-3">
-                      <p className="text-[11px] text-[#b8b8b8]">Remove this session?</p>
+                      <p className="text-[11px] text-muted-foreground">Remove this session?</p>
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => setConfirmDeleteId(null)}
-                          className="rounded-lg px-3 py-1 text-[11px] font-semibold text-[#b8b8b8] glass hover:border-white/20 transition-all"
+                          className="rounded-lg px-3 py-1 text-[11px] font-semibold text-muted-foreground glass hover:border-foreground/20 transition-all"
                         >
                           Cancel
                         </button>
@@ -271,7 +271,7 @@ export default function ChampionPage() {
         {/* Tier members */}
         {tierMembers.length > 0 && (
           <section>
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8] mb-3">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground mb-3">
               {currentUser.tier} km Tier Members
             </p>
             <div className="space-y-2">
@@ -283,13 +283,13 @@ export default function ChampionPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={member.avatar} alt={member.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#ffffff] truncate">{member.name}</p>
-                      <div className="mt-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                      <p className="text-sm font-semibold text-foreground truncate">{member.name}</p>
+                      <div className="mt-1 h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
                         <div className="h-full rounded-full transition-all"
-                          style={{ width: `${p}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)" }} />
+                          style={{ width: `${p}%`, background: "linear-gradient(90deg,#ff4b35,#e0007a)" }} />
                       </div>
                     </div>
-                    <p className="text-sm font-bold text-[#b8b8b8] flex-shrink-0">{km} km</p>
+                    <p className="text-sm font-bold text-muted-foreground flex-shrink-0">{km} km</p>
                   </div>
                 );
               })}
@@ -310,23 +310,23 @@ export default function ChampionPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 glass px-6 pt-5 pb-4 border-b border-white/[0.08] rounded-t-3xl">
+            <div className="sticky top-0 glass px-6 pt-5 pb-4 border-b border-foreground/[0.08] rounded-t-3xl">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Champing Check-in</p>
-                  <h3 className="font-bold text-[#ffffff] text-lg">
+                  <h3 className="font-bold text-foreground text-lg">
                     {step === "activity" ? "Link a Ride" : "Confirm & Log"}
                   </h3>
                 </div>
                 <button onClick={() => setOpen(false)}
                   className="w-8 h-8 rounded-full glass flex items-center justify-center">
-                  <X size={14} className="text-[#b8b8b8]" />
+                  <X size={14} className="text-muted-foreground" />
                 </button>
               </div>
               <div className="flex gap-1.5">
                 {(["activity", "notes"] as ModalStep[]).map((s, i) => (
                   <div key={s} className="h-0.5 flex-1 rounded-full transition-all"
-                    style={{ background: i <= (step === "activity" ? 0 : 1) ? "linear-gradient(90deg,#ff4b35,#ffffff)" : "rgba(255,255,255,0.1)" }} />
+                    style={{ background: i <= (step === "activity" ? 0 : 1) ? "linear-gradient(90deg,#ff4b35,#e0007a)" : "var(--fill-mid)" }} />
                 ))}
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function ChampionPage() {
                   <div className="flex items-start gap-2 rounded-xl p-3"
                     style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.2)" }}>
                     <AlertCircle size={13} style={{ color: "#ff4b35" }} className="mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-[#b8b8b8] leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       Choose the Strava ride that proves this champing session. Normal rides stay in your synced ride history. Do not log them here.
                     </p>
                   </div>
@@ -355,12 +355,12 @@ export default function ChampionPage() {
                     disabled={!selectedActivity}
                     className={cn(
                       "w-full rounded-2xl py-3.5 font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2",
-                      selectedActivity ? "text-white" : "text-white/30 cursor-not-allowed"
+                      selectedActivity ? "text-white" : "text-muted-foreground/60 cursor-not-allowed"
                     )}
                     style={selectedActivity ? {
-                      background: "linear-gradient(135deg,#ff4b35,#ffffff)",
+                      background: "linear-gradient(135deg,#ff4b35,#e0007a)",
                       boxShadow: "0 0 20px rgba(255,75,53,0.4)",
-                    } : { background: "rgba(255,255,255,0.06)" }}
+                    } : { background: "var(--fill-mid)" }}
                   >
                     CONTINUE <ChevronRight size={15} />
                   </button>
@@ -375,8 +375,8 @@ export default function ChampionPage() {
                       style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.18)" }}>
                       <Bike size={16} className="text-[#ff4b35]" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#ffffff] truncate">{selectedActivity.name}</p>
-                        <p className="text-[10px] text-[#b8b8b8]">
+                        <p className="text-xs font-semibold text-foreground truncate">{selectedActivity.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
                           {(selectedActivity.distance / 1000).toFixed(1)} km - {format(new Date(selectedActivity.date), "MMM d, yyyy")}
                         </p>
                       </div>
@@ -385,8 +385,8 @@ export default function ChampionPage() {
 
                   {/* Zone (optional) */}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#b8b8b8] mb-2">
-                      Zone <span className="normal-case text-[#b8b8b8]/45 font-normal">- optional</span>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Zone <span className="normal-case text-muted-foreground/60 font-normal">- optional</span>
                     </p>
                     <ZoneSelector region={currentUser.region ?? currentUser.zone ?? "Gauteng"} value={selectedZone} onChange={setSelectedZone} />
                   </div>
@@ -395,13 +395,13 @@ export default function ChampionPage() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Notes (optional)..."
-                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-[#ffffff] placeholder:text-[#b8b8b8]/40 resize-none focus:outline-none focus:border-[#ff4b35]/50 transition-colors"
+                    className="w-full rounded-2xl border border-foreground/10 bg-foreground/[0.04] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 resize-none focus:outline-none focus:border-[#ff4b35]/50 transition-colors"
                     rows={3}
                   />
 
                   <div className="flex gap-2">
                     <button onClick={() => setStep("activity")}
-                      className="flex-1 rounded-2xl py-3.5 font-semibold text-sm text-[#b8b8b8] glass hover:border-white/20 transition-all">
+                      className="flex-1 rounded-2xl py-3.5 font-semibold text-sm text-muted-foreground glass hover:border-foreground/20 transition-all">
                       Back
                     </button>
                     <button
@@ -412,7 +412,7 @@ export default function ChampionPage() {
                         saved ? "bg-emerald-500/90 text-white" : "text-white"
                       )}
                       style={!saved ? {
-                        background: "linear-gradient(135deg,#ff4b35,#ffffff)",
+                        background: "linear-gradient(135deg,#ff4b35,#e0007a)",
                         boxShadow: "0 0 20px rgba(255,75,53,0.4)",
                       } : undefined}
                     >
@@ -436,15 +436,15 @@ function MiniStat({ label, value, target, ok, caption }: {
 }) {
   return (
     <div className="rounded-2xl p-3"
-      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">{label}</p>
-      <p className={cn("text-2xl font-black", ok ? "text-emerald-400" : "text-[#ffffff]")}>
+      style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+      <p className={cn("text-2xl font-black", ok ? "text-emerald-500" : "text-foreground")}>
         {value}
-        <span className="text-[11px] font-normal text-[#b8b8b8] ml-1">{caption}</span>
+        <span className="text-[11px] font-normal text-muted-foreground ml-1">{caption}</span>
       </p>
-      <div className="mt-2 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="mt-2 h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
         <div className="h-full rounded-full transition-all"
-          style={{ width: `${Math.min(100, (value / target) * 100)}%`, background: ok ? "#34d399" : "linear-gradient(90deg,#ff4b35,#ffffff)" }} />
+          style={{ width: `${Math.min(100, (value / target) * 100)}%`, background: ok ? "#34d399" : "linear-gradient(90deg,#ff4b35,#e0007a)" }} />
       </div>
     </div>
   );

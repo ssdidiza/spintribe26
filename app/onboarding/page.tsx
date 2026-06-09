@@ -145,7 +145,7 @@ function OnboardingContent() {
               <div
                 key={s}
                 className="h-0.5 flex-1 rounded-full transition-all duration-300"
-                style={{ background: filled ? "#FF6500" : "#ffffff20" }}
+                style={{ background: filled ? "#FF6500" : "var(--fill-mid)" }}
               />
             );
           })}
@@ -156,8 +156,8 @@ function OnboardingContent() {
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
               Step 1 of 2
             </p>
-            <h2 className="text-3xl font-black text-white mb-1">Who are you?</h2>
-            <p className="text-white/50 text-sm mb-8">Choose your role in the Team Vitality challenge</p>
+            <h2 className="text-3xl font-black text-foreground mb-1">Who are you?</h2>
+            <p className="text-muted-foreground text-sm mb-8">Choose your role in the Team Vitality challenge</p>
 
             <div className="space-y-4">
               <RoleCard
@@ -184,7 +184,7 @@ function OnboardingContent() {
                   "Sync Strava activities",
                   "See Zone activity near you",
                 ]}
-                accent="#ffffff"
+                accent="var(--foreground)"
                 onClick={() => handleRoleSelect("member")}
               />
             </div>
@@ -195,21 +195,21 @@ function OnboardingContent() {
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <button
               onClick={() => setStep("role")}
-              className="text-white/40 text-sm mb-6 text-left hover:text-white/70 transition-colors flex items-center gap-1"
+              className="text-muted-foreground text-sm mb-6 text-left hover:text-foreground transition-colors flex items-center gap-1"
             >
               Back
             </button>
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
               Step 2 of {totalSteps}
             </p>
-            <h2 className="text-3xl font-black text-white mb-1">Champion Invite</h2>
-            <p className="text-white/50 text-sm mb-8">
+            <h2 className="text-3xl font-black text-foreground mb-1">Champion Invite</h2>
+            <p className="text-muted-foreground text-sm mb-8">
               Champions are verified leaders. Enter your invite code to continue.
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Invite Code
                 </label>
                 <input
@@ -218,8 +218,8 @@ function OnboardingContent() {
                   onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setInviteError(""); }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleVerifyInvite(); }}
                   placeholder="e.g. SPINTV26"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 transition-all font-mono tracking-widest"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:ring-2 transition-all font-mono tracking-widest"
+                  style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
                 />
               </div>
 
@@ -237,9 +237,9 @@ function OnboardingContent() {
                   "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
                   inviteCode.trim() && !inviteLoading
                     ? "text-white hover:opacity-90 active:scale-[0.98]"
-                    : "text-white/30 cursor-not-allowed"
+                    : "text-muted-foreground/60 cursor-not-allowed"
                 )}
-                style={{ background: inviteCode.trim() && !inviteLoading ? "#FF6500" : "#ffffff10" }}
+                style={{ background: inviteCode.trim() && !inviteLoading ? "#FF6500" : "var(--fill-mid)" }}
               >
                 {inviteLoading ? "Verifying..." : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
               </button>
@@ -251,15 +251,15 @@ function OnboardingContent() {
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <button
               onClick={() => setStep(role === "champion" ? "invite" : "role")}
-              className="text-white/40 text-sm mb-6 text-left hover:text-white/70 transition-colors flex items-center gap-1"
+              className="text-muted-foreground text-sm mb-6 text-left hover:text-foreground transition-colors flex items-center gap-1"
             >
               Back
             </button>
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
               Step {totalSteps} of {totalSteps}
             </p>
-            <h2 className="text-3xl font-black text-white mb-1">Pick your challenge</h2>
-            <p className="text-white/50 text-sm mb-6">How many km will you ride this month?</p>
+            <h2 className="text-3xl font-black text-foreground mb-1">Pick your challenge</h2>
+            <p className="text-muted-foreground text-sm mb-6">How many km will you ride this month?</p>
 
             <div className="space-y-3 mb-6">
               {TIERS.map(({ km, description }) => {
@@ -271,13 +271,13 @@ function OnboardingContent() {
                     onClick={() => setTier(km)}
                     className={cn(
                       "w-full flex items-center justify-between rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
-                      selected ? "border-white/30 bg-white/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                      selected ? "border-foreground/30 bg-foreground/10" : "border-foreground/10 bg-foreground/5 hover:border-foreground/20"
                     )}
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-2xl font-black" style={{ color }}>{km}</span>
-                        <span className="text-white/40 text-sm">km / month</span>
+                        <span className="text-muted-foreground text-sm">km / month</span>
                         <span
                           className="text-[10px] font-bold rounded-full px-2 py-0.5"
                           style={{ background: `${color}20`, color }}
@@ -285,12 +285,12 @@ function OnboardingContent() {
                           {TIER_LABELS[km]}
                         </span>
                       </div>
-                      <p className="text-white/40 text-xs">{description}</p>
+                      <p className="text-muted-foreground text-xs">{description}</p>
                     </div>
                     {selected ? (
                       <CheckCircle2 size={20} style={{ color: "#FF6500" }} />
                     ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-white/20" />
+                      <div className="w-5 h-5 rounded-full border-2 border-foreground/20" />
                     )}
                   </button>
                 );
@@ -300,7 +300,7 @@ function OnboardingContent() {
             {/* Zone input for champions */}
             {role === "champion" && (
               <div className="mb-6">
-                <label className="block text-[11px] font-semibold tracking-widest uppercase text-white/40 mb-2">
+                <label className="block text-[11px] font-semibold tracking-widest uppercase text-muted-foreground mb-2">
                   Your Zone <span className="text-[#FF6500]">*</span>
                 </label>
                 <input
@@ -308,8 +308,8 @@ function OnboardingContent() {
                   value={zone}
                   onChange={(e) => setZone(e.target.value)}
                   placeholder="e.g. Centurion, Paarl, Durban North"
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:ring-2 transition-all"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:ring-2 transition-all"
+                  style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
                 />
               </div>
             )}
@@ -317,7 +317,7 @@ function OnboardingContent() {
             {/* Region picker for members */}
             {role !== "champion" && (
               <div className="mb-6">
-                <p className="text-[11px] font-semibold tracking-widest uppercase text-white/40 mb-3">Your Region</p>
+                <p className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground mb-3">Your Region</p>
                 <div className="flex flex-wrap gap-2">
                   {REGIONS.map((r) => (
                     <button
@@ -327,7 +327,7 @@ function OnboardingContent() {
                         "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
                         region === r
                           ? "border-orange-500/60 text-orange-400 bg-orange-500/10"
-                          : "border-white/10 text-white/40 hover:border-white/20"
+                          : "border-foreground/10 text-muted-foreground hover:border-foreground/20"
                       )}
                     >
                       {r}
@@ -343,19 +343,19 @@ function OnboardingContent() {
               onClick={() => setLeaderboardConsent((v) => !v)}
               className="w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
               style={{
-                borderColor: leaderboardConsent ? "rgba(255,101,0,0.5)" : "rgba(255,255,255,0.1)",
-                background: leaderboardConsent ? "rgba(255,101,0,0.08)" : "rgba(255,255,255,0.04)",
+                borderColor: leaderboardConsent ? "rgba(255,101,0,0.5)" : "var(--border)",
+                background: leaderboardConsent ? "rgba(255,101,0,0.08)" : "var(--fill-soft)",
               }}
             >
               <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
-                style={{ borderColor: leaderboardConsent ? "#FF6500" : "rgba(255,255,255,0.3)", background: leaderboardConsent ? "#FF6500" : "transparent" }}>
+                style={{ borderColor: leaderboardConsent ? "#FF6500" : "var(--muted-foreground)", background: leaderboardConsent ? "#FF6500" : "transparent" }}>
                 {leaderboardConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <div>
-                <p className="text-xs font-semibold text-white/80 leading-snug">
+                <p className="text-xs font-semibold text-foreground/85 leading-snug">
                   Share my progress on the SpinTribe leaderboard
                 </p>
-                <p className="text-[10px] text-white/40 mt-1 leading-relaxed">
+                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                   Others in my tier can see my monthly km and ranking. You can change this later from your profile.
                 </p>
               </div>
@@ -366,19 +366,19 @@ function OnboardingContent() {
               onClick={() => setRewardsExportConsent((v) => !v)}
               className="mt-3 w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
               style={{
-                borderColor: rewardsExportConsent ? "rgba(255,101,0,0.5)" : "rgba(255,255,255,0.1)",
-                background: rewardsExportConsent ? "rgba(255,101,0,0.08)" : "rgba(255,255,255,0.04)",
+                borderColor: rewardsExportConsent ? "rgba(255,101,0,0.5)" : "var(--border)",
+                background: rewardsExportConsent ? "rgba(255,101,0,0.08)" : "var(--fill-soft)",
               }}
             >
               <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
-                style={{ borderColor: rewardsExportConsent ? "#FF6500" : "rgba(255,255,255,0.3)", background: rewardsExportConsent ? "#FF6500" : "transparent" }}>
+                style={{ borderColor: rewardsExportConsent ? "#FF6500" : "var(--muted-foreground)", background: rewardsExportConsent ? "#FF6500" : "transparent" }}>
                 {rewardsExportConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <div>
-                <p className="text-xs font-semibold text-white/80 leading-snug">
+                <p className="text-xs font-semibold text-foreground/85 leading-snug">
                   Include me in reward eligibility exports
                 </p>
-                <p className="text-[10px] text-white/40 mt-1 leading-relaxed">
+                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                   Admins can export my name, Strava ID, selected league, monthly km, and completion status for Team Vitality reward administration.
                 </p>
               </div>
@@ -391,9 +391,9 @@ function OnboardingContent() {
                 "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
                 tier && (role !== "champion" || zone.trim()) && !submitting
                   ? "text-white hover:opacity-90 active:scale-[0.98]"
-                  : "text-white/30 cursor-not-allowed"
+                  : "text-muted-foreground/60 cursor-not-allowed"
               )}
-              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "#FF6500" : "#ffffff10" }}
+              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "#FF6500" : "var(--fill-mid)" }}
             >
               {submitting ? "Setting up..." : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>
@@ -430,7 +430,7 @@ function RoleCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-2xl border border-white/10 bg-white/5 p-5 hover:border-white/20 transition-all active:scale-[0.99] backdrop-blur-sm"
+      className="w-full text-left rounded-2xl border border-foreground/10 bg-foreground/5 p-5 hover:border-foreground/20 transition-all active:scale-[0.99] backdrop-blur-sm"
     >
       <div className="flex items-center gap-3 mb-3">
         <div
@@ -440,14 +440,14 @@ function RoleCard({
           {icon}
         </div>
         <div className="flex-1">
-          <p className="font-black text-white">{title}</p>
-          <p className="text-xs text-white/50">{subtitle}</p>
+          <p className="font-black text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <ChevronRight size={18} className="text-white/30" />
+        <ChevronRight size={18} className="text-muted-foreground/70" />
       </div>
       <ul className="space-y-1.5">
         {bullets.map((b) => (
-          <li key={b} className="text-xs text-white/40 flex items-center gap-2">
+          <li key={b} className="text-xs text-muted-foreground flex items-center gap-2">
             <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: accent }} />
             {b}
           </li>

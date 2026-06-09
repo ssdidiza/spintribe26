@@ -49,12 +49,12 @@ export default function NavBar() {
                         color: "#ff4b35",
                         filter: "drop-shadow(0 0 7px rgba(255,75,53,0.72))",
                       }
-                    : { color: "#b8b8b8" }
+                    : { color: "var(--muted-foreground)" }
                 }
               />
               <span
                 className="text-[9px] font-semibold tracking-widest uppercase"
-                style={active ? { color: "#ffffff" } : { color: "#b8b8b8" }}
+                style={active ? { color: "var(--foreground)" } : { color: "var(--muted-foreground)" }}
               >
                 {label}
               </span>

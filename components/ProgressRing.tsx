@@ -42,7 +42,7 @@ export default function ProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="var(--fill-mid)"
           strokeWidth={strokeWidth}
         />
         {/* Progress */}
@@ -64,14 +64,14 @@ export default function ProgressRing({
       </svg>
       <div className="absolute flex flex-col items-center">
         {label && (
-          <span className="text-2xl font-bold text-white">{label}</span>
+          <span className="text-2xl font-bold text-foreground">{label}</span>
         )}
         {sublabel && (
-          <span className="text-xs text-[#b8b8b8] mt-0.5">{sublabel}</span>
+          <span className="text-xs text-muted-foreground mt-0.5">{sublabel}</span>
         )}
         <span
           className="text-sm font-semibold mt-1"
-          style={{ color: gradient ? "#ff4b35" : color }}
+          style={{ color: gradient ? "var(--accent-foreground)" : color }}
         >
           {Math.round(pct)}%
         </span>

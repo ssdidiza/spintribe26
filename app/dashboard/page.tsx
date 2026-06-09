@@ -163,10 +163,12 @@ export default function DashboardPage() {
     paceRatio >= 0.82 ? "on_track" :
                         "behind";
 
+  // Status colors are kept as hex (they are composed with alpha suffixes below)
+  // and chosen to stay legible on both light and dark surfaces.
   const STATUS_CONFIG: Record<ProgressStatus, { label: string; Icon: typeof Trophy; color: string; bg: string; border: string }> = {
     complete: { label: "Challenge Complete!", Icon: PartyPopper,   color: "#ff4b35", bg: "rgba(255,75,53,0.12)",   border: "rgba(255,75,53,0.35)"   },
-    great:    { label: "Doing Great",         Icon: Flame,         color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.22)" },
-    on_track: { label: "On Track",            Icon: CheckCircle2,  color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.25)" },
+    great:    { label: "Doing Great",         Icon: Flame,         color: "#ff7a2f", bg: "rgba(255,122,47,0.12)",  border: "rgba(255,122,47,0.32)"  },
+    on_track: { label: "On Track",            Icon: CheckCircle2,  color: "#16a34a", bg: "rgba(22,163,74,0.10)",   border: "rgba(22,163,74,0.30)"   },
     behind:   { label: "Falling Behind",      Icon: AlertTriangle, color: "#f97316", bg: "rgba(249,115,22,0.10)", border: "rgba(249,115,22,0.30)"  },
   };
   const statusCfg  = STATUS_CONFIG[progressStatus];
@@ -187,25 +189,25 @@ export default function DashboardPage() {
   }
 
   const STATS = [
-    { label: "Ride days",   value: rideDays,                                             icon: <CalendarCheck size={14} className="text-[#ff4b35]" /> },
-    { label: "Avg ride",    value: avgKm ? `${avgKm} km` : "-",                          icon: <TrendingUp size={14} className="text-[#ffffff]" /> },
-    { label: "Longest",     value: longestRideKm ? `${longestRideKm} km` : "-",          icon: <Route      size={14} className="text-[#ffb1c1]" /> },
-    { label: "Month time",  value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ffb1c1]" /> },
-    { label: "Month rank",  value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-[#ff4b35]" /> },
+    { label: "Ride days",   value: rideDays,                                             icon: <CalendarCheck size={14} className="text-accent-foreground" /> },
+    { label: "Avg ride",    value: avgKm ? `${avgKm} km` : "-",                          icon: <TrendingUp size={14} className="text-foreground" /> },
+    { label: "Longest",     value: longestRideKm ? `${longestRideKm} km` : "-",          icon: <Route      size={14} className="text-[#ec4899]" /> },
+    { label: "Month time",  value: formatDuration(totalMoving),                          icon: <Clock      size={14} className="text-[#ec4899]" /> },
+    { label: "Month rank",  value: currentRankEntry ? `#${currentRankEntry.rank}` : "-", icon: <Trophy     size={14} className="text-accent-foreground" /> },
   ];
 
   const MEDALS = ["#1", "#2", "#3"];
 
   return (
-    <div className="min-h-screen bg-[#020202] mb-nav">
+    <div className="min-h-screen bg-background mb-nav">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
             {monthLabel}
           </p>
-          <h1 className="font-bold text-[#ffffff] text-base leading-tight truncate max-w-[200px]">
+          <h1 className="font-bold text-foreground text-base leading-tight truncate max-w-[200px]">
             {currentUser.name.split(/[\s"]/)[0]}
           </h1>
           <a
@@ -224,11 +226,11 @@ export default function DashboardPage() {
             <SperaIcon className="h-4 w-4" />
           </div>
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
-            style={{ color: "#ff4b35", background: "rgba(255,75,53,0.1)" }}>
+            style={{ color: "var(--accent-foreground)", background: "rgba(255,75,53,0.1)" }}>
             {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
           </span>
           <button onClick={handleSync} disabled={syncing}
-            className="w-8 h-8 rounded-full glass flex items-center justify-center text-[#b8b8b8] disabled:opacity-40 hover:text-[#ff4b35] transition-colors">
+            className="w-8 h-8 rounded-full glass flex items-center justify-center text-muted-foreground disabled:opacity-40 hover:text-accent-foreground transition-colors">
             <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
           </button>
         </div>
@@ -240,30 +242,29 @@ export default function DashboardPage() {
 
         {/* ── Cinematic hero ────────────────────────────────────────────── */}
         <div className="relative text-center pt-4 pb-2">
-          <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-[#b8b8b8]/50 mb-3">
+          <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-muted-foreground/60 mb-3">
             {monthLabel} monthly distance
           </p>
           <div className="flex items-end justify-center gap-2 mb-1">
             <span
-              className="font-black leading-none"
+              className="font-black leading-none text-foreground"
               style={{
                 fontSize: "clamp(5rem, 22vw, 7.5rem)",
-                color: "#ffffff",
                 letterSpacing: "-0.04em",
                 textShadow: "0 0 60px rgba(255,75,53,0.25)",
               }}
             >
               {monthlyKm}
             </span>
-            <span className="text-2xl font-light text-[#b8b8b8]/70 pb-3">km</span>
+            <span className="text-2xl font-light text-muted-foreground/70 pb-3">km</span>
           </div>
-          <p className="text-sm text-[#b8b8b8]/50 mb-4">
+          <p className="text-sm text-muted-foreground/70 mb-4">
             {currentRankEntry ? `Monthly distance rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
             {pct}% of {targetKm} km
           </p>
-          <div className="h-0.5 rounded-full bg-white/[0.06] overflow-hidden max-w-[240px] mx-auto">
+          <div className="h-0.5 rounded-full bg-foreground/[0.08] overflow-hidden max-w-[240px] mx-auto">
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff4b35, #ffffff)", boxShadow: "0 0 6px rgba(255,255,255,0.5)" }} />
+              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff4b35, #e0007a)", boxShadow: "0 0 6px rgba(255,75,53,0.45)" }} />
           </div>
         </div>
 
@@ -271,10 +272,10 @@ export default function DashboardPage() {
         {leaderboardEntries.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
                 {TIER_LABELS[currentUser.tier]} Monthly Distance
               </p>
-              <a href="/leaderboard" className="flex items-center gap-0.5 text-[10px] font-semibold text-[#ff4b35]/70 hover:text-[#ff4b35] transition-colors">
+              <a href="/leaderboard" className="flex items-center gap-0.5 text-[10px] font-semibold text-accent-foreground/70 hover:text-accent-foreground transition-colors">
                 See all <ChevronRight size={12} />
               </a>
             </div>
@@ -289,8 +290,8 @@ export default function DashboardPage() {
                       width: 88,
                       background: isMe
                         ? "linear-gradient(160deg, rgba(255,75,53,0.18), rgba(255,75,53,0.06))"
-                        : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${isMe ? "rgba(255,75,53,0.4)" : "rgba(255,255,255,0.07)"}`,
+                        : "var(--fill-soft)",
+                      border: `1px solid ${isMe ? "rgba(255,75,53,0.4)" : "var(--border)"}`,
                     }}
                   >
                     <span className="text-base leading-none">{MEDALS[i] ?? `#${entry.rank}`}</span>
@@ -301,21 +302,21 @@ export default function DashboardPage() {
                       className="w-9 h-9 rounded-full object-cover"
                       style={isMe ? { border: "2px solid #ff4b35" } : {}}
                     />
-                    <p className="text-[10px] font-bold text-[#ffffff] truncate w-full text-center">
+                    <p className="text-[10px] font-bold text-foreground truncate w-full text-center">
                       {entry.user.name.split(" ")[0]}
                     </p>
-                    <div className="w-full h-1 rounded-full bg-white/[0.08] overflow-hidden">
+                    <div className="w-full h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
                       <div className="h-full rounded-full transition-all"
-                        style={{ width: `${entry.progressPct}%`, background: isMe ? "#ff4b35" : "rgba(255,255,255,0.5)" }} />
+                        style={{ width: `${entry.progressPct}%`, background: isMe ? "#ff4b35" : "var(--muted-foreground)" }} />
                     </div>
-                    <p className="text-[9px] font-semibold" style={{ color: isMe ? "#ff4b35" : "#b8b8b8" }}>
+                    <p className="text-[9px] font-semibold" style={{ color: isMe ? "var(--accent-foreground)" : "var(--muted-foreground)" }}>
                       {entry.totalKm} km
                     </p>
                   </div>
                 );
               })}
             </div>
-            <p className="mt-2 text-[10px] text-[#b8b8b8]/60 leading-snug">
+            <p className="mt-2 text-[10px] text-muted-foreground/60 leading-snug">
               Ranked by {leaderboardScope}. Not champing, FTP, average pace, or moving time.
             </p>
           </div>
@@ -333,47 +334,47 @@ export default function DashboardPage() {
                 {statusCfg.label}
               </span>
             </div>
-            <span className="text-[10px] font-semibold text-[#b8b8b8]">
+            <span className="text-[10px] font-semibold text-muted-foreground">
               Day {dayOfMonth} of {daysInMonth}
             </span>
           </div>
 
           {progressStatus !== "complete" ? (
             <>
-              <div className="relative h-2 rounded-full bg-white/[0.06] overflow-visible mb-4">
+              <div className="relative h-2 rounded-full bg-foreground/[0.06] overflow-visible mb-4">
                 <div
                   className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full opacity-50"
-                  style={{ left: `${Math.min(99, (expectedKmByNow / targetKm) * 100)}%`, background: "#b8b8b8" }}
+                  style={{ left: `${Math.min(99, (expectedKmByNow / targetKm) * 100)}%`, background: "var(--muted-foreground)" }}
                 />
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${statusCfg.color}99, ${statusCfg.color})`, boxShadow: `0 0 8px ${statusCfg.color}66` }}
                 />
               </div>
-              <div className="flex justify-between text-[9px] text-[#b8b8b8]/60 -mt-3 mb-4">
+              <div className="flex justify-between text-[9px] text-muted-foreground/60 -mt-3 mb-4">
                 <span>0</span>
                 <span>expected</span>
                 <span>{targetKm} km</span>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
+                <div className="text-center rounded-xl p-3 bg-foreground/[0.03] border border-foreground/[0.05]">
                   <p className="text-lg font-black" style={{ color: statusCfg.color }}>
                     {paceRatio > 0 ? `${Math.round(paceRatio * 100)}%` : "-"}
                   </p>
-                  <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">of pace</p>
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">of pace</p>
                 </div>
-                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
-                  <p className="text-lg font-black text-[#ffffff]">{targetPacePerDay.toFixed(1)}</p>
-                  <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">target pace</p>
+                <div className="text-center rounded-xl p-3 bg-foreground/[0.03] border border-foreground/[0.05]">
+                  <p className="text-lg font-black text-foreground">{targetPacePerDay.toFixed(1)}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">target pace</p>
                 </div>
-                <div className="text-center rounded-xl p-3 bg-white/[0.03] border border-white/[0.05]">
-                  <p className="text-lg font-black text-[#ffffff]">{projectedTotal}</p>
-                  <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8] mt-0.5">km projected</p>
+                <div className="text-center rounded-xl p-3 bg-foreground/[0.03] border border-foreground/[0.05]">
+                  <p className="text-lg font-black text-foreground">{projectedTotal}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">km projected</p>
                 </div>
               </div>
 
-              <p className="text-[11px] text-[#b8b8b8]/70 mt-3 leading-snug">
+              <p className="text-[11px] text-muted-foreground/70 mt-3 leading-snug">
                 {progressStatus === "behind"
                   ? `You need ${kmNeededPerDay} km/day for the remaining ${daysLeft} day${daysLeft !== 1 ? "s" : ""} to hit ${targetKm} km.`
                   : progressStatus === "great"
@@ -382,7 +383,7 @@ export default function DashboardPage() {
               </p>
             </>
           ) : (
-            <p className="text-sm text-[#b8b8b8] leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               You&apos;ve hit your {targetKm} km target with {daysLeft} day{daysLeft !== 1 ? "s" : ""} to spare. Keep riding - every km now is a bonus.
             </p>
           )}
@@ -391,12 +392,12 @@ export default function DashboardPage() {
         {/* ── 4-stat bento ─────────────────────────────────────────────── */}
         {(upgradeOffer || pinnaclePush) && (
           <div className="glass-card p-5" style={{ borderColor: "rgba(255,75,53,0.35)" }}>
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground mb-2">
               {pinnaclePush ? "Unicorn mode" : "You have outgrown this league"}
             </p>
             {upgradeOffer ? (
               <>
-                <p className="text-sm text-[#b8b8b8] leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   You completed {upgradeOffer.currentTier} km. Request a next-month move to {upgradeOffer.requestedTier} km so this month&apos;s leaderboard stays fair.
                 </p>
                 <button
@@ -404,16 +405,16 @@ export default function DashboardPage() {
                   onClick={requestUpgrade}
                   disabled={upgradeState === "sending" || upgradeState === "sent"}
                   className="mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)" }}
+                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}
                 >
                   {upgradeState === "sent" ? "REQUEST SENT" : upgradeState === "sending" ? "SENDING..." : `REQUEST ${upgradeOffer.requestedTier} KM LEAGUE`}
                 </button>
                 {upgradeState === "blocked" && (
-                  <p className="mt-2 text-[10px] text-[#ffb4ab]">Could not send the request. Try again after your next sync.</p>
+                  <p className="mt-2 text-[10px] text-destructive">Could not send the request. Try again after your next sync.</p>
                 )}
               </>
             ) : (
-              <p className="text-sm text-[#b8b8b8] leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 You are riding beyond the official leagues. Unicorn is club-only stretch mode unless Team Vitality confirms it for rewards.
               </p>
             )}
@@ -424,8 +425,8 @@ export default function DashboardPage() {
           {STATS.map(({ label, value, icon }) => (
             <div key={label} className="glass-card p-3 text-center">
               <div className="flex justify-center mb-1">{icon}</div>
-              <p className="text-lg font-bold text-[#ffffff]">{value}</p>
-              <p className="text-[9px] text-[#b8b8b8] mt-0.5 uppercase tracking-wider">{label}</p>
+              <p className="text-lg font-bold text-foreground">{value}</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5 uppercase tracking-wider">{label}</p>
             </div>
           ))}
         </div>
@@ -433,10 +434,10 @@ export default function DashboardPage() {
         <div className="glass-card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Personal insights</p>
-              <p className="mt-1 text-[11px] text-[#b8b8b8]/65">From your synced rides this month.</p>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground">Personal insights</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/65">From your synced rides this month.</p>
             </div>
-            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-[#b8b8b8]">
+            <span className="rounded-full border border-foreground/10 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
               You only
             </span>
           </div>
@@ -448,9 +449,9 @@ export default function DashboardPage() {
               ["Active weeks", String(activeWeeksThisMonth)],
               ["Ride count", String(monthlyActivities.length)],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]">{label}</p>
-                <p className="mt-1 text-lg font-black text-white">{value}</p>
+              <div key={label} className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                <p className="mt-1 text-lg font-black text-foreground">{value}</p>
               </div>
             ))}
           </div>
@@ -460,20 +461,20 @@ export default function DashboardPage() {
               href={`https://www.strava.com/activities/${lastSyncedRide.stravaId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 transition-colors hover:border-[#FC4C02]/30"
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 transition-colors hover:border-[#FC4C02]/30"
             >
               <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]">Last synced ride</p>
-                <p className="mt-1 truncate text-sm font-bold text-white">{lastSyncedRide.name}</p>
-                <p className="mt-0.5 text-[10px] text-[#b8b8b8]/70">{format(new Date(lastSyncedRide.date), "MMM d")}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Last synced ride</p>
+                <p className="mt-1 truncate text-sm font-bold text-foreground">{lastSyncedRide.name}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/70">{format(new Date(lastSyncedRide.date), "MMM d")}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-black text-[#ff4b35]">{(lastSyncedRide.distance / 1000).toFixed(1)} km</p>
-                <p className="text-[10px] text-[#b8b8b8]">{formatDuration(lastSyncedRide.movingTime)}</p>
+                <p className="text-sm font-black text-accent-foreground">{(lastSyncedRide.distance / 1000).toFixed(1)} km</p>
+                <p className="text-[10px] text-muted-foreground">{formatDuration(lastSyncedRide.movingTime)}</p>
               </div>
             </a>
           ) : (
-            <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-sm text-[#b8b8b8]">
+            <div className="mt-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-sm text-muted-foreground">
               No synced rides yet this month.
             </div>
           )}
@@ -483,39 +484,39 @@ export default function DashboardPage() {
         {ftp && (
           <div className="glass-card p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Fitness Benchmarks</p>
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Fitness Benchmarks</p>
               <button
                 type="button"
                 onClick={handleFtpRefresh}
                 disabled={refreshingFtp}
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-bold text-[#b8b8b8] transition-all hover:border-[#ff4b35]/40 hover:text-[#ff4b35] disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-full border border-foreground/10 px-2.5 py-1 text-[10px] font-bold text-muted-foreground transition-all hover:border-[#ff4b35]/40 hover:text-accent-foreground disabled:opacity-40"
               >
                 <RefreshCw size={10} className={refreshingFtp ? "animate-spin" : ""} />
                 Refresh
               </button>
             </div>
             <div>
-              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-1">FTP - Functional Threshold Power</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">FTP - Functional Threshold Power</p>
               <div className="flex items-end gap-2">
-                <span className="text-4xl font-black" style={{ color: "#ff4b35" }}>{ftp}</span>
-                <span className="text-sm text-[#b8b8b8] mb-1">watts</span>
+                <span className="text-4xl font-black" style={{ color: "var(--accent-foreground)" }}>{ftp}</span>
+                <span className="text-sm text-muted-foreground mb-1">watts</span>
               </div>
             </div>
             <div>
-              <p className="text-[10px] text-[#b8b8b8] uppercase tracking-wider mb-2">Power Zones</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Power Zones</p>
               <div className="grid grid-cols-5 gap-1">
                 {[
-                  { label: "Z1", pct: 55,  from: "#ffffff44", to: "#ffffff66" },
-                  { label: "Z2", pct: 75,  from: "#ffffff66", to: "#ff4b3566" },
-                  { label: "Z3", pct: 90,  from: "#ff4b3566", to: "#ff4b3599" },
-                  { label: "Z4", pct: 105, from: "#ff4b35aa", to: "#da1e67aa" },
-                  { label: "Z5", pct: 120, from: "#da1e6799", to: "#da1e67cc" },
+                  { label: "Z1", pct: 55,  from: "#a3a3a8", to: "#c4c4c8" },
+                  { label: "Z2", pct: 75,  from: "#c4c4c8", to: "#ff7a2f" },
+                  { label: "Z3", pct: 90,  from: "#ff7a2f", to: "#ff4b35" },
+                  { label: "Z4", pct: 105, from: "#ff4b35", to: "#da1e67" },
+                  { label: "Z5", pct: 120, from: "#da1e67", to: "#b3155a" },
                 ].map((z) => (
                   <div key={z.label} className="text-center">
                     <div className="h-2 rounded-full mb-1"
                       style={{ background: `linear-gradient(90deg, ${z.from}, ${z.to})` }} />
-                    <p className="text-[9px] font-semibold text-[#b8b8b8]">{z.label}</p>
-                    <p className="text-[8px] text-[#b8b8b8]/60">{Math.round(ftp * z.pct / 100)}W</p>
+                    <p className="text-[9px] font-semibold text-muted-foreground">{z.label}</p>
+                    <p className="text-[8px] text-muted-foreground/60">{Math.round(ftp * z.pct / 100)}W</p>
                   </div>
                 ))}
               </div>
@@ -526,17 +527,17 @@ export default function DashboardPage() {
         {/* ── Synced Strava rides ──────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Synced Strava Rides</p>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Synced Strava Rides</p>
             {syncing
-              ? <span className="text-[10px] text-[#b8b8b8]">Syncing...</span>
+              ? <span className="text-[10px] text-muted-foreground">Syncing...</span>
               : <PoweredByStrava />}
           </div>
           {syncing && monthlyActivities.length === 0 ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl glass animate-pulse" />)}</div>
           ) : monthlyActivities.length === 0 ? (
             <div className="glass-card p-8 text-center">
-              <p className="text-[#b8b8b8] text-sm">No rides for {format(now, "MMMM")}.</p>
-              <button onClick={handleSync} className="mt-3 text-xs underline underline-offset-2 text-[#ff4b35]">Sync Strava</button>
+              <p className="text-muted-foreground text-sm">No rides for {format(now, "MMMM")}.</p>
+              <button onClick={handleSync} className="mt-3 text-xs underline underline-offset-2 text-accent-foreground">Sync Strava</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -548,21 +549,21 @@ export default function DashboardPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-[#ff4b35] flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-accent-foreground flex-shrink-0">
                     <Bike size={15} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-[#ffffff] truncate">{activity.name}</p>
-                    <p className="text-[10px] text-[#b8b8b8]">
+                    <p className="font-semibold text-sm text-foreground truncate">{activity.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
                       {format(new Date(activity.date), "MMM d")}
                       {activity.detectedZoneId && (
-                        <span className="ml-1.5 text-[#ffffff]/70">- {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
+                        <span className="ml-1.5 text-foreground/70">- {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
                       )}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-sm text-[#ff4b35]">{(activity.distance / 1000).toFixed(1)} km</p>
-                    <p className="text-[10px] text-[#b8b8b8]">{formatDuration(activity.movingTime)}</p>
+                    <p className="font-bold text-sm text-accent-foreground">{(activity.distance / 1000).toFixed(1)} km</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDuration(activity.movingTime)}</p>
                   </div>
                 </a>
               ))}
@@ -574,8 +575,8 @@ export default function DashboardPage() {
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="w-full rounded-2xl py-3 font-semibold text-sm tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-40 text-[#b8b8b8] hover:text-[#ffffff]"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          className="w-full rounded-2xl py-3 font-semibold text-sm tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-40 text-muted-foreground hover:text-foreground"
+          style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
         >
           <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
           {syncing ? "Syncing Strava..." : "Sync with Strava"}

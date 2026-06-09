@@ -47,9 +47,9 @@ export default function ActivityPicker({
 
   if (eligible.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-        <p className="text-xs text-white/40">No year-to-date rides found.</p>
-        <p className="text-[10px] text-white/30 mt-1">Import year rides or sync Strava first.</p>
+      <div className="rounded-xl border border-foreground/10 bg-foreground/5 p-4 text-center">
+        <p className="text-xs text-muted-foreground">No year-to-date rides found.</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-1">Import year rides or sync Strava first.</p>
       </div>
     );
   }
@@ -71,19 +71,19 @@ export default function ActivityPicker({
             className={cn(
               "w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
               alreadyLogged
-                ? "border-white/5 bg-white/[0.02] cursor-not-allowed opacity-50"
+                ? "border-foreground/5 bg-foreground/[0.02] cursor-not-allowed opacity-50"
                 : selected
                 ? "border-orange-500/50 bg-orange-500/10"
                 : zoneMatch
                 ? "border-[#ff4b35]/40 bg-[#ff4b35]/10 hover:border-[#ff4b35]/60"
-                : "border-white/10 bg-white/5 hover:border-white/20"
+                : "border-foreground/10 bg-foreground/5 hover:border-foreground/20"
             )}
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{
-                background: alreadyLogged ? "#ffffff05" : selected || zoneMatch ? "#FF650020" : "#ffffff10",
-                color: alreadyLogged ? "#ffffff20" : selected || zoneMatch ? "#FF6500" : "#ffffff40",
+                background: alreadyLogged ? "var(--fill-soft)" : selected || zoneMatch ? "#FF650020" : "var(--fill-mid)",
+                color: alreadyLogged ? "var(--muted-foreground)" : selected || zoneMatch ? "#FF6500" : "var(--muted-foreground)",
               }}
             >
               {alreadyLogged ? <Ban size={14} /> : (TYPE_ICON[a.type] ?? <Bike size={14} />)}
@@ -92,23 +92,23 @@ export default function ActivityPicker({
               <p
                 className={cn(
                   "text-sm font-semibold truncate",
-                  alreadyLogged ? "text-white/25 line-through" : selected ? "text-orange-400" : "text-white"
+                  alreadyLogged ? "text-muted-foreground/60 line-through" : selected ? "text-orange-400" : "text-foreground"
                 )}
               >
                 {a.name}
               </p>
-              <p className="text-[10px] text-white/30 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <p className="text-[10px] text-muted-foreground/70 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                 <span>{format(new Date(a.date), "MMM d")} - {km} km</span>
                 {zoneMatch && (
-                  <span className="text-[#ff4b35] inline-flex items-center gap-1">
+                  <span className="text-accent-foreground inline-flex items-center gap-1">
                     <MapPin size={9} /> {preferredZoneName ?? "zone match"}
                   </span>
                 )}
                 {!zoneMatch && detectedZone && (
-                  <span className="text-white/35">- {detectedZone}</span>
+                  <span className="text-muted-foreground/70">- {detectedZone}</span>
                 )}
                 {alreadyLogged && (
-                  <span className="text-white/20">- already logged</span>
+                  <span className="text-muted-foreground/60">- already logged</span>
                 )}
               </p>
             </div>

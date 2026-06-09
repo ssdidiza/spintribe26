@@ -42,14 +42,14 @@ export function SperaIcon({ className, title = "spera" }: LogoProps) {
       />
       <path
         d="M56 157h71.5c18 0 31.5-13.4 31.5-31.5"
-        stroke="#050505"
+        stroke="var(--background)"
         strokeWidth="18"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M164 63H92.5C74.5 63 61 76.4 61 94.5"
-        stroke="#050505"
+        stroke="var(--background)"
         strokeWidth="18"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -91,14 +91,14 @@ export function SperaWordmark({ className, title = "spera" }: LogoProps) {
       />
       <path
         d="M56 157h71.5c18 0 31.5-13.4 31.5-31.5"
-        stroke="#050505"
+        stroke="var(--background)"
         strokeWidth="18"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M164 63H92.5C74.5 63 61 76.4 61 94.5"
-        stroke="#050505"
+        stroke="var(--background)"
         strokeWidth="18"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -106,7 +106,7 @@ export function SperaWordmark({ className, title = "spera" }: LogoProps) {
       <text
         x="260"
         y="151"
-        fill="#ffffff"
+        fill="currentColor"
         fontFamily="Lexend, Inter, Arial, Helvetica, sans-serif"
         fontSize="118"
         fontWeight="800"

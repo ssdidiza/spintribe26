@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import ThemeInit from "@/components/ThemeInit";
 import "./globals.css";
+
+// Runs before paint to set the theme (system default, or the user's stored
+// override) so there's no flash of the wrong theme. Mirrors lib/theme.ts.
+const THEME_BOOTSTRAP = `(function(){try{var k="spintribe-theme";var c=localStorage.getItem(k);if(c!=="light"&&c!=="dark"&&c!=="system")c="system";var d=c==="dark"||(c==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;if(d){e.classList.add("dark")}else{e.classList.remove("dark")}e.style.colorScheme=d?"dark":"light"}catch(_){}})();`;
 
 const lexend = Lexend({
   subsets: ["latin"],
@@ -30,10 +35,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   minimumScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",   // honours safe-area-inset on notched iPhones
-  themeColor: "#020202",
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#020202" },
+  ],
 };
 
 export default function RootLayout({
@@ -42,29 +49,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${lexend.variable} antialiased`}>
-        {/* Carbon texture and the SpinTribe pulse stay fixed behind the app. */}
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(255,255,255,0.035) 25%, transparent 25%) 0 0 / 28px 28px, linear-gradient(225deg, rgba(255,255,255,0.025) 25%, transparent 25%) 0 0 / 28px 28px",
-            opacity: 0.58,
-            zIndex: 0,
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none fixed bottom-0 right-0 w-[560px] h-[560px] rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(255,59,48,0.22) 0%, transparent 66%)",
-            filter: "blur(86px)",
-            transform: "translate(34%, 34%)",
-            zIndex: 0,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <ThemeInit />
+        {/* Carbon texture and the SpinTribe pulse stay fixed behind the app.
+            Both adapt to the active theme via tokens in globals.css. */}
+        <div aria-hidden className="app-texture pointer-events-none fixed inset-0 z-0" />
+        <div aria-hidden className="app-pulse pointer-events-none fixed bottom-0 right-0 z-0" />
         <div className="relative z-10">{children}</div>
         <Analytics />
       </body>

@@ -347,19 +347,19 @@ export default function AdminPage() {
   if (!hydrated || !currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-[#020202] mb-nav">
+    <div className="min-h-screen bg-background mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)" }}>
+            style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}>
             <ShieldCheck size={15} color="#fff" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Founder Admin</p>
-            <h1 className="font-bold text-[#ffffff] text-xl leading-tight">spera ops</h1>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Founder Admin</p>
+            <h1 className="font-bold text-foreground text-xl leading-tight">spera ops</h1>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-[#ff4b35]">{monthKey || "loading"}</span>
+        <span className="text-[10px] font-bold text-accent-foreground">{monthKey || "loading"}</span>
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-4xl px-5 py-6 space-y-5">
@@ -371,16 +371,16 @@ export default function AdminPage() {
             { label: "Champing", value: champing.length, Icon: Star },
           ].map(({ label, value, Icon }) => (
             <div key={label} className="glass-card p-3 text-center">
-              <div className="flex justify-center mb-1"><Icon size={13} className="text-[#ff4b35]" /></div>
-              <p className="text-lg font-bold text-[#ffffff]">{value}</p>
-              <p className="text-[9px] text-[#b8b8b8] uppercase tracking-wider">{label}</p>
+              <div className="flex justify-center mb-1"><Icon size={13} className="text-accent-foreground" /></div>
+              <p className="text-lg font-bold text-foreground">{value}</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
             </div>
           ))}
         </div>
 
         {founder && (
           <div className="glass-card p-4">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35] mb-2">Founder admin status</p>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground mb-2">Founder admin status</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <MiniMetric label="League" value={`${founder.tier} km`} />
               <MiniMetric label="Monthly km" value={founder.monthlyKm} />
@@ -400,9 +400,9 @@ export default function AdminPage() {
                 onClick={() => setActiveTab(tab)}
                 className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold border transition-all"
                 style={{
-                  color: active ? "#ff4b35" : "#b8b8b8",
-                  borderColor: active ? "rgba(255,75,53,0.5)" : "rgba(255,255,255,0.1)",
-                  background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.03)",
+                  color: active ? "var(--accent-foreground)" : "var(--muted-foreground)",
+                  borderColor: active ? "rgba(255,75,53,0.5)" : "var(--border)",
+                  background: active ? "rgba(255,75,53,0.12)" : "var(--fill-soft)",
                 }}
               >
                 <Icon size={12} /> {label}
@@ -413,7 +413,7 @@ export default function AdminPage() {
 
         {adminNotice && (
           <div className="glass-card p-4 flex items-center justify-between gap-3">
-            <p className="text-[11px] text-[#b8b8b8] leading-snug">{adminNotice}</p>
+            <p className="text-[11px] text-muted-foreground leading-snug">{adminNotice}</p>
             <button
               type="button"
               onClick={loadAdminData}
@@ -425,7 +425,7 @@ export default function AdminPage() {
         )}
 
         {loading ? (
-          <div className="glass-card p-8 text-center text-sm text-[#b8b8b8]">Loading founder console...</div>
+          <div className="glass-card p-8 text-center text-sm text-muted-foreground">Loading founder console...</div>
         ) : (
           <>
             {activeTab === "riders" && (
@@ -437,14 +437,14 @@ export default function AdminPage() {
                       <img src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-[#ffffff] truncate">{user.name}</p>
-                          {user.isCurrentUser && <span className="text-[9px] rounded-full px-1.5 py-0.5 bg-white/15 text-white font-bold">YOU</span>}
+                          <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
+                          {user.isCurrentUser && <span className="text-[9px] rounded-full px-1.5 py-0.5 bg-foreground/15 text-foreground font-bold">YOU</span>}
                         </div>
-                        <p className="text-[10px] text-[#b8b8b8]">{user.monthlyKm} km this month - {user.activityCount} rides</p>
+                        <p className="text-[10px] text-muted-foreground">{user.monthlyKm} km this month - {user.activityCount} rides</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-[#ff4b35]">{user.tier} km</p>
-                        <p className="text-[9px] text-[#b8b8b8]">{TIER_LABELS[user.tier]}</p>
+                        <p className="text-sm font-bold text-accent-foreground">{user.tier} km</p>
+                        <p className="text-[9px] text-muted-foreground">{TIER_LABELS[user.tier]}</p>
                       </div>
                     </div>
 
@@ -483,8 +483,8 @@ export default function AdminPage() {
               <section className="space-y-3">
                 <div className="glass-card p-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">Rewards export</p>
-                    <p className="text-[11px] text-[#b8b8b8] mt-1">Completion-based, consented riders only. Official reward leagues: {OFFICIAL_REWARD_TIERS.join(", ")} km.</p>
+                    <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground">Rewards export</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Completion-based, consented riders only. Official reward leagues: {OFFICIAL_REWARD_TIERS.join(", ")} km.</p>
                   </div>
                   <button onClick={exportRewardsCsv} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-white bg-[#ff4b35]">
                     <Download size={13} /> Export
@@ -493,8 +493,8 @@ export default function AdminPage() {
                 {rewards.map((row) => (
                   <div key={row.stravaId} className="glass-card p-4 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[#ffffff] truncate">{row.name}</p>
-                      <p className="text-[10px] text-[#b8b8b8]">{row.tier} km {TIER_LABELS[row.tier]} - outdoor {row.outdoorKm} km - indoor {row.indoorKm} km</p>
+                      <p className="text-sm font-bold text-foreground truncate">{row.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{row.tier} km {TIER_LABELS[row.tier]} - outdoor {row.outdoorKm} km - indoor {row.indoorKm} km</p>
                     </div>
                     <StatusPill label={row.eligibleForExport ? "export" : row.complete ? "complete" : "not yet"} active={row.eligibleForExport} />
                     {row.overTierReview && <StatusPill label="upgrade" active />}
@@ -509,9 +509,9 @@ export default function AdminPage() {
                   <div key={request.id} className="glass-card p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-[#ffffff]">{request.userName}</p>
-                        <p className="text-[10px] text-[#b8b8b8]">{request.currentTier} km to {request.requestedTier} km - {request.monthlyKm} km in {request.monthKey}</p>
-                        <p className="text-[10px] text-[#b8b8b8]/60">Effective {request.effectiveOn}</p>
+                        <p className="text-sm font-bold text-foreground">{request.userName}</p>
+                        <p className="text-[10px] text-muted-foreground">{request.currentTier} km to {request.requestedTier} km - {request.monthlyKm} km in {request.monthKey}</p>
+                        <p className="text-[10px] text-muted-foreground/70">Effective {request.effectiveOn}</p>
                       </div>
                       <StatusPill label={request.status} active={request.status === "approved"} />
                     </div>
@@ -534,10 +534,10 @@ export default function AdminPage() {
               <section className="space-y-2">
                 {champing.length === 0 ? <EmptyState text="No champing check-ins logged yet." /> : champing.map((session) => (
                   <div key={session.id} className="glass-card p-4 flex items-center gap-3">
-                    <Star size={16} className="text-[#ff4b35]" />
+                    <Star size={16} className="text-accent-foreground" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[#ffffff] truncate">{session.userName}</p>
-                      <p className="text-[10px] text-[#b8b8b8]">{format(new Date(session.date), "MMM d, yyyy")} - {session.zoneName || "No zone"} - {session.stravaActivityKm ?? 0} km</p>
+                      <p className="text-sm font-bold text-foreground truncate">{session.userName}</p>
+                      <p className="text-[10px] text-muted-foreground">{format(new Date(session.date), "MMM d, yyyy")} - {session.zoneName || "No zone"} - {session.stravaActivityKm ?? 0} km</p>
                     </div>
                   </div>
                 ))}
@@ -547,15 +547,15 @@ export default function AdminPage() {
             {activeTab === "notifications" && (
               <section className="space-y-3">
                 <div className="glass-card p-4 space-y-2">
-                  <input value={commTitle} onChange={(e) => setCommTitle(e.target.value)} placeholder="Message title" className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none" />
-                  <textarea value={commBody} onChange={(e) => setCommBody(e.target.value)} placeholder="Message body" rows={3} className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none resize-none" />
+                  <input value={commTitle} onChange={(e) => setCommTitle(e.target.value)} placeholder="Message title" className="w-full rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70" />
+                  <textarea value={commBody} onChange={(e) => setCommBody(e.target.value)} placeholder="Message body" rows={3} className="w-full rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm text-foreground outline-none resize-none placeholder:text-muted-foreground/70" />
                   <button onClick={sendNotification} disabled={saving === "notification"} className="w-full rounded-xl py-2 text-xs font-bold text-white bg-[#ff4b35] disabled:opacity-50">Send to onboarded riders</button>
                 </div>
                 {notifications.slice(0, 10).map((notification) => (
                   <div key={notification.id} className="glass-card p-4">
-                    <p className="text-sm font-bold text-[#ffffff]">{notification.title}</p>
-                    <p className="text-[11px] text-[#b8b8b8] mt-1">{notification.body}</p>
-                    <p className="text-[9px] text-[#b8b8b8]/50 mt-2">{format(new Date(notification.created_at), "MMM d, HH:mm")}</p>
+                    <p className="text-sm font-bold text-foreground">{notification.title}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{notification.body}</p>
+                    <p className="text-[9px] text-muted-foreground/60 mt-2">{format(new Date(notification.created_at), "MMM d, HH:mm")}</p>
                   </div>
                 ))}
               </section>
@@ -574,9 +574,9 @@ export default function AdminPage() {
 
 function MiniMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-      <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</p>
-      <p className="mt-1 text-sm font-black text-[#ffffff]">{value}</p>
+    <div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] p-3">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-black text-foreground">{value}</p>
     </div>
   );
 }
@@ -590,12 +590,12 @@ function SelectControl({ label, value, options, onChange, disabled }: {
 }) {
   return (
     <label className="block">
-      <span className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</span>
+      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="mt-1 w-full rounded-xl border border-white/10 bg-[#111] px-2 py-2 text-xs font-bold text-white outline-none"
+        className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-2 py-2 text-xs font-bold text-foreground outline-none"
       >
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
@@ -610,12 +610,12 @@ function ToggleButton({ label, active, onClick }: { label: string; active: boole
       onClick={onClick}
       className="rounded-xl border px-3 py-2 text-left transition-colors"
       style={{
-        borderColor: active ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.1)",
-        background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.04)",
+        borderColor: active ? "rgba(255,75,53,0.45)" : "var(--border)",
+        background: active ? "rgba(255,75,53,0.12)" : "var(--fill-soft)",
       }}
     >
-      <p className="text-[9px] uppercase tracking-wider text-[#b8b8b8]">{label}</p>
-      <p className="text-xs font-black text-white">{active ? "enabled" : "off"}</p>
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs font-black text-foreground">{active ? "enabled" : "off"}</p>
     </button>
   );
 }
@@ -624,9 +624,9 @@ function StatusPill({ label, active }: { label: string; active: boolean }) {
   return (
     <span className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider"
       style={{
-        color: active ? "#ff4b35" : "#b8b8b8",
-        border: `1px solid ${active ? "rgba(255,75,53,0.45)" : "rgba(255,255,255,0.12)"}`,
-        background: active ? "rgba(255,75,53,0.12)" : "rgba(255,255,255,0.04)",
+        color: active ? "#ff4b35" : "var(--muted-foreground)",
+        border: `1px solid ${active ? "rgba(255,75,53,0.45)" : "var(--border)"}`,
+        background: active ? "rgba(255,75,53,0.12)" : "var(--fill-soft)",
       }}>
       {label}
     </span>
@@ -634,5 +634,5 @@ function StatusPill({ label, active }: { label: string; active: boolean }) {
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="glass-card p-8 text-center text-sm text-[#b8b8b8]">{text}</div>;
+  return <div className="glass-card p-8 text-center text-sm text-muted-foreground">{text}</div>;
 }

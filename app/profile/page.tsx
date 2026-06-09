@@ -8,6 +8,7 @@ import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import { SperaIcon } from "@/components/SperaLogo";
 import FeedbackBoard from "@/components/FeedbackBoard";
+import ThemeToggle from "@/components/ThemeToggle";
 import { TIER_LABELS, TIER_COLORS, canAccessChampionFeatures, hasAdminRole } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { LogOut, MapPin, Star, ShieldCheck, Target, Route, Lock, RefreshCw, Unplug, Trash2, Zap } from "lucide-react";
@@ -41,7 +42,7 @@ export default function ProfilePage() {
   const isAdmin       = hasAdminRole(currentUser);
 
   const roleLabel = isAdmin ? "Admin + Champion" : isChamp ? "Champion" : "Member";
-  const roleColor = isAdmin ? "#ff4b35" : isChamp ? "#ffffff" : "#a0a0a0";
+  const roleColor = isAdmin ? "var(--accent-foreground)" : isChamp ? "var(--foreground)" : "var(--muted-foreground)";
 
   async function handleLogout() {
     await Promise.allSettled([
@@ -91,9 +92,9 @@ export default function ProfilePage() {
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <div className="min-h-screen bg-[#020202] mb-nav">
+    <div className="min-h-screen bg-background mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4">
-        <h1 className="font-bold text-[#ffffff] text-xl">Profile</h1>
+        <h1 className="font-bold text-foreground text-xl">Profile</h1>
       </header>
 
       <main className="mx-auto w-full max-w-lg px-4 py-6 space-y-3">
@@ -102,8 +103,8 @@ export default function ProfilePage() {
         <div
           className="rounded-3xl overflow-hidden relative"
           style={{
-            background: "linear-gradient(160deg, rgba(255,75,53,0.12) 0%, rgba(255,255,255,0.06) 100%)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "linear-gradient(160deg, rgba(255,75,53,0.12) 0%, var(--fill-mid) 100%)",
+            border: "1px solid var(--border)",
           }}
         >
           {/* Subtle glow behind avatar */}
@@ -131,7 +132,7 @@ export default function ProfilePage() {
               ) : (
                 <div
                   className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black text-white"
-                  style={{ background: "linear-gradient(135deg,#ff4b35,#ffffff)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
+                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
                 >
                   {currentUser.name.charAt(0).toUpperCase()}
                 </div>
@@ -153,13 +154,13 @@ export default function ProfilePage() {
 
             {/* Name + meta */}
             <div className="space-y-1">
-              <h2 className="text-2xl font-black text-[#ffffff] tracking-tight">{currentUser.name}</h2>
+              <h2 className="text-2xl font-black text-foreground tracking-tight">{currentUser.name}</h2>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 <span className="text-sm font-semibold" style={{ color: roleColor }}>{roleLabel}</span>
                 {(currentUser.zone || currentUser.region) && (
                   <>
-                    <span className="text-white/30">-</span>
-                    <span className="flex items-center gap-1 text-sm text-[#b8b8b8]">
+                    <span className="text-foreground/30">-</span>
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
                       <MapPin size={11} />
                       {currentUser.zone || currentUser.region}
                     </span>
@@ -178,7 +179,7 @@ export default function ProfilePage() {
                 {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km target
               </span>
               {isChamp && (
-                <p className="text-[9px] text-[#b8b8b8]/40">
+                <p className="text-[9px] text-muted-foreground/40">
                   Distance locked - disconnect account to change tier
                 </p>
               )}
@@ -187,11 +188,11 @@ export default function ProfilePage() {
             {/* ── Progress ring + stats ────────────────────────────── */}
             <div
               className="w-full rounded-2xl px-5 py-5 flex items-center gap-6"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+              style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
             >
               {/* SVG ring */}
               <svg width={104} height={104} viewBox="0 0 104 104" className="flex-shrink-0">
-                <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--fill-mid)" strokeWidth="8" />
                 <circle
                   cx={cx} cy={cy} r={R}
                   fill="none"
@@ -206,28 +207,28 @@ export default function ProfilePage() {
                 <defs>
                   <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#ff4b35" />
-                    <stop offset="100%" stopColor="#ffffff" />
+                    <stop offset="100%" stopColor="#e0007a" />
                   </linearGradient>
                 </defs>
-                <text x={cx} y={cy - 6} textAnchor="middle" fill="#ffffff" fontSize="18" fontWeight="800">{monthlyKm}</text>
-                <text x={cx} y={cy + 10} textAnchor="middle" fill="#b8b8b8" fontSize="10" fontWeight="600">km</text>
-                <text x={cx} y={cy + 23} textAnchor="middle" fill="#b8b8b8" fontSize="9" opacity="0.5">{pct}%</text>
+                <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--foreground)" fontSize="18" fontWeight="800">{monthlyKm}</text>
+                <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--muted-foreground)" fontSize="10" fontWeight="600">km</text>
+                <text x={cx} y={cy + 23} textAnchor="middle" fill="var(--muted-foreground)" fontSize="9" opacity="0.6">{pct}%</text>
               </svg>
 
               <div className="flex-1 min-w-0 space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold text-[#b8b8b8] uppercase tracking-wider mb-0.5">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
                     {new Date().toLocaleString("default", { month: "long" })} Progress
                   </p>
-                  <p className="text-[#ffffff] font-bold text-sm">{monthlyKm} <span className="text-[#b8b8b8] font-normal">of</span> {currentUser.tier} km</p>
+                  <p className="text-foreground font-bold text-sm">{monthlyKm} <span className="text-muted-foreground font-normal">of</span> {currentUser.tier} km</p>
                 </div>
-                <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
                   <div
                     className="h-full rounded-full"
-                    style={{ width: `${pct}%`, background: "linear-gradient(90deg,#ff4b35,#ffffff)", transition: "width 0.6s ease" }}
+                    style={{ width: `${pct}%`, background: "linear-gradient(90deg,#ff4b35,#e0007a)", transition: "width 0.6s ease" }}
                   />
                 </div>
-                <p className="text-[11px] text-[#b8b8b8]/60">{remaining} km to go</p>
+                <p className="text-[11px] text-muted-foreground/70">{remaining} km to go</p>
               </div>
             </div>
 
@@ -241,11 +242,11 @@ export default function ProfilePage() {
                   <div
                     key={label}
                     className="rounded-2xl px-3 py-4 flex flex-col items-center gap-1.5"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
                   >
-                    <span className="text-[#b8b8b8]/60">{icon}</span>
-                    <span className="text-2xl font-black text-[#ffffff]">{value}</span>
-                    <span className="text-[9px] font-semibold uppercase tracking-wider text-[#b8b8b8]/50">{label}</span>
+                    <span className="text-muted-foreground/70">{icon}</span>
+                    <span className="text-2xl font-black text-foreground">{value}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</span>
                   </div>
                 ))}
               </div>
@@ -267,10 +268,10 @@ export default function ProfilePage() {
           {/* FTP tip */}
           {currentUser.stravaId && !currentUser.ftp && (
             <div
-              className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-[#b8b8b8]/70"
+              className="mx-6 mb-4 rounded-2xl px-4 py-3 text-[10px] leading-relaxed text-muted-foreground/80"
               style={{ background: "rgba(255,75,53,0.08)", border: "1px solid rgba(255,75,53,0.2)" }}
             >
-              <span className="inline-flex items-center gap-1 font-bold text-[#ff4b35]">
+              <span className="inline-flex items-center gap-1 font-bold text-accent-foreground">
                 <Zap size={11} /> FTP not showing?
               </span>{" "}
               First set a value in{" "}
@@ -278,25 +279,25 @@ export default function ProfilePage() {
                 href="https://www.strava.com/settings/performance"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 text-[#ff4b35]/80 hover:text-[#ff4b35]"
+                className="underline underline-offset-2 text-accent-foreground/80 hover:text-accent-foreground"
               >
                 Strava Settings / My Performance
               </a>
-              , then tap <span className="font-semibold text-[#ff4b35]">Reconnect Strava</span> below to grant profile access.
+              , then tap <span className="font-semibold text-accent-foreground">Reconnect Strava</span> below to grant profile access.
             </div>
           )}
 
           {/* Card footer */}
           <div
             className="px-6 py-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ borderTop: "1px solid var(--border)" }}
           >
             <div className="flex items-center gap-3">
               <PoweredByStrava />
               {currentUser.stravaId && (
                 <a
                   href="/api/auth/strava?reauth=1"
-                  className="flex items-center gap-1 text-[10px] font-semibold text-[#ff4b35]/50 hover:text-[#ff4b35] transition-colors"
+                  className="flex items-center gap-1 text-[10px] font-semibold text-accent-foreground/60 hover:text-accent-foreground transition-colors"
                 >
                   <RefreshCw size={11} />
                   Reconnect Strava
@@ -305,7 +306,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-[#ffb4ab]/60 hover:text-[#ffb4ab] transition-colors"
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-destructive/70 hover:text-destructive transition-colors"
             >
               <LogOut size={13} />
               Sign out
@@ -315,53 +316,67 @@ export default function ProfilePage() {
 
         <FeedbackBoard />
 
+        {/* ── Appearance ───────────────────────────────────────────── */}
         <div className="glass-card overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.06]">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Sharing Preferences</p>
+          <div className="px-5 py-3 border-b border-foreground/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Appearance</p>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-5 py-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Theme</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Auto follows your device setting</p>
+            </div>
+            <ThemeToggle className="flex-shrink-0" />
+          </div>
+        </div>
+
+        <div className="glass-card overflow-hidden">
+          <div className="px-5 py-3 border-b border-foreground/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Sharing Preferences</p>
           </div>
           <button
             onClick={() => updateConsent("leaderboard")}
-            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06]"
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors border-b border-foreground/[0.06]"
           >
-            <span className="text-sm font-semibold text-[#ffffff]">Leaderboard sharing</span>
-            <span className="text-xs font-bold text-[#ff4b35]">{currentUser.leaderboardConsent ? "On" : "Off"}</span>
+            <span className="text-sm font-semibold text-foreground">Leaderboard sharing</span>
+            <span className="text-xs font-bold text-accent-foreground">{currentUser.leaderboardConsent ? "On" : "Off"}</span>
           </button>
           <button
             onClick={() => updateConsent("rewards")}
-            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors"
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors"
           >
-            <span className="text-sm font-semibold text-[#ffffff]">Rewards export consent</span>
-            <span className="text-xs font-bold text-[#ff4b35]">{currentUser.rewardsExportConsent ? "On" : "Off"}</span>
+            <span className="text-sm font-semibold text-foreground">Rewards export consent</span>
+            <span className="text-xs font-bold text-accent-foreground">{currentUser.rewardsExportConsent ? "On" : "Off"}</span>
           </button>
         </div>
 
         <div className="glass-card overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/[0.06]">
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">Data Controls</p>
+          <div className="px-5 py-3 border-b border-foreground/[0.06]">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Data Controls</p>
           </div>
           <button
             onClick={() => handleStravaDisconnect(false)}
             disabled={!!disconnecting}
-            className="flex items-center justify-between w-full px-5 py-4 hover:bg-white/5 transition-colors border-b border-white/[0.06] disabled:opacity-50"
+            className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors border-b border-foreground/[0.06] disabled:opacity-50"
           >
-            <span className="text-sm font-semibold text-[#ffffff]">
+            <span className="text-sm font-semibold text-foreground">
               {disconnecting === "disconnect" ? "Disconnecting..." : "Disconnect Strava and remove ride cache"}
             </span>
-            <Unplug size={14} className="text-[#b8b8b8]" />
+            <Unplug size={14} className="text-muted-foreground" />
           </button>
           <button
             onClick={() => handleStravaDisconnect(true)}
             disabled={!!disconnecting}
             className="flex items-center justify-between w-full px-5 py-4 hover:bg-red-500/10 transition-colors disabled:opacity-50"
           >
-            <span className="text-sm font-semibold text-[#ffb4ab]">
+            <span className="text-sm font-semibold text-destructive">
               {disconnecting === "delete" ? "Deleting..." : "Delete account data"}
             </span>
-            <Trash2 size={14} className="text-[#ffb4ab]" />
+            <Trash2 size={14} className="text-destructive" />
           </button>
         </div>
 
-        <p className="text-center text-[10px] text-[#b8b8b8]/40">spera - Team Vitality - 2026</p>
+        <p className="text-center text-[10px] text-muted-foreground/50">spera - Team Vitality - 2026</p>
       </main>
       <NavBar />
     </div>

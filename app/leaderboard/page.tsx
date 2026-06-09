@@ -133,14 +133,14 @@ export default function LeaderboardPage() {
   if (!hydrated || !currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-[#020202] mb-nav">
+    <div className="min-h-screen bg-background mb-nav">
       {/* Header */}
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#b8b8b8]">
+          <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
             {monthLabel} monthly distance
           </p>
-          <h1 className="font-bold text-[#ffffff] text-xl">Leaderboard</h1>
+          <h1 className="font-bold text-foreground text-xl">Leaderboard</h1>
         </div>
         <SperaIcon className="h-7 w-7" />
       </header>
@@ -159,8 +159,8 @@ export default function LeaderboardPage() {
                 className={cn(
                   "flex-shrink-0 rounded-full px-4 py-1.5 text-[11px] font-semibold border transition-all",
                   active
-                    ? "border-[#ff4b35]/60 text-[#ff4b35]"
-                    : "border-white/10 text-[#b8b8b8] hover:border-white/20"
+                    ? "border-[#ff4b35]/60 text-accent-foreground"
+                    : "border-foreground/10 text-muted-foreground hover:border-foreground/20"
                 )}
                 style={active ? {
                   background: "rgba(255,75,53,0.15)",
@@ -189,13 +189,13 @@ export default function LeaderboardPage() {
                     "rounded-xl border px-3 py-2 text-left transition-all",
                     active
                       ? "border-[#ff4b35]/55 bg-[#ff4b35]/15"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                      : "border-foreground/10 bg-foreground/[0.03] hover:border-foreground/20"
                   )}
                 >
-                  <span className={cn("block text-xs font-black", active ? "text-[#ff4b35]" : "text-white")}>
+                  <span className={cn("block text-xs font-black", active ? "text-[#ff4b35]" : "text-foreground")}>
                     {mode.label}
                   </span>
-                  <span className="mt-0.5 block text-[10px] font-semibold text-[#b8b8b8]/70">
+                  <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground/70">
                     {mode.description}
                   </span>
                 </button>
@@ -215,7 +215,7 @@ export default function LeaderboardPage() {
                     "flex-shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all",
                     active
                       ? "border-[#ff4b35]/60 text-[#ff4b35]"
-                      : "border-white/10 text-[#b8b8b8] hover:border-white/20"
+                      : "border-foreground/10 text-muted-foreground hover:border-foreground/20"
                   )}
                   style={active ? { background: "rgba(255,75,53,0.12)" } : undefined}
                 >
@@ -229,10 +229,10 @@ export default function LeaderboardPage() {
         <div className="glass-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-[#ff4b35]">
+              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground">
                 {TIER_LABELS[activeTier]} monthly {rankingMode} rank
               </p>
-              <p className="mt-1 text-[11px] text-[#b8b8b8]/70 leading-snug">
+              <p className="mt-1 text-[11px] text-muted-foreground/70 leading-snug">
                 {rankingMode === "distance"
                   ? `Ranked by ${monthLabel} Strava cycling km in the ${activeTier} km tier.`
                   : `Ranked by unique ride days in ${monthLabel}; ties use monthly km.`}
@@ -240,7 +240,7 @@ export default function LeaderboardPage() {
               </p>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <p className="text-[10px] text-[#b8b8b8]">
+              <p className="text-[10px] text-muted-foreground">
                 {boardLoading ? "Refreshing" : `${visibleRows.length} riders`}
               </p>
               <PoweredByStrava />
@@ -249,7 +249,7 @@ export default function LeaderboardPage() {
         </div>
 
         {boardError && (
-          <div className="glass-card p-3 text-[11px] text-[#b8b8b8]">
+          <div className="glass-card p-3 text-[11px] text-muted-foreground">
             {boardError}
           </div>
         )}
@@ -257,8 +257,8 @@ export default function LeaderboardPage() {
         {/* Entries */}
         {visibleRows.length === 0 ? (
           <div className="glass-card p-10 text-center">
-            <p className="text-sm text-[#b8b8b8]">No opted-in riders match this view yet.</p>
-            <p className="text-[11px] text-[#b8b8b8]/50 mt-1">Leaderboard rank appears after riders consent and sync monthly rides.</p>
+            <p className="text-sm text-muted-foreground">No opted-in riders match this view yet.</p>
+            <p className="text-[11px] text-muted-foreground/50 mt-1">Leaderboard rank appears after riders consent and sync monthly rides.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -276,7 +276,7 @@ export default function LeaderboardPage() {
                   className="glass-card p-4 transition-all"
                   style={isMe ? {
                     borderColor: "rgba(255,75,53,0.5)",
-                    background: "linear-gradient(135deg, rgba(255,75,53,0.08) 0%, rgba(255,255,255,0.04) 100%)",
+                    background: "linear-gradient(135deg, rgba(255,75,53,0.08) 0%, var(--fill-soft) 100%)",
                   } : medal ? {
                     borderColor: medal.border + "50",
                     boxShadow: medal.glow,
@@ -285,7 +285,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center gap-3">
                     {/* Rank / medal */}
                     <div className="flex items-center justify-center w-7 flex-shrink-0">
-                      <span className="text-sm font-bold text-[#b8b8b8] w-6 text-center">#{displayRank}</span>
+                      <span className="text-sm font-bold text-muted-foreground w-6 text-center">#{displayRank}</span>
                     </div>
 
                     {/* Avatar */}
@@ -300,46 +300,46 @@ export default function LeaderboardPage() {
                     {/* Name & progress */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                        <p className="font-bold text-sm text-[#ffffff] truncate max-w-[150px]">
+                        <p className="font-bold text-sm text-foreground truncate max-w-[150px]">
                           {entry.user.name.split(" ")[0]}
                         </p>
                         {isChamp && (
                           <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5"
-                            style={{ background: "rgba(255,75,53,0.2)", color: "#ff4b35" }}>
+                            style={{ background: "rgba(255,75,53,0.2)", color: "var(--accent-foreground)" }}>
                             CHAMP
                           </span>
                         )}
                         {isMe && (
                           <span className="text-[9px] rounded-full px-1.5 py-0.5 font-bold"
-                            style={{ background: "rgba(255,255,255,0.15)", color: "#ffffff" }}>
+                            style={{ background: "var(--fill-mid)", color: "var(--foreground)" }}>
                             YOU
                           </span>
                         )}
                       </div>
-                      <p className="mb-1.5 truncate text-[10px] text-[#b8b8b8]/60">
+                      <p className="mb-1.5 truncate text-[10px] text-muted-foreground/60">
                         {getRegionLabel(entry)}
                         {rankingMode === "consistency" && entry.totalKm > 0 ? ` - ${entry.totalKm} km` : ""}
                       </p>
-                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{
                             width: `${modeProgressPct}%`,
-                            background: "linear-gradient(90deg, #ff4b35, #ffffff)",
-                            boxShadow: "0 0 6px rgba(255,255,255,0.4)",
+                            background: "linear-gradient(90deg, #ff4b35, #e0007a)",
+                            boxShadow: "0 0 6px rgba(255,75,53,0.4)",
                           }} />
                       </div>
                     </div>
 
                     {/* KM */}
                     <div className="text-right flex-shrink-0 ml-1">
-                      <p className="font-bold text-base text-[#ff4b35]">
+                      <p className="font-bold text-base text-accent-foreground">
                         {rankingMode === "consistency" ? (entry.rideDays ?? 0) : entry.totalKm}
                       </p>
-                      <p className="text-[10px] text-[#b8b8b8]">
+                      <p className="text-[10px] text-muted-foreground">
                         {rankingMode === "consistency" ? "ride days" : "monthly km"}
                       </p>
                       {rankingMode === "consistency" && entry.consistencyRank && activeRegion !== ALL_REGIONS && (
-                        <p className="text-[9px] text-[#b8b8b8]/50">SA #{entry.consistencyRank}</p>
+                        <p className="text-[9px] text-muted-foreground/50">SA #{entry.consistencyRank}</p>
                       )}
                     </div>
                   </div>
