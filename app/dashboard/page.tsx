@@ -9,7 +9,7 @@ import { canRequestTierUpgrade, getMonthlyActivityInsights, getNextTier } from "
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
-import { SperaIcon } from "@/components/SperaLogo";
+import { BrandMark } from "@/components/SperaLogo";
 import {
   AlertTriangle,
   Bike,
@@ -222,9 +222,7 @@ export default function DashboardPage() {
           </a>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full glass flex items-center justify-center">
-            <SperaIcon className="h-4 w-4" />
-          </div>
+          <BrandMark iconClassName="h-6 w-6" />
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "var(--accent-foreground)", background: "rgba(255,75,53,0.1)" }}>
             {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
@@ -242,29 +240,39 @@ export default function DashboardPage() {
 
         {/* ── Cinematic hero ────────────────────────────────────────────── */}
         <div className="relative text-center pt-4 pb-2">
-          <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-muted-foreground/60 mb-3">
-            {monthLabel} monthly distance
-          </p>
-          <div className="flex items-end justify-center gap-2 mb-1">
-            <span
-              className="font-black leading-none text-foreground"
-              style={{
-                fontSize: "clamp(5rem, 22vw, 7.5rem)",
-                letterSpacing: "-0.04em",
-                textShadow: "0 0 60px rgba(255,75,53,0.25)",
-              }}
-            >
-              {monthlyKm}
-            </span>
-            <span className="text-2xl font-light text-muted-foreground/70 pb-3">km</span>
-          </div>
-          <p className="text-sm text-muted-foreground/70 mb-4">
-            {currentRankEntry ? `Monthly distance rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
-            {pct}% of {targetKm} km
-          </p>
-          <div className="h-0.5 rounded-full bg-foreground/[0.08] overflow-hidden max-w-[240px] mx-auto">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff4b35, #e0007a)", boxShadow: "0 0 6px rgba(255,75,53,0.45)" }} />
+          {/* Radial hero glow, mirroring the landing page's brand atmosphere */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-0 h-56 w-[min(420px,100%)] -translate-x-1/2"
+            style={{
+              background:
+                "radial-gradient(50% 60% at 50% 35%, rgba(255,75,53,0.18), transparent 70%)",
+            }}
+          />
+          <div className="relative">
+            <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-muted-foreground/60 mb-3">
+              {monthLabel} monthly distance
+            </p>
+            <div className="flex items-end justify-center gap-2 mb-1">
+              <span
+                className="gradient-text font-black leading-none"
+                style={{
+                  fontSize: "clamp(5rem, 22vw, 7.5rem)",
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                {monthlyKm}
+              </span>
+              <span className="text-2xl font-light text-muted-foreground/70 pb-3">km</span>
+            </div>
+            <p className="text-sm text-muted-foreground/70 mb-4">
+              {currentRankEntry ? `Monthly distance rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
+              {pct}% of {targetKm} km
+            </p>
+            <div className="h-0.5 rounded-full bg-foreground/[0.08] overflow-hidden max-w-[240px] mx-auto">
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff7a2f, #ff3b30, #e0007a)", boxShadow: "0 0 6px rgba(255,75,53,0.45)" }} />
+            </div>
           </div>
         </div>
 
@@ -404,8 +412,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={requestUpgrade}
                   disabled={upgradeState === "sending" || upgradeState === "sent"}
-                  className="mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}
+                  className="gradient-primary mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
                 >
                   {upgradeState === "sent" ? "REQUEST SENT" : upgradeState === "sending" ? "SENDING..." : `REQUEST ${upgradeOffer.requestedTier} KM LEAGUE`}
                 </button>

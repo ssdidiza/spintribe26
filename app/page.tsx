@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import LegalFooter from "@/components/LegalFooter";
+import { BrandMark } from "@/components/SperaLogo";
 import { supabase } from "@/lib/supabase";
 import { getPostLoginRoute } from "@/lib/types";
 import { useStore } from "@/lib/store";
@@ -201,15 +202,7 @@ export default function LandingPage() {
             }}
           />
           <div className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white"
-                style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)" }}
-              >
-                ST
-              </div>
-              <span className="text-xl font-black tracking-tight">SpinTribe</span>
-            </div>
+            <BrandMark iconClassName="h-10 w-10" showWordmark />
             <button
               onClick={handleStrava}
               className="hidden rounded-full border border-[#ff4b35]/45 px-4 py-2 text-xs font-black uppercase tracking-wide text-accent-foreground transition-colors hover:border-[#ff4b35] hover:text-foreground sm:inline-flex"

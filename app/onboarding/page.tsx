@@ -132,7 +132,7 @@ function OnboardingContent() {
       <div
         aria-hidden
         className="pointer-events-none absolute top-0 right-0 w-[300px] h-[300px] rounded-full blur-[100px] opacity-20"
-        style={{ background: "#FF6500" }}
+        style={{ background: "#ff4b35" }}
       />
 
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-12 max-w-md mx-auto w-full">
@@ -145,7 +145,7 @@ function OnboardingContent() {
               <div
                 key={s}
                 className="h-0.5 flex-1 rounded-full transition-all duration-300"
-                style={{ background: filled ? "#FF6500" : "var(--fill-mid)" }}
+                style={{ background: filled ? "#ff4b35" : "var(--fill-mid)" }}
               />
             );
           })}
@@ -153,7 +153,7 @@ function OnboardingContent() {
 
         {step === "role" && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
+            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--accent-foreground)" }}>
               Step 1 of 2
             </p>
             <h2 className="text-3xl font-black text-foreground mb-1">Who are you?</h2>
@@ -171,7 +171,7 @@ function OnboardingContent() {
                   "Min 2 champing check-ins / month",
                   "Log ride-linked champing proof",
                 ]}
-                accent="#FF6500"
+                accent="#ff4b35"
                 onClick={() => handleRoleSelect("champion")}
               />
               <RoleCard
@@ -199,7 +199,7 @@ function OnboardingContent() {
             >
               Back
             </button>
-            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
+            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--accent-foreground)" }}>
               Step 2 of {totalSteps}
             </p>
             <h2 className="text-3xl font-black text-foreground mb-1">Champion Invite</h2>
@@ -239,7 +239,7 @@ function OnboardingContent() {
                     ? "text-white hover:opacity-90 active:scale-[0.98]"
                     : "text-muted-foreground/60 cursor-not-allowed"
                 )}
-                style={{ background: inviteCode.trim() && !inviteLoading ? "#FF6500" : "var(--fill-mid)" }}
+                style={{ background: inviteCode.trim() && !inviteLoading ? "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)" : "var(--fill-mid)" }}
               >
                 {inviteLoading ? "Verifying..." : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
               </button>
@@ -255,7 +255,7 @@ function OnboardingContent() {
             >
               Back
             </button>
-            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#FF6500" }}>
+            <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--accent-foreground)" }}>
               Step {totalSteps} of {totalSteps}
             </p>
             <h2 className="text-3xl font-black text-foreground mb-1">Pick your challenge</h2>
@@ -288,7 +288,7 @@ function OnboardingContent() {
                       <p className="text-muted-foreground text-xs">{description}</p>
                     </div>
                     {selected ? (
-                      <CheckCircle2 size={20} style={{ color: "#FF6500" }} />
+                      <CheckCircle2 size={20} style={{ color: "var(--accent-foreground)" }} />
                     ) : (
                       <div className="w-5 h-5 rounded-full border-2 border-foreground/20" />
                     )}
@@ -301,7 +301,7 @@ function OnboardingContent() {
             {role === "champion" && (
               <div className="mb-6">
                 <label className="block text-[11px] font-semibold tracking-widest uppercase text-muted-foreground mb-2">
-                  Your Zone <span className="text-[#FF6500]">*</span>
+                  Your Zone <span className="text-accent-foreground">*</span>
                 </label>
                 <input
                   type="text"
@@ -326,7 +326,7 @@ function OnboardingContent() {
                       className={cn(
                         "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
                         region === r
-                          ? "border-orange-500/60 text-orange-400 bg-orange-500/10"
+                          ? "border-[#ff4b35]/60 text-accent-foreground bg-[#ff4b35]/10"
                           : "border-foreground/10 text-muted-foreground hover:border-foreground/20"
                       )}
                     >
@@ -343,12 +343,12 @@ function OnboardingContent() {
               onClick={() => setLeaderboardConsent((v) => !v)}
               className="w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
               style={{
-                borderColor: leaderboardConsent ? "rgba(255,101,0,0.5)" : "var(--border)",
-                background: leaderboardConsent ? "rgba(255,101,0,0.08)" : "var(--fill-soft)",
+                borderColor: leaderboardConsent ? "rgba(255,75,53,0.5)" : "var(--border)",
+                background: leaderboardConsent ? "rgba(255,75,53,0.08)" : "var(--fill-soft)",
               }}
             >
               <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
-                style={{ borderColor: leaderboardConsent ? "#FF6500" : "var(--muted-foreground)", background: leaderboardConsent ? "#FF6500" : "transparent" }}>
+                style={{ borderColor: leaderboardConsent ? "#ff4b35" : "var(--muted-foreground)", background: leaderboardConsent ? "#ff4b35" : "transparent" }}>
                 {leaderboardConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <div>
@@ -366,12 +366,12 @@ function OnboardingContent() {
               onClick={() => setRewardsExportConsent((v) => !v)}
               className="mt-3 w-full flex items-start gap-3 text-left rounded-2xl border p-4 transition-all"
               style={{
-                borderColor: rewardsExportConsent ? "rgba(255,101,0,0.5)" : "var(--border)",
-                background: rewardsExportConsent ? "rgba(255,101,0,0.08)" : "var(--fill-soft)",
+                borderColor: rewardsExportConsent ? "rgba(255,75,53,0.5)" : "var(--border)",
+                background: rewardsExportConsent ? "rgba(255,75,53,0.08)" : "var(--fill-soft)",
               }}
             >
               <div className="flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
-                style={{ borderColor: rewardsExportConsent ? "#FF6500" : "var(--muted-foreground)", background: rewardsExportConsent ? "#FF6500" : "transparent" }}>
+                style={{ borderColor: rewardsExportConsent ? "#ff4b35" : "var(--muted-foreground)", background: rewardsExportConsent ? "#ff4b35" : "transparent" }}>
                 {rewardsExportConsent && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <div>
@@ -393,7 +393,7 @@ function OnboardingContent() {
                   ? "text-white hover:opacity-90 active:scale-[0.98]"
                   : "text-muted-foreground/60 cursor-not-allowed"
               )}
-              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "#FF6500" : "var(--fill-mid)" }}
+              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)" : "var(--fill-mid)" }}
             >
               {submitting ? "Setting up..." : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>

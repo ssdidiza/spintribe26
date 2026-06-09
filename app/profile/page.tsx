@@ -132,7 +132,7 @@ export default function ProfilePage() {
               ) : (
                 <div
                   className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black text-white"
-                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
+                  style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", boxShadow: "0 0 24px rgba(255,75,53,0.35)" }}
                 >
                   {currentUser.name.charAt(0).toUpperCase()}
                 </div>
@@ -376,7 +376,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <p className="text-center text-[10px] text-muted-foreground/50">spera - Team Vitality - 2026</p>
+        <p className="text-center text-[10px] text-muted-foreground/50">SpinTribe - Team Vitality - 2026</p>
       </main>
       <NavBar />
     </div>

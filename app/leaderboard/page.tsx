@@ -8,7 +8,7 @@ import { LeaderboardApiResponse, LeaderboardEntry, Tier, TIER_LABELS, canAccessC
 import { CHALLENGE_TIERS } from "@/lib/challenge";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
-import { SperaIcon } from "@/components/SperaLogo";
+import { BrandMark } from "@/components/SperaLogo";
 import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = CHALLENGE_TIERS;
@@ -142,7 +142,7 @@ export default function LeaderboardPage() {
           </p>
           <h1 className="font-bold text-foreground text-xl">Leaderboard</h1>
         </div>
-        <SperaIcon className="h-7 w-7" />
+        <BrandMark iconClassName="h-7 w-7" />
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-4">
@@ -324,7 +324,7 @@ export default function LeaderboardPage() {
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{
                             width: `${modeProgressPct}%`,
-                            background: "linear-gradient(90deg, #ff4b35, #e0007a)",
+                            background: "linear-gradient(90deg, #ff7a2f, #ff3b30, #e0007a)",
                             boxShadow: "0 0 6px rgba(255,75,53,0.4)",
                           }} />
                       </div>

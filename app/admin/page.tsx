@@ -350,13 +350,12 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background mb-nav">
       <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}>
+          <div className="gradient-primary w-8 h-8 rounded-xl flex items-center justify-center">
             <ShieldCheck size={15} color="#fff" />
           </div>
           <div>
             <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">Founder Admin</p>
-            <h1 className="font-bold text-foreground text-xl leading-tight">spera ops</h1>
+            <h1 className="font-bold text-foreground text-xl leading-tight">SpinTribe ops</h1>
           </div>
         </div>
         <span className="text-[10px] font-bold text-accent-foreground">{monthKey || "loading"}</span>
