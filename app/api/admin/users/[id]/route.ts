@@ -21,6 +21,14 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
     update.role = body.role;
+    // Assigning champion/admin is an explicit act of bringing this person into
+    // the challenge as a leader. Mark them onboarded so they show on the
+    // leaderboard and skip the self-onboarding wizard they may never complete.
+    // Without this, an admin-promoted champion stays onboarded=false and stays
+    // invisible on every leaderboard (the original "ghost champion" bug).
+    if (body.role === "champion" || body.role === "admin") {
+      update.onboarded = true;
+    }
   }
   if (body.tier !== undefined) {
     const tier = Number(body.tier);

@@ -10,11 +10,6 @@ import {
   UserRole,
   SEED_ZONES,
 } from "./types";
-import {
-  MOCK_USERS,
-  MOCK_ACTIVITIES,
-  MOCK_CHAMPION_SESSIONS,
-} from "./mock-data";
 
 const safeStorage =
   typeof window !== "undefined"
@@ -67,9 +62,13 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       currentUser: null,
-      users: MOCK_USERS,
-      activities: MOCK_ACTIVITIES,
-      championSessions: MOCK_CHAMPION_SESSIONS,
+      // Real riders/activities/sessions are loaded from the API after login.
+      // These MUST start empty: seeding mock riders here previously persisted
+      // them to localStorage, where they leaked onto the live leaderboard,
+      // dashboard "Team Pulse", and champion "Tier Members" as ghost riders.
+      users: [],
+      activities: [],
+      championSessions: [],
       zones: SEED_ZONES,
       isOnboarded: false,
 
@@ -396,6 +395,19 @@ export const useStore = create<AppState>()(
     {
       name: "spintribe-store-v2",
       storage: safeStorage,
+      version: 1,
+      // v0 seeded mock riders/activities/sessions (all tied to mock user "u1",
+      // ids u1-u8) and persisted them. Strip them from existing clients so
+      // ghost riders disappear; real data re-hydrates from the API on load.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<AppState> | undefined;
+        if (state && version < 1) {
+          state.users = (state.users ?? []).filter((u) => !/^u\d+$/.test(u.id));
+          state.activities = (state.activities ?? []).filter((a) => a.userId !== "u1");
+          state.championSessions = (state.championSessions ?? []).filter((s) => s.userId !== "u1");
+        }
+        return state as AppState;
+      },
       partialize: (state) => ({
         currentUser: state.currentUser,
         isOnboarded: state.isOnboarded,
