@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { AppNotification } from "@/lib/types";
-import { Bell, X, CheckCircle2 } from "lucide-react";
+import { Bell, X, CheckCircle2, RefreshCw } from "lucide-react";
 
 const RELEASE_NOTIFICATIONS: Omit<AppNotification, "userId">[] = [
   {
@@ -96,6 +96,7 @@ export default function NotificationBanner() {
     .map((n) => ({ ...n, userId: userId ?? "release" }));
   const active = notifications.find((n) => !n.dismissedAt && !n.completedAt) ?? releaseNotifications[0];
   const isReleaseNotification = active?.id.startsWith("release-") ?? false;
+  const isLeaderboardNotification = active?.type === "leaderboard";
 
   if (!active) return null;
 
@@ -177,8 +178,8 @@ export default function NotificationBanner() {
                 className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-50"
                 style={{ background: "var(--fill-mid)", color: "var(--foreground)", border: "1px solid var(--border)" }}
               >
-                <CheckCircle2 size={12} />
-                Mark complete
+                {isLeaderboardNotification ? <RefreshCw size={12} /> : <CheckCircle2 size={12} />}
+                {isLeaderboardNotification ? "Mark synced" : "Mark complete"}
               </button>
             )}
             <button

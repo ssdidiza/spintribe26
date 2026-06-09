@@ -27,7 +27,7 @@ export interface User {
 export interface AppNotification {
   id: string;
   userId: string;
-  type: 'welcome' | 'info' | 'achievement';
+  type: 'welcome' | 'info' | 'achievement' | 'leaderboard';
   title: string;
   body: string;
   dismissedAt?: string;

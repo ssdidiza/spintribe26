@@ -110,8 +110,8 @@ export const useStore = create<AppState>()(
           role,
           tier,
           onboarded: true,
-          leaderboardConsent: leaderboardConsent ?? false,
-          rewardsExportConsent: rewardsExportConsent ?? false,
+          leaderboardConsent: leaderboardConsent ?? true,
+          rewardsExportConsent: rewardsExportConsent ?? true,
           ...(zone ? { zone, region: zone } : {}),
         };
         set({

@@ -34,8 +34,8 @@ function OnboardingContent() {
   const [inviteCode, setInviteCode] = useState<string>("");
   const [inviteError, setInviteError] = useState<string>("");
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [leaderboardConsent, setLeaderboardConsent] = useState(false);
-  const [rewardsExportConsent, setRewardsExportConsent] = useState(false);
+  const [leaderboardConsent, setLeaderboardConsent] = useState(true);
+  const [rewardsExportConsent, setRewardsExportConsent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {

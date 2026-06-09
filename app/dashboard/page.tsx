@@ -113,7 +113,7 @@ export default function DashboardPage() {
 
   // Only include users who have consented to leaderboard sharing
   const consentedUsers = useMemo(
-    () => users.filter((u) => u.isConnected && u.leaderboardConsent),
+    () => users.filter((u) => u.isConnected && u.leaderboardConsent !== false),
     [users]
   );
 

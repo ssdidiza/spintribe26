@@ -128,12 +128,12 @@ export default function LandingPage() {
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,
-              leaderboardConsent: row.leaderboard_consent ?? false,
-              rewardsExportConsent: row.rewards_export_consent ?? false,
+              leaderboardConsent: row.leaderboard_consent !== false,
+              rewardsExportConsent: row.rewards_export_consent !== false,
               ftp: row.ftp ?? undefined,
               country: row.country ?? undefined,
             });
-            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
+            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
             router.push(getPostLoginRoute({ role: row.role }));
           } else {
             login(data.user.id, displayName);
@@ -162,12 +162,12 @@ export default function LandingPage() {
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,
-              leaderboardConsent: row.leaderboard_consent ?? false,
-              rewardsExportConsent: row.rewards_export_consent ?? false,
+              leaderboardConsent: row.leaderboard_consent !== false,
+              rewardsExportConsent: row.rewards_export_consent !== false,
               ftp: row.ftp ?? undefined,
               country: row.country ?? undefined,
             });
-            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent ?? false, row.rewards_export_consent ?? false);
+            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
             router.push(getPostLoginRoute({ role: row.role }));
           } else {
             login(data.user.id, row?.name || displayName);

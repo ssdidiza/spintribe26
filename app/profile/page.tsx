@@ -69,8 +69,8 @@ export default function ProfilePage() {
 
   async function updateConsent(kind: "leaderboard" | "rewards") {
     if (!currentUser) return;
-    const nextLeaderboard = kind === "leaderboard" ? !currentUser.leaderboardConsent : currentUser.leaderboardConsent ?? false;
-    const nextRewards = kind === "rewards" ? !currentUser.rewardsExportConsent : currentUser.rewardsExportConsent ?? false;
+    const nextLeaderboard = kind === "leaderboard" ? !(currentUser.leaderboardConsent ?? true) : currentUser.leaderboardConsent ?? true;
+    const nextRewards = kind === "rewards" ? !(currentUser.rewardsExportConsent ?? true) : currentUser.rewardsExportConsent ?? true;
     const res = await fetch("/api/users/preferences", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -339,14 +339,14 @@ export default function ProfilePage() {
             className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors border-b border-foreground/[0.06]"
           >
             <span className="text-sm font-semibold text-foreground">Leaderboard sharing</span>
-            <span className="text-xs font-bold text-accent-foreground">{currentUser.leaderboardConsent ? "On" : "Off"}</span>
+            <span className="text-xs font-bold text-accent-foreground">{currentUser.leaderboardConsent !== false ? "On" : "Off"}</span>
           </button>
           <button
             onClick={() => updateConsent("rewards")}
             className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors"
           >
             <span className="text-sm font-semibold text-foreground">Rewards export consent</span>
-            <span className="text-xs font-bold text-accent-foreground">{currentUser.rewardsExportConsent ? "On" : "Off"}</span>
+            <span className="text-xs font-bold text-accent-foreground">{currentUser.rewardsExportConsent !== false ? "On" : "Off"}</span>
           </button>
         </div>
 

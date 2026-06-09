@@ -21,7 +21,8 @@ create table if not exists public.users (
   last_strava_sync_at   timestamptz,
   last_strava_sync_year int,
   last_strava_sync_month int,
-  rewards_export_consent boolean not null default false,
+  leaderboard_consent boolean not null default true,
+  rewards_export_consent boolean not null default true,
   created_at            timestamptz default now(),
   updated_at            timestamptz default now()
 );
@@ -204,10 +205,14 @@ create table if not exists public.notifications (
   type            text not null default 'info',   -- 'welcome' | 'info' | 'achievement'
   title           text not null,
   body            text not null,
+  dedupe_key      text,
   dismissed_at    timestamptz,
   completed_at    timestamptz,
   created_at      timestamptz default now()
 );
+
+create unique index if not exists idx_notifications_dedupe_key
+  on public.notifications (dedupe_key);
 
 alter table public.notifications enable row level security;
 create policy "notifs_read_all" on public.notifications for select using (true);

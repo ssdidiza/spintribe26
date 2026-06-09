@@ -91,7 +91,7 @@ export default function LeaderboardPage() {
     return () => controller.abort();
   }, [hydrated, currentUserId, isOnboarded]);
 
-  const realUsers = useMemo(() => users.filter((u) => u.isConnected && u.leaderboardConsent), [users]);
+  const realUsers = useMemo(() => users.filter((u) => u.isConnected && u.leaderboardConsent !== false), [users]);
   const activeTier = selectedTier ?? currentUser?.tier ?? 400;
   const localEntries = useMemo(
     () => buildLeaderboard(activeTier, realUsers, activities),

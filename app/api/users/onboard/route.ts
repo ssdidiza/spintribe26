@@ -17,6 +17,8 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const { role, tier, zone, region, leaderboardConsent, rewardsExportConsent } = body;
+  const leaderboardOptIn = leaderboardConsent !== false;
+  const rewardsOptIn = rewardsExportConsent !== false;
 
   // Validate role
   if (!VALID_ROLES.includes(role)) {
@@ -73,8 +75,8 @@ export async function PATCH(req: NextRequest) {
       tier: tierForUpdate,
       zone: effectiveZone,
       onboarded: true,
-      leaderboard_consent: leaderboardConsent === true,
-      rewards_export_consent: rewardsExportConsent === true,
+      leaderboard_consent: leaderboardOptIn,
+      rewards_export_consent: rewardsOptIn,
       updated_at: new Date().toISOString(),
     })
     .eq("strava_id", userId);

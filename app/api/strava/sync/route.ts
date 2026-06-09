@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getStravaActivitiesForMonth,
-  SanitizedStravaActivity,
   StravaApiError,
 } from "@/lib/strava";
+import type { SanitizedStravaActivity } from "@/lib/strava";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSession } from "@/lib/session";
 import { detectZoneFromGPS } from "@/lib/types";
+import type { LeaderboardApiResponse, LeaderboardEntry } from "@/lib/types";
 import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
+import {
+  buildLeaderboardResponse,
+  findLeaderboardEntry,
+  getLeaderboardMonthRange,
+} from "@/lib/leaderboard";
+import type { LeaderboardActivityRow, LeaderboardUserRow } from "@/lib/leaderboard";
 
 const SYNC_COOLDOWN_MS = 10 * 60 * 1000;
+type DbClient = ReturnType<typeof supabaseAdmin>;
 
 type CachedActivityRow = {
   strava_id: string;
@@ -59,6 +67,104 @@ function mapCachedActivity(row: CachedActivityRow): SanitizedStravaActivity {
   };
 }
 
+async function fetchLeaderboardSnapshot(db: DbClient, date: Date) {
+  const { rangeStart, rangeEnd } = getLeaderboardMonthRange(date);
+  const [usersResult, activitiesResult] = await Promise.all([
+    db
+      .from("users")
+      .select("strava_id,name,avatar,role,tier,zone,country,onboarded,leaderboard_consent")
+      .eq("onboarded", true)
+      .eq("leaderboard_consent", true),
+    db
+      .from("activities")
+      .select("user_strava_id,distance,type,date")
+      .gte("date", rangeStart)
+      .lt("date", rangeEnd),
+  ]);
+
+  if (usersResult.error) throw usersResult.error;
+  if (activitiesResult.error) throw activitiesResult.error;
+
+  return buildLeaderboardResponse(
+    (usersResult.data ?? []) as LeaderboardUserRow[],
+    (activitiesResult.data ?? []) as LeaderboardActivityRow[],
+    date
+  );
+}
+
+function getFirstName(name: string) {
+  return name.trim().split(/\s+/)[0] || "A rider";
+}
+
+function getTrailingBody(entry: LeaderboardEntry, above: LeaderboardEntry) {
+  const gap = Math.max(0, above.totalKm - entry.totalKm);
+  if (gap === 0) {
+    return `${above.user.name} is just ahead of you at #${above.rank} on the ${entry.targetKm} km leaderboard. Sync after your next ride to move up.`;
+  }
+
+  return `${above.user.name} is ${gap} km ahead of you at #${above.rank} on the ${entry.targetKm} km leaderboard. Sync your latest rides to close the gap.`;
+}
+
+async function createLeaderboardNotifications(
+  db: DbClient,
+  athleteId: string,
+  before: LeaderboardApiResponse,
+  after: LeaderboardApiResponse
+) {
+  const beforeEntry = findLeaderboardEntry(before.tiers, athleteId);
+  const afterEntry = findLeaderboardEntry(after.tiers, athleteId);
+  if (!afterEntry) return;
+
+  const monthKey = after.monthKey;
+  const afterTierEntries = after.tiers[String(afterEntry.targetKm)]?.entries ?? [];
+  const rows: {
+    user_strava_id: string;
+    type: "leaderboard";
+    title: string;
+    body: string;
+    dedupe_key: string;
+  }[] = [];
+
+  const above = afterTierEntries.find((entry) => entry.rank === afterEntry.rank - 1);
+  if (above) {
+    rows.push({
+      user_strava_id: athleteId,
+      type: "leaderboard",
+      title: `You are behind ${getFirstName(above.user.name)}`,
+      body: getTrailingBody(afterEntry, above),
+      dedupe_key: `leaderboard:${monthKey}:behind:${athleteId}:by:${above.user.id}`,
+    });
+  }
+
+  if (beforeEntry && afterEntry.rank < beforeEntry.rank) {
+    const beforeTierEntries = before.tiers[String(beforeEntry.targetKm)]?.entries ?? [];
+    const afterEntryByUserId = new Map(afterTierEntries.map((entry) => [entry.user.id, entry]));
+    const syncingName = getFirstName(afterEntry.user.name);
+
+    for (const entry of beforeTierEntries) {
+      if (entry.user.id === athleteId || entry.rank >= beforeEntry.rank) continue;
+      const currentEntry = afterEntryByUserId.get(entry.user.id);
+      if (!currentEntry || currentEntry.rank <= afterEntry.rank) continue;
+
+      rows.push({
+        user_strava_id: entry.user.id,
+        type: "leaderboard",
+        title: `${syncingName} just passed you`,
+        body: `${afterEntry.user.name} moved to #${afterEntry.rank} with ${afterEntry.totalKm} km. You are now #${currentEntry.rank}; sync your latest rides to respond.`,
+        dedupe_key: `leaderboard:${monthKey}:surpassed:${entry.user.id}:by:${athleteId}`,
+      });
+    }
+  }
+
+  if (!rows.length) return;
+
+  const { error } = await db
+    .from("notifications")
+    .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true });
+
+  if (error) throw error;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session.athleteId) {
@@ -75,6 +181,16 @@ export async function POST(req: NextRequest) {
   const m = Number.isInteger(rawMonth) && rawMonth >= 1 && rawMonth <= 12 ? rawMonth : now.getMonth() + 1;
 
   const db = supabaseAdmin();
+  const athleteId = String(session.athleteId);
+  const leaderboardDate = new Date(Date.UTC(y, m - 1, 1));
+  let leaderboardBefore: LeaderboardApiResponse | null = null;
+
+  try {
+    leaderboardBefore = await fetchLeaderboardSnapshot(db, leaderboardDate);
+  } catch (error) {
+    console.warn("Leaderboard snapshot before sync failed:", error);
+  }
+
   const syncMonths = scope === "year"
     ? Array.from({ length: y === now.getFullYear() ? now.getMonth() + 1 : 12 }, (_, i) => i + 1)
     : [m];
@@ -84,13 +200,13 @@ export async function POST(req: NextRequest) {
   const { data: user } = await db
     .from("users")
     .select("last_strava_sync_at,last_strava_sync_year,last_strava_sync_month")
-    .eq("strava_id", String(session.athleteId))
+    .eq("strava_id", athleteId)
     .maybeSingle();
 
   const cached = await db
     .from("activities")
     .select("strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id")
-    .eq("user_strava_id", String(session.athleteId))
+    .eq("user_strava_id", athleteId)
     .gte("date", rangeStart)
     .lt("date", rangeEnd)
     .order("date", { ascending: false });
@@ -142,7 +258,7 @@ export async function POST(req: NextRequest) {
   if (sanitized.length > 0) {
     const rows = sanitized.map((a) => ({
       strava_id: String(a.id),
-      user_strava_id: String(session.athleteId),
+      user_strava_id: athleteId,
       name: a.name,
       distance: a.distance,
       moving_time: a.moving_time,
@@ -164,13 +280,13 @@ export async function POST(req: NextRequest) {
     await db
       .from("champion_sessions")
       .delete()
-      .eq("user_strava_id", String(session.athleteId))
+      .eq("user_strava_id", athleteId)
       .in("strava_activity_id", staleActivityIds);
 
     await db
       .from("activities")
       .delete()
-      .eq("user_strava_id", String(session.athleteId))
+      .eq("user_strava_id", athleteId)
       .in("strava_id", staleActivityIds);
   }
 
@@ -182,7 +298,16 @@ export async function POST(req: NextRequest) {
       last_strava_sync_month: m,
       updated_at: new Date().toISOString(),
     })
-    .eq("strava_id", String(session.athleteId));
+    .eq("strava_id", athleteId);
+
+  if (leaderboardBefore) {
+    try {
+      const leaderboardAfter = await fetchLeaderboardSnapshot(db, leaderboardDate);
+      await createLeaderboardNotifications(db, athleteId, leaderboardBefore, leaderboardAfter);
+    } catch (error) {
+      console.warn("Leaderboard notifications after sync failed:", error);
+    }
+  }
 
   return NextResponse.json({ activities: sanitized, cached: false });
 }
