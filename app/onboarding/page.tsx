@@ -236,10 +236,10 @@ function OnboardingContent() {
                 className={cn(
                   "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
                   inviteCode.trim() && !inviteLoading
-                    ? "text-white hover:opacity-90 active:scale-[0.98]"
+                    ? "gradient-primary text-white hover:opacity-90 active:scale-[0.98]"
                     : "text-muted-foreground/60 cursor-not-allowed"
                 )}
-                style={{ background: inviteCode.trim() && !inviteLoading ? "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)" : "var(--fill-mid)" }}
+                style={inviteCode.trim() && !inviteLoading ? undefined : { background: "var(--fill-mid)" }}
               >
                 {inviteLoading ? "Verifying..." : "Verify Code"} {!inviteLoading && <ChevronRight size={16} />}
               </button>
@@ -390,10 +390,10 @@ function OnboardingContent() {
               className={cn(
                 "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
                 tier && (role !== "champion" || zone.trim()) && !submitting
-                  ? "text-white hover:opacity-90 active:scale-[0.98]"
+                  ? "gradient-primary text-white hover:opacity-90 active:scale-[0.98]"
                   : "text-muted-foreground/60 cursor-not-allowed"
               )}
-              style={{ background: tier && (role !== "champion" || zone.trim()) && !submitting ? "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)" : "var(--fill-mid)" }}
+              style={tier && (role !== "champion" || zone.trim()) && !submitting ? undefined : { background: "var(--fill-mid)" }}
             >
               {submitting ? "Setting up..." : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>

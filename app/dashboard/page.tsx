@@ -255,7 +255,7 @@ export default function DashboardPage() {
             </p>
             <div className="flex items-end justify-center gap-2 mb-1">
               <span
-                className="gradient-text font-black leading-none"
+                className="gradient-text inline-block font-black leading-none"
                 style={{
                   fontSize: "clamp(5rem, 22vw, 7.5rem)",
                   letterSpacing: "-0.04em",
