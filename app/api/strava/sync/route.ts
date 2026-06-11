@@ -23,6 +23,7 @@ type CachedActivityRow = {
   strava_id: string;
   name: string;
   distance: number;
+  elevation_gain: number | null;
   moving_time: number;
   type: string;
   date: string;
@@ -34,6 +35,7 @@ function sanitizeActivity(a: {
   id: number;
   name: string;
   distance: number;
+  total_elevation_gain?: number;
   moving_time: number;
   type: string;
   start_date: string;
@@ -46,6 +48,7 @@ function sanitizeActivity(a: {
     id: a.id,
     name: a.name,
     distance: a.distance,
+    total_elevation_gain: a.total_elevation_gain ?? 0,
     moving_time: a.moving_time,
     type: a.type,
     start_date: a.start_date,
@@ -59,6 +62,7 @@ function mapCachedActivity(row: CachedActivityRow): SanitizedStravaActivity {
     id: Number(row.strava_id),
     name: row.name,
     distance: Number(row.distance),
+    total_elevation_gain: Number(row.elevation_gain ?? 0),
     moving_time: row.moving_time,
     type: row.type,
     start_date: row.date,
@@ -72,12 +76,12 @@ async function fetchLeaderboardSnapshot(db: DbClient, date: Date) {
   const [usersResult, activitiesResult] = await Promise.all([
     db
       .from("users")
-      .select("strava_id,name,avatar,role,tier,zone,country,onboarded,leaderboard_consent")
+      .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams(name,slug)")
       .eq("onboarded", true)
       .eq("leaderboard_consent", true),
     db
       .from("activities")
-      .select("user_strava_id,distance,type,date")
+      .select("user_strava_id,distance,elevation_gain,type,date")
       .gte("date", rangeStart)
       .lt("date", rangeEnd),
   ]);
@@ -98,11 +102,12 @@ function getFirstName(name: string) {
 
 function getTrailingBody(entry: LeaderboardEntry, above: LeaderboardEntry) {
   const gap = Math.max(0, above.totalKm - entry.totalKm);
+  const leagueName = entry.leagueName ?? `${entry.user.tier} Club`;
   if (gap === 0) {
-    return `${above.user.name} is just ahead of you at #${above.rank} on the ${entry.targetKm} km leaderboard. Sync after your next ride to move up.`;
+    return `${above.user.name} is just ahead of you at #${above.rank} in the ${leagueName}. Sync after your next ride to move up.`;
   }
 
-  return `${above.user.name} is ${gap} km ahead of you at #${above.rank} on the ${entry.targetKm} km leaderboard. Sync your latest rides to close the gap.`;
+  return `${above.user.name} is ${gap} km ahead of you at #${above.rank} in the ${leagueName}. Sync your latest rides to close the gap.`;
 }
 
 async function createLeaderboardNotifications(
@@ -116,7 +121,7 @@ async function createLeaderboardNotifications(
   if (!afterEntry) return;
 
   const monthKey = after.monthKey;
-  const afterTierEntries = after.tiers[String(afterEntry.targetKm)]?.entries ?? [];
+  const afterTierEntries = after.tiers[String(afterEntry.user.tier)]?.entries ?? [];
   const rows: {
     user_strava_id: string;
     type: "leaderboard";
@@ -137,7 +142,7 @@ async function createLeaderboardNotifications(
   }
 
   if (beforeEntry && afterEntry.rank < beforeEntry.rank) {
-    const beforeTierEntries = before.tiers[String(beforeEntry.targetKm)]?.entries ?? [];
+    const beforeTierEntries = before.tiers[String(beforeEntry.user.tier)]?.entries ?? [];
     const afterEntryByUserId = new Map(afterTierEntries.map((entry) => [entry.user.id, entry]));
     const syncingName = getFirstName(afterEntry.user.name);
 
@@ -205,7 +210,7 @@ export async function POST(req: NextRequest) {
 
   const cached = await db
     .from("activities")
-    .select("strava_id,name,distance,moving_time,type,date,kudos,detected_zone_id")
+    .select("strava_id,name,distance,elevation_gain,moving_time,type,date,kudos,detected_zone_id")
     .eq("user_strava_id", athleteId)
     .gte("date", rangeStart)
     .lt("date", rangeEnd)
@@ -261,6 +266,7 @@ export async function POST(req: NextRequest) {
       user_strava_id: athleteId,
       name: a.name,
       distance: a.distance,
+      elevation_gain: a.total_elevation_gain ?? 0,
       moving_time: a.moving_time,
       type: a.type,
       date: a.start_date,

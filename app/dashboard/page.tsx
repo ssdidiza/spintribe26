@@ -6,6 +6,7 @@ import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
 import { LeaderboardApiResponse, TIER_LABELS } from "@/lib/types";
 import { canRequestTierUpgrade, getMonthlyActivityInsights, getNextTier } from "@/lib/challenge";
+import { formatLeagueRange, getLeagueByTier, getLeagueProgress, type LeagueDefinition } from "@/lib/leagues";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
@@ -23,8 +24,50 @@ import {
   RefreshCw,
   TrendingUp,
   Trophy,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
+
+type LeagueApiSummary = {
+  current: {
+    monthlyKm: number;
+    totalElevation: number;
+    league: LeagueDefinition;
+    nextLeague: LeagueDefinition | null;
+    promotionTargetKm: number;
+    remainingKm: number;
+    progressPct: number;
+    rankDistance: number | null;
+    rankElevation: number | null;
+    rankConsistency: number | null;
+    leagueRiders: number;
+  };
+};
+
+type TeamsApiSummary = {
+  teams: {
+    id: string;
+    name: string;
+    slug: string;
+    averageLeagueLevel: number;
+    ridersPromoted: number;
+    totalDistanceKm: number;
+    activeRiders: number;
+    isCurrentUserTeam: boolean;
+  }[];
+};
+
+type ZonesApiSummary = {
+  zones: {
+    id: string;
+    name: string;
+    region: string;
+    totalDistanceKm: number;
+    totalElevation: number;
+    participationRate: number;
+    promotions: number;
+  }[];
+};
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -43,6 +86,9 @@ export default function DashboardPage() {
   const [refreshingFtp, setRefreshingFtp] = useState(false);
   const [upgradeState, setUpgradeState] = useState<"idle" | "sending" | "sent" | "blocked">("idle");
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardApiResponse | null>(null);
+  const [leagueSummary, setLeagueSummary] = useState<LeagueApiSummary | null>(null);
+  const [teamsSummary, setTeamsSummary] = useState<TeamsApiSummary | null>(null);
+  const [zonesSummary, setZonesSummary] = useState<ZonesApiSummary | null>(null);
   const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
@@ -71,10 +117,16 @@ export default function DashboardPage() {
 
     async function loadLeaderboard() {
       try {
-        const res = await fetch("/api/leaderboard", { signal: controller.signal });
-        if (!res.ok) return;
-        const data = await res.json() as LeaderboardApiResponse;
-        setLiveLeaderboard(data);
+        const [leaderboardRes, leaguesRes, teamsRes, zonesRes] = await Promise.all([
+          fetch("/api/leaderboard", { signal: controller.signal }),
+          fetch("/api/leagues", { signal: controller.signal }),
+          fetch("/api/teams", { signal: controller.signal }),
+          fetch("/api/zones", { signal: controller.signal }),
+        ]);
+        if (leaderboardRes.ok) setLiveLeaderboard(await leaderboardRes.json() as LeaderboardApiResponse);
+        if (leaguesRes.ok) setLeagueSummary(await leaguesRes.json() as LeagueApiSummary);
+        if (teamsRes.ok) setTeamsSummary(await teamsRes.json() as TeamsApiSummary);
+        if (zonesRes.ok) setZonesSummary(await zonesRes.json() as ZonesApiSummary);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setLiveLeaderboard(null);
@@ -130,6 +182,8 @@ export default function DashboardPage() {
     () => leaderboardEntries.find((e) => e.user.id === currentUserId),
     [leaderboardEntries, currentUserId]
   );
+  const topTeams = teamsSummary?.teams.slice(0, 3) ?? [];
+  const topZones = zonesSummary?.zones.slice(0, 3) ?? [];
 
   if (!hydrated || !currentUser) return null;
 
@@ -144,6 +198,16 @@ export default function DashboardPage() {
   const lastSyncedRide = monthlyInsights?.lastSyncedRide;
   const ftp = currentUser.ftp;
   const now = new Date();
+  const leagueTier = currentUser.currentLeagueThreshold ?? currentUser.tier;
+  const fallbackLeague = getLeagueByTier(leagueTier);
+  const fallbackLeagueProgress = getLeagueProgress(monthlyKm, leagueTier);
+  const heroLeague = leagueSummary?.current.league ?? fallbackLeague;
+  const heroNextLeague = leagueSummary?.current.nextLeague ?? fallbackLeagueProgress.nextLeague;
+  const heroRemainingKm = leagueSummary?.current.remainingKm ?? fallbackLeagueProgress.remainingKm;
+  const heroProgressPct = leagueSummary?.current.progressPct ?? fallbackLeagueProgress.progressPct;
+  const heroPromotionTargetKm = leagueSummary?.current.promotionTargetKm ?? fallbackLeagueProgress.promotionTargetKm;
+  const heroRankDistance = leagueSummary?.current.rankDistance ?? currentRankEntry?.rank ?? null;
+  const heroLeagueRiders = leagueSummary?.current.leagueRiders ?? leaderboardEntries.length;
 
   // ── Progress pace calculations ────────────────────────────────────────────
   const daysInMonth     = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -225,7 +289,7 @@ export default function DashboardPage() {
           <BrandMark iconClassName="h-6 w-6" />
           <span className="text-[10px] font-bold rounded-full px-2.5 py-1 border border-[#ff4b35]/40"
             style={{ color: "var(--accent-foreground)", background: "rgba(255,75,53,0.1)" }}>
-            {TIER_LABELS[currentUser.tier]} - {currentUser.tier} km
+            {heroLeague.name}
           </span>
           <button onClick={handleSync} disabled={syncing}
             className="w-8 h-8 rounded-full glass flex items-center justify-center text-muted-foreground disabled:opacity-40 hover:text-accent-foreground transition-colors">
@@ -238,52 +302,81 @@ export default function DashboardPage() {
 
         <NotificationBanner />
 
-        {/* ── Cinematic hero ────────────────────────────────────────────── */}
-        <div className="relative text-center pt-4 pb-2">
-          {/* Radial hero glow, mirroring the landing page's brand atmosphere */}
+        <section
+          className="glass-card relative overflow-hidden p-5"
+          style={{ borderColor: "rgba(255,75,53,0.34)" }}
+        >
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-56 w-[min(420px,100%)] -translate-x-1/2"
+            className="pointer-events-none absolute left-1/2 top-0 h-64 w-[min(460px,100%)] -translate-x-1/2"
             style={{
               background:
-                "radial-gradient(50% 60% at 50% 35%, rgba(255,75,53,0.18), transparent 70%)",
+                "radial-gradient(50% 60% at 50% 30%, rgba(255,75,53,0.18), transparent 70%)",
             }}
           />
-          <div className="relative">
-            <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-muted-foreground/60 mb-3">
-              {monthLabel} monthly distance
-            </p>
-            <div className="flex items-end justify-center gap-2 mb-1">
-              <span
-                className="gradient-text inline-block font-black leading-none"
-                style={{
-                  fontSize: "clamp(5rem, 22vw, 7.5rem)",
-                  letterSpacing: "-0.04em",
-                }}
-              >
-                {monthlyKm}
-              </span>
-              <span className="text-2xl font-light text-muted-foreground/70 pb-3">km</span>
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-foreground">
+                Current league
+              </p>
+              <h2 className="mt-2 text-4xl font-black leading-none tracking-tight text-foreground sm:text-5xl">
+                {heroLeague.name}
+              </h2>
+              <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                {formatLeagueRange(heroLeague)} monthly band
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground/70 mb-4">
-              {currentRankEntry ? `Monthly distance rank #${currentRankEntry.rank} of ${leaderboardEntries.length} - ` : ""}
-              {pct}% of {targetKm} km
-            </p>
-            <div className="h-0.5 rounded-full bg-foreground/[0.08] overflow-hidden max-w-[240px] mx-auto">
-              <div className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${pct}%`, background: "linear-gradient(90deg, #ff7a2f, #ff3b30, #e0007a)", boxShadow: "0 0 6px rgba(255,75,53,0.45)" }} />
+            <div className="rounded-2xl border border-[#ff4b35]/30 bg-[#ff4b35]/10 px-3 py-2 text-right">
+              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">League rank</p>
+              <p className="text-2xl font-black text-accent-foreground">
+                {heroRankDistance ? `#${heroRankDistance}` : "-"}
+              </p>
+              <p className="text-[9px] text-muted-foreground">{heroLeagueRiders} riders</p>
             </div>
           </div>
-        </div>
+
+          <div className="relative mt-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
+                  Promotion progress
+                </p>
+                <p className="text-xs font-bold text-foreground">
+                  {monthlyKm} / {heroPromotionTargetKm} km
+                </p>
+              </div>
+              <div className="h-3 rounded-full bg-foreground/[0.08] p-0.5">
+                <div
+                  className="gradient-primary h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${heroProgressPct}%`,
+                    boxShadow: "0 0 16px rgba(255,75,53,0.35)",
+                  }}
+                />
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {heroNextLeague
+                  ? `${heroRemainingKm} km to promotion into the ${heroNextLeague.name}.`
+                  : heroRemainingKm > 0
+                    ? `${heroRemainingKm} km to defend your ${heroLeague.name} floor.`
+                    : `You are riding inside the top league. Every extra kilometre strengthens your standing.`}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:w-52">
+              <MiniLeagueStat label="Remaining" value={`${heroRemainingKm} km`} />
+              <MiniLeagueStat label="Progress" value={`${heroProgressPct}%`} />
+            </div>
+          </div>
+        </section>
 
         {/* ── Team Pulse — horizontal leaderboard strip ─────────────────── */}
         {leaderboardEntries.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
-                {TIER_LABELS[currentUser.tier]} Monthly Distance
+                {heroLeague.name} Rankings
               </p>
-              <a href="/leaderboard" className="flex items-center gap-0.5 text-[10px] font-semibold text-accent-foreground/70 hover:text-accent-foreground transition-colors">
+              <a href="/leagues" className="flex items-center gap-0.5 text-[10px] font-semibold text-accent-foreground/70 hover:text-accent-foreground transition-colors">
                 See all <ChevronRight size={12} />
               </a>
             </div>
@@ -327,6 +420,35 @@ export default function DashboardPage() {
             <p className="mt-2 text-[10px] text-muted-foreground/60 leading-snug">
               Ranked by {leaderboardScope}. Not champing, FTP, average pace, or moving time.
             </p>
+          </div>
+        )}
+
+        {(topTeams.length > 0 || topZones.length > 0) && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <SummaryRankingCard
+              title="Team Rankings"
+              icon={<Users size={15} />}
+              href="/teams"
+              rows={topTeams.map((team) => ({
+                key: team.id,
+                name: team.isCurrentUserTeam ? `${team.name} (you)` : team.name,
+                meta: `${team.ridersPromoted} promoted - ${team.activeRiders} active`,
+                value: `${team.averageLeagueLevel || "-"} avg`,
+              }))}
+              empty="Join or create a team to unlock team development rankings."
+            />
+            <SummaryRankingCard
+              title="Zone Rankings"
+              icon={<Route size={15} />}
+              href="/zones"
+              rows={topZones.map((zone) => ({
+                key: zone.id,
+                name: zone.name,
+                meta: `${zone.region} - ${zone.participationRate}% participation`,
+                value: `${zone.totalDistanceKm} km`,
+              }))}
+              empty="Zone rankings appear as riders sync GPS-tagged rides."
+            />
           </div>
         )}
 
@@ -412,7 +534,8 @@ export default function DashboardPage() {
                   type="button"
                   onClick={requestUpgrade}
                   disabled={upgradeState === "sending" || upgradeState === "sent"}
-                  className="gradient-primary mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
+                  className="mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}
                 >
                   {upgradeState === "sent" ? "REQUEST SENT" : upgradeState === "sending" ? "SENDING..." : `REQUEST ${upgradeOffer.requestedTier} KM LEAGUE`}
                 </button>
@@ -592,5 +715,62 @@ export default function DashboardPage() {
       </main>
       <NavBar />
     </div>
+  );
+}
+
+function MiniLeagueStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.035] p-3 text-center">
+      <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1 text-base font-black text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function SummaryRankingCard({
+  title,
+  icon,
+  href,
+  rows,
+  empty,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  href: string;
+  rows: { key: string; name: string; meta: string; value: string }[];
+  empty: string;
+}) {
+  return (
+    <section className="glass-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#ff4b35]/12 text-accent-foreground">
+            {icon}
+          </span>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
+        </div>
+        <a href={href} className="text-[10px] font-bold text-accent-foreground/75 hover:text-accent-foreground">
+          View
+        </a>
+      </div>
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((row, index) => (
+            <div key={row.key} className="grid grid-cols-[1.75rem_1fr_auto] items-center gap-2 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-2.5">
+              <p className="text-xs font-black text-muted-foreground">#{index + 1}</p>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-black text-foreground">{row.name}</p>
+                <p className="truncate text-[9px] text-muted-foreground/70">{row.meta}</p>
+              </div>
+              <p className="text-xs font-black text-accent-foreground">{row.value}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-xs leading-relaxed text-muted-foreground">
+          {empty}
+        </p>
+      )}
+    </section>
   );
 }

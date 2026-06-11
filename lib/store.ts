@@ -32,7 +32,7 @@ interface AppState {
     stravaId?: string,
     name?: string,
     avatar?: string,
-    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "zone" | "region" | "onboarded" | "leaderboardConsent" | "rewardsExportConsent">
+    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "teamId" | "teamName" | "teamSlug" | "currentLeagueId" | "currentLeagueName" | "currentLeagueThreshold" | "zone" | "region" | "onboarded" | "leaderboardConsent" | "rewardsExportConsent">
   ) => void;
   logout: () => void;
   completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean, rewardsExportConsent?: boolean) => void;
@@ -306,6 +306,7 @@ export const useStore = create<AppState>()(
           if (!user || !Array.isArray(rows)) return;
           const mapped = rows.map((a: {
             strava_id: string; name: string; distance: number;
+            elevation_gain?: number;
             moving_time: number; type: string; date: string;
             kudos: number; start_lat?: number; start_lng?: number;
             detected_zone_id?: string;
@@ -315,6 +316,7 @@ export const useStore = create<AppState>()(
             stravaId: String(a.strava_id),
             name: a.name,
             distance: a.distance,
+            elevationGain: a.elevation_gain ?? 0,
             movingTime: a.moving_time,
             type: a.type,
             date: a.date,
@@ -357,6 +359,7 @@ export const useStore = create<AppState>()(
               id: number;
               name: string;
               distance: number;
+              total_elevation_gain?: number;
               moving_time: number;
               type: string;
               start_date: string;
@@ -368,6 +371,7 @@ export const useStore = create<AppState>()(
               stravaId: String(a.id),
               name: a.name,
               distance: a.distance,
+              elevationGain: a.total_elevation_gain ?? 0,
               movingTime: a.moving_time,
               type: a.type,
               date: a.start_date,

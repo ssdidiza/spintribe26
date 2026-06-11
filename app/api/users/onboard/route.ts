@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getSession, getEffectiveUserId } from "@/lib/session";
 import { UserRole } from "@/lib/types";
 import { founderDefaults, founderRepairTier, isFounderUserId } from "@/lib/founder";
+import { getLeagueByTier } from "@/lib/leagues";
 
 const VALID_ROLES = ["champion", "member"];
 const VALID_TIERS = [200, 400, 600, 800, 1000];
@@ -49,6 +50,12 @@ export async function PATCH(req: NextRequest) {
   const founder = founderDefaults();
   const roleForUpdate: UserRole = existingRole === "admin" || isFounder ? "admin" : role;
   const tierForUpdate = isFounder ? founderRepairTier(tier) : Number(tier);
+  const selectedLeague = getLeagueByTier(tierForUpdate);
+  const { data: selectedLeagueRow } = await db
+    .from("leagues")
+    .select("id")
+    .eq("name", selectedLeague.name)
+    .maybeSingle();
 
   // Champions and admins require a champ zone. Preserve the existing zone when
   // a returning admin accidentally lands on onboarding after logout/login.
@@ -73,6 +80,9 @@ export async function PATCH(req: NextRequest) {
     .update({
       role: roleForUpdate,
       tier: tierForUpdate,
+      current_league_id: selectedLeagueRow?.id ?? null,
+      current_league_name: selectedLeague.name,
+      current_league_threshold: selectedLeague.tier,
       zone: effectiveZone,
       onboarded: true,
       leaderboard_consent: leaderboardOptIn,
