@@ -124,7 +124,10 @@ export async function GET(req: NextRequest) {
   if (requestedMonth && requestedMonth !== currentMonth) {
     const { data, error } = await db
       .from("monthly_league_standings")
-      .select("user_strava_id,month_key,total_km,total_elevation,ride_count,active_days,longest_ride_km,rank_distance,rank_elevation,rank_consistency,rank_ride_count,rank_longest_ride,leagues(name,min_km,max_km),users(strava_id,name,avatar,role,tier,team_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams(name,slug))")
+      // teams must be disambiguated: users<->teams has two FK paths
+      // (users.team_id -> teams.id and teams.created_by -> users.strava_id).
+      // Without the hint PostgREST answers 300 and the whole query fails.
+      .select("user_strava_id,month_key,total_km,total_elevation,ride_count,active_days,longest_ride_km,rank_distance,rank_elevation,rank_consistency,rank_ride_count,rank_longest_ride,leagues(name,min_km,max_km),users(strava_id,name,avatar,role,tier,team_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams!users_team_id_fkey(name,slug))")
       .eq("month_key", requestedMonth);
 
     if (error) {
@@ -138,7 +141,7 @@ export async function GET(req: NextRequest) {
 
   const { data: users, error: usersError } = await db
     .from("users")
-    .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams(name,slug)")
+    .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams!users_team_id_fkey(name,slug)")
     .eq("onboarded", true)
     .eq("leaderboard_consent", true);
 

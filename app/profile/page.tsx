@@ -338,7 +338,7 @@ export default function ProfilePage() {
             onClick={() => updateConsent("leaderboard")}
             className="flex items-center justify-between w-full px-5 py-4 hover:bg-foreground/5 transition-colors border-b border-foreground/[0.06]"
           >
-            <span className="text-sm font-semibold text-foreground">Leaderboard sharing</span>
+            <span className="text-sm font-semibold text-foreground">Rankings sharing (league, team, zone)</span>
             <span className="text-xs font-bold text-accent-foreground">{currentUser.leaderboardConsent !== false ? "On" : "Off"}</span>
           </button>
           <button

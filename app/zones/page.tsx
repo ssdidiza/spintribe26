@@ -17,6 +17,8 @@ type ZoneSummary = {
   totalDistanceKm: number;
   totalElevation: number;
   rideCount: number;
+  gpsRides: number;
+  profileRides: number;
   activeRiders: number;
   participationRate: number;
   promotions: number;
@@ -25,6 +27,11 @@ type ZoneSummary = {
 type ZonesResponse = {
   monthKey: string;
   zones: ZoneSummary[];
+  unattributed?: {
+    rides: number;
+    totalDistanceKm: number;
+    riders: number;
+  };
 };
 
 export default function ZonesPage() {
@@ -76,7 +83,8 @@ export default function ZonesPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-foreground">First-class zone competition</p>
               <h2 className="mt-2 text-3xl font-black text-foreground">Local riding, visible progress</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Zones rank by synced GPS activity: distance, elevation, participation, and promotions.
+                Zones rank by synced rides — GPS-detected where available, otherwise credited to each
+                rider&apos;s profile zone.
               </p>
             </div>
             <MapPin className="mt-1 text-accent-foreground" size={24} />
@@ -94,6 +102,20 @@ export default function ZonesPage() {
         </section>
 
         {error && <p className="glass-card p-3 text-xs text-muted-foreground">{error}</p>}
+
+        {data?.unattributed && data.unattributed.rides > 0 && (
+          <section className="glass-card p-4" style={{ borderColor: "rgba(255,122,47,0.35)" }}>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-accent-foreground">
+              Zone not detected yet
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {data.unattributed.totalDistanceKm} km from {data.unattributed.riders}{" "}
+              rider{data.unattributed.riders === 1 ? "" : "s"} ({data.unattributed.rides}{" "}
+              ride{data.unattributed.rides === 1 ? "" : "s"}) isn&apos;t counted in any zone. Those riders can
+              pick a home zone in their profile, or ride with GPS for automatic detection.
+            </p>
+          </section>
+        )}
 
         {zones.length === 0 ? (
           <section className="glass-card p-8 text-center">
@@ -121,6 +143,14 @@ export default function ZonesPage() {
                   <ZoneMetric icon={<Route size={12} />} label="Rides" value={`${zone.rideCount}`} />
                   <ZoneMetric icon={<MapPin size={12} />} label="Promoted" value={`${zone.promotions}`} />
                 </div>
+
+                {zone.rideCount > 0 && (
+                  <p className="mt-2 text-[10px] text-muted-foreground/70">
+                    {zone.gpsRides > 0 && `${zone.gpsRides} GPS-detected ride${zone.gpsRides === 1 ? "" : "s"}`}
+                    {zone.gpsRides > 0 && zone.profileRides > 0 && " - "}
+                    {zone.profileRides > 0 && `${zone.profileRides} via rider profile zone`}
+                  </p>
+                )}
 
                 <div className="mt-4">
                   <div className="mb-1.5 flex items-center justify-between">

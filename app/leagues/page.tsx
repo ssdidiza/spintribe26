@@ -182,6 +182,7 @@ export default function LeaguesPage() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {LEAGUES.map((league) => {
             const active = activeLeague === league.tier;
+            const riderCount = leaderboard?.tiers[String(league.tier)]?.count ?? null;
             return (
               <button
                 key={league.tier}
@@ -195,6 +196,16 @@ export default function LeaguesPage() {
                 )}
               >
                 {league.name}
+                {riderCount !== null && (
+                  <span
+                    className={cn(
+                      "ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black",
+                      active ? "bg-[#ff4b35]/25 text-accent-foreground" : "bg-foreground/[0.08] text-muted-foreground"
+                    )}
+                  >
+                    {riderCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -242,9 +253,17 @@ export default function LeaguesPage() {
 
         {error && <p className="glass-card p-3 text-xs text-muted-foreground">{error}</p>}
 
-        {entries.length === 0 ? (
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[72px] rounded-2xl glass animate-pulse" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
           <section className="glass-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">No opted-in riders in this league yet.</p>
+            <p className="text-sm text-muted-foreground">
+              {error ? "Live league tables could not be loaded." : "No opted-in riders in this league yet."}
+            </p>
           </section>
         ) : (
           <div className="space-y-2">

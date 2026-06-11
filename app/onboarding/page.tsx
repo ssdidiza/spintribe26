@@ -363,10 +363,11 @@ function OnboardingContent() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-foreground/85 leading-snug">
-                  Share my progress on the SpinTribe leaderboard
+                  Show my progress in SpinTribe rankings
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-                  Others in my tier can see my monthly km and ranking. You can change this later from your profile.
+                  Other riders can see my name, monthly km and rank on the league, team and zone boards.
+                  You can change this later from your profile.
                 </p>
               </div>
             </button>

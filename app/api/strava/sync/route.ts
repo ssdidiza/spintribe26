@@ -76,7 +76,8 @@ async function fetchLeaderboardSnapshot(db: DbClient, date: Date) {
   const [usersResult, activitiesResult] = await Promise.all([
     db
       .from("users")
-      .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams(name,slug)")
+      // FK hint required: users<->teams has two relationships (team_id, created_by).
+      .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams!users_team_id_fkey(name,slug)")
       .eq("onboarded", true)
       .eq("leaderboard_consent", true),
     db
