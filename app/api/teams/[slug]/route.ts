@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest, ctx: Context) {
       .select("strava_id,name,avatar,role,tier,current_league_name,current_league_threshold,zone")
       .eq("team_id", team.id)
       .eq("onboarded", true)
+      .eq("leaderboard_consent", true)
       .order("name", { ascending: true }),
     db
       .from("activities")

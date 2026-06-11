@@ -34,7 +34,8 @@ export async function GET() {
       .lt("date", rangeEnd),
     db
       .from("users")
-      .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams(name,slug)")
+      // FK hint required: users<->teams has two relationships (team_id, created_by).
+      .select("strava_id,name,avatar,role,tier,team_id,current_league_id,current_league_name,current_league_threshold,zone,country,onboarded,leaderboard_consent,teams!users_team_id_fkey(name,slug)")
       .eq("onboarded", true)
       .eq("leaderboard_consent", true),
     db
@@ -44,7 +45,9 @@ export async function GET() {
       .lt("date", rangeEnd),
     db
       .from("league_memberships")
-      .select("month_key,assigned_km,assigned_league_name,assigned_league_threshold,leagues(name,min_km,max_km)")
+      // FK hint required: league_memberships has three FKs to leagues
+      // (league_id, promoted_from_league_id, relegated_from_league_id).
+      .select("month_key,assigned_km,assigned_league_name,assigned_league_threshold,leagues!league_memberships_league_id_fkey(name,min_km,max_km)")
       .eq("user_strava_id", userId)
       .order("month_key", { ascending: true })
       .limit(12),

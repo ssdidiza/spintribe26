@@ -80,7 +80,17 @@ function rankWithinLeague(
   }
 }
 
+// Vercel cron jobs invoke their endpoint with GET (Authorization: Bearer CRON_SECRET).
+// Manual/admin invocations may use POST with the same secret.
+export async function GET(req: NextRequest) {
+  return runMonthlyAssignment(req);
+}
+
 export async function POST(req: NextRequest) {
+  return runMonthlyAssignment(req);
+}
+
+async function runMonthlyAssignment(req: NextRequest) {
   if (!verifyCronSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -3,8 +3,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
-import { getMonthlyKm, buildLeaderboard } from "@/lib/mock-data";
-import { LeaderboardApiResponse, TIER_LABELS } from "@/lib/types";
+import { getMonthlyKm } from "@/lib/mock-data";
+import { LeaderboardApiResponse } from "@/lib/types";
 import { canRequestTierUpgrade, getMonthlyActivityInsights, getNextTier } from "@/lib/challenge";
 import { formatLeagueRange, getLeagueByTier, getLeagueProgress, type LeagueDefinition } from "@/lib/leagues";
 import NavBar from "@/components/NavBar";
@@ -45,6 +45,7 @@ type LeagueApiSummary = {
 };
 
 type TeamsApiSummary = {
+  currentUserTeamId: string | null;
   teams: {
     id: string;
     name: string;
@@ -55,6 +56,11 @@ type TeamsApiSummary = {
     activeRiders: number;
     isCurrentUserTeam: boolean;
   }[];
+  unassigned?: {
+    count: number;
+    totalDistanceKm: number;
+    activeRiders: number;
+  };
 };
 
 type ZonesApiSummary = {
@@ -79,7 +85,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const {
-    currentUser, isOnboarded, activities, users,
+    currentUser, isOnboarded, activities,
     syncStravaActivities, hydrateChampionSessions, hydrateAthleteData, hydrateActivities,
   } = useStore();
   const [syncing, setSyncing] = useState(false);
@@ -89,6 +95,8 @@ export default function DashboardPage() {
   const [leagueSummary, setLeagueSummary] = useState<LeagueApiSummary | null>(null);
   const [teamsSummary, setTeamsSummary] = useState<TeamsApiSummary | null>(null);
   const [zonesSummary, setZonesSummary] = useState<ZonesApiSummary | null>(null);
+  const [rankingsStatus, setRankingsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [communityRefreshNonce, setCommunityRefreshNonce] = useState(0);
   const currentUserId = currentUser?.id;
 
   const handleSync = useCallback(async () => {
@@ -115,28 +123,38 @@ export default function DashboardPage() {
     if (!hydrated || !currentUserId || !isOnboarded) return;
     const controller = new AbortController();
 
-    async function loadLeaderboard() {
+    async function fetchJson<T>(url: string): Promise<T | null> {
       try {
-        const [leaderboardRes, leaguesRes, teamsRes, zonesRes] = await Promise.all([
-          fetch("/api/leaderboard", { signal: controller.signal }),
-          fetch("/api/leagues", { signal: controller.signal }),
-          fetch("/api/teams", { signal: controller.signal }),
-          fetch("/api/zones", { signal: controller.signal }),
-        ]);
-        if (leaderboardRes.ok) setLiveLeaderboard(await leaderboardRes.json() as LeaderboardApiResponse);
-        if (leaguesRes.ok) setLeagueSummary(await leaguesRes.json() as LeagueApiSummary);
-        if (teamsRes.ok) setTeamsSummary(await teamsRes.json() as TeamsApiSummary);
-        if (zonesRes.ok) setZonesSummary(await zonesRes.json() as ZonesApiSummary);
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) return null;
+        return await res.json() as T;
       } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setLiveLeaderboard(null);
-        }
+        if ((error as Error).name === "AbortError") throw error;
+        return null;
       }
     }
 
-    void loadLeaderboard();
+    async function loadCommunityData() {
+      try {
+        const [leaderboardJson, leaguesJson, teamsJson, zonesJson] = await Promise.all([
+          fetchJson<LeaderboardApiResponse>("/api/leaderboard"),
+          fetchJson<LeagueApiSummary>("/api/leagues"),
+          fetchJson<TeamsApiSummary>("/api/teams"),
+          fetchJson<ZonesApiSummary>("/api/zones"),
+        ]);
+        setLiveLeaderboard(leaderboardJson);
+        setLeagueSummary(leaguesJson);
+        if (teamsJson) setTeamsSummary(teamsJson);
+        if (zonesJson) setZonesSummary(zonesJson);
+        setRankingsStatus(leaderboardJson ? "ready" : "error");
+      } catch {
+        // Aborted (navigation/unmount) — leave state as-is.
+      }
+    }
+
+    void loadCommunityData();
     return () => controller.abort();
-  }, [hydrated, currentUserId, isOnboarded]);
+  }, [hydrated, currentUserId, isOnboarded, communityRefreshNonce]);
 
   const userActivities = useMemo(
     () => activities
@@ -163,21 +181,19 @@ export default function DashboardPage() {
     [currentUser, activities]
   );
 
-  // Only include users who have consented to leaderboard sharing
-  const consentedUsers = useMemo(
-    () => users.filter((u) => u.isConnected && u.leaderboardConsent !== false),
-    [users]
-  );
-
-  const localLeaderboardEntries = useMemo(
-    () => currentUser ? buildLeaderboard(currentUser.tier, consentedUsers, activities) : [],
-    [currentUser, consentedUsers, activities]
-  );
-  const currentTier = currentUser?.tier;
+  // The league a rider competes in is owned by the server (Supabase
+  // current_league_threshold via /api/leagues). The locally persisted tier is
+  // only a fallback while that request is in flight — it can be stale, and
+  // keying rankings off it previously made riders look alone in their league.
+  const effectiveLeagueTier =
+    leagueSummary?.current.league.tier ??
+    currentUser?.currentLeagueThreshold ??
+    currentUser?.tier ??
+    null;
   const leaderboardEntries = useMemo(() => {
-    if (!currentTier) return [];
-    return liveLeaderboard?.tiers[String(currentTier)]?.entries ?? localLeaderboardEntries;
-  }, [currentTier, liveLeaderboard, localLeaderboardEntries]);
+    if (!effectiveLeagueTier) return [];
+    return liveLeaderboard?.tiers[String(effectiveLeagueTier)]?.entries ?? [];
+  }, [effectiveLeagueTier, liveLeaderboard]);
   const currentRankEntry = useMemo(
     () => leaderboardEntries.find((e) => e.user.id === currentUserId),
     [leaderboardEntries, currentUserId]
@@ -198,7 +214,7 @@ export default function DashboardPage() {
   const lastSyncedRide = monthlyInsights?.lastSyncedRide;
   const ftp = currentUser.ftp;
   const now = new Date();
-  const leagueTier = currentUser.currentLeagueThreshold ?? currentUser.tier;
+  const leagueTier = effectiveLeagueTier ?? currentUser.tier;
   const fallbackLeague = getLeagueByTier(leagueTier);
   const fallbackLeagueProgress = getLeagueProgress(monthlyKm, leagueTier);
   const heroLeague = leagueSummary?.current.league ?? fallbackLeague;
@@ -237,7 +253,7 @@ export default function DashboardPage() {
   };
   const statusCfg  = STATUS_CONFIG[progressStatus];
   const StatusIcon = statusCfg.Icon;
-  const leaderboardScope = `${monthLabel} Strava distance - ${TIER_LABELS[currentUser.tier]} ${currentUser.tier} km tier - opted-in riders`;
+  const leaderboardScope = `${monthLabel} Strava distance - ${heroLeague.name} - opted-in riders`;
   const upgradeOffer = canRequestTierUpgrade(currentUser, activities, now);
   const pinnaclePush = !getNextTier(currentUser.tier) && pct >= 100;
 
@@ -369,61 +385,92 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ── Team Pulse — horizontal leaderboard strip ─────────────────── */}
-        {leaderboardEntries.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
-                {heroLeague.name} Rankings
-              </p>
-              <a href="/leagues" className="flex items-center gap-0.5 text-[10px] font-semibold text-accent-foreground/70 hover:text-accent-foreground transition-colors">
-                See all <ChevronRight size={12} />
-              </a>
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
-              {leaderboardEntries.slice(0, 6).map((entry, i) => {
-                const isMe = entry.user.id === currentUser.id;
-                return (
-                  <div
-                    key={entry.user.id}
-                    className="flex-shrink-0 rounded-2xl p-3 flex flex-col items-center gap-2"
-                    style={{
-                      width: 88,
-                      background: isMe
-                        ? "linear-gradient(160deg, rgba(255,75,53,0.18), rgba(255,75,53,0.06))"
-                        : "var(--fill-soft)",
-                      border: `1px solid ${isMe ? "rgba(255,75,53,0.4)" : "var(--border)"}`,
-                    }}
-                  >
-                    <span className="text-base leading-none">{MEDALS[i] ?? `#${entry.rank}`}</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={entry.user.avatar}
-                      alt={entry.user.name}
-                      className="w-9 h-9 rounded-full object-cover"
-                      style={isMe ? { border: "2px solid #ff4b35" } : {}}
-                    />
-                    <p className="text-[10px] font-bold text-foreground truncate w-full text-center">
-                      {entry.user.name.split(" ")[0]}
-                    </p>
-                    <div className="w-full h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${entry.progressPct}%`, background: isMe ? "#ff4b35" : "var(--muted-foreground)" }} />
-                    </div>
-                    <p className="text-[9px] font-semibold" style={{ color: isMe ? "var(--accent-foreground)" : "var(--muted-foreground)" }}>
-                      {entry.totalKm} km
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/60 leading-snug">
-              Ranked by {leaderboardScope}. Not champing, FTP, average pace, or moving time.
+        {/* ── League rankings strip (live Supabase data only) ───────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
+              {heroLeague.name} Rankings
             </p>
+            <a href="/leagues" className="flex items-center gap-0.5 text-[10px] font-semibold text-accent-foreground/70 hover:text-accent-foreground transition-colors">
+              See all <ChevronRight size={12} />
+            </a>
           </div>
-        )}
+          {rankingsStatus === "loading" && leaderboardEntries.length === 0 ? (
+            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 flex-shrink-0 rounded-2xl glass animate-pulse" style={{ width: 88 }} />
+              ))}
+            </div>
+          ) : rankingsStatus === "error" && leaderboardEntries.length === 0 ? (
+            <div className="glass-card p-4">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Live rankings are temporarily unavailable, so we won&apos;t guess who is around you.
+                Your rides are safe.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRankingsStatus("loading");
+                  setCommunityRefreshNonce((nonce) => nonce + 1);
+                }}
+                className="mt-2 text-[11px] font-bold text-accent-foreground underline underline-offset-2"
+              >
+                Retry
+              </button>
+            </div>
+          ) : leaderboardEntries.length === 0 ? (
+            <div className="glass-card p-4">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                No opted-in riders in the {heroLeague.name} yet this month.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+                {leaderboardEntries.slice(0, 6).map((entry, i) => {
+                  const isMe = entry.user.id === currentUser.id;
+                  return (
+                    <div
+                      key={entry.user.id}
+                      className="flex-shrink-0 rounded-2xl p-3 flex flex-col items-center gap-2"
+                      style={{
+                        width: 88,
+                        background: isMe
+                          ? "linear-gradient(160deg, rgba(255,75,53,0.18), rgba(255,75,53,0.06))"
+                          : "var(--fill-soft)",
+                        border: `1px solid ${isMe ? "rgba(255,75,53,0.4)" : "var(--border)"}`,
+                      }}
+                    >
+                      <span className="text-base leading-none">{MEDALS[i] ?? `#${entry.rank}`}</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={entry.user.avatar}
+                        alt={entry.user.name}
+                        className="w-9 h-9 rounded-full object-cover"
+                        style={isMe ? { border: "2px solid #ff4b35" } : {}}
+                      />
+                      <p className="text-[10px] font-bold text-foreground truncate w-full text-center">
+                        {entry.user.name.split(" ")[0]}
+                      </p>
+                      <div className="w-full h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${entry.progressPct}%`, background: isMe ? "#ff4b35" : "var(--muted-foreground)" }} />
+                      </div>
+                      <p className="text-[9px] font-semibold" style={{ color: isMe ? "var(--accent-foreground)" : "var(--muted-foreground)" }}>
+                        {entry.totalKm} km
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground/60 leading-snug">
+                Ranked by {leaderboardScope}. Not champing, FTP, average pace, or moving time.
+              </p>
+            </>
+          )}
+        </div>
 
-        {(topTeams.length > 0 || topZones.length > 0) && (
+        {(teamsSummary || zonesSummary) && (
           <div className="grid gap-3 md:grid-cols-2">
             <SummaryRankingCard
               title="Team Rankings"
@@ -435,7 +482,20 @@ export default function DashboardPage() {
                 meta: `${team.ridersPromoted} promoted - ${team.activeRiders} active`,
                 value: `${team.averageLeagueLevel || "-"} avg`,
               }))}
-              empty="Join or create a team to unlock team development rankings."
+              footer={
+                teamsSummary?.unassigned && teamsSummary.unassigned.count > 0
+                  ? {
+                      name: teamsSummary.currentUserTeamId ? "Unassigned Riders" : "Unassigned Riders (you)",
+                      meta: `${teamsSummary.unassigned.count} rider${teamsSummary.unassigned.count === 1 ? "" : "s"} without a team`,
+                      value: `${teamsSummary.unassigned.totalDistanceKm} km`,
+                    }
+                  : undefined
+              }
+              empty={
+                teamsSummary && !teamsSummary.currentUserTeamId
+                  ? "You're riding unassigned. Join a team or create your own to unlock team rankings."
+                  : "Join or create a team to unlock team development rankings."
+              }
             />
             <SummaryRankingCard
               title="Zone Rankings"
@@ -447,7 +507,7 @@ export default function DashboardPage() {
                 meta: `${zone.region} - ${zone.participationRate}% participation`,
                 value: `${zone.totalDistanceKm} km`,
               }))}
-              empty="Zone rankings appear as riders sync GPS-tagged rides."
+              empty="Zone rankings build from GPS-detected rides and riders' profile zones. Set your zone in your profile to count for your area."
             />
           </div>
         )}
@@ -732,12 +792,14 @@ function SummaryRankingCard({
   icon,
   href,
   rows,
+  footer,
   empty,
 }: {
   title: string;
   icon: React.ReactNode;
   href: string;
   rows: { key: string; name: string; meta: string; value: string }[];
+  footer?: { name: string; meta: string; value: string };
   empty: string;
 }) {
   return (
@@ -753,7 +815,7 @@ function SummaryRankingCard({
           View
         </a>
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 || footer ? (
         <div className="space-y-2">
           {rows.map((row, index) => (
             <div key={row.key} className="grid grid-cols-[1.75rem_1fr_auto] items-center gap-2 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-2.5">
@@ -765,6 +827,16 @@ function SummaryRankingCard({
               <p className="text-xs font-black text-accent-foreground">{row.value}</p>
             </div>
           ))}
+          {footer && (
+            <div className="grid grid-cols-[1.75rem_1fr_auto] items-center gap-2 rounded-xl border border-dashed border-foreground/[0.12] bg-foreground/[0.02] p-2.5">
+              <p className="text-xs font-black text-muted-foreground/60">-</p>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-black text-foreground/80">{footer.name}</p>
+                <p className="truncate text-[9px] text-muted-foreground/70">{footer.meta}</p>
+              </div>
+              <p className="text-xs font-black text-muted-foreground">{footer.value}</p>
+            </div>
+          )}
         </div>
       ) : (
         <p className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-xs leading-relaxed text-muted-foreground">

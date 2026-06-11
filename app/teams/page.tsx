@@ -24,10 +24,25 @@ type TeamSummary = {
   isCurrentUserTeam: boolean;
 };
 
+type UnassignedRider = {
+  id: string;
+  name: string;
+  avatar: string | null;
+  leagueLevel: number;
+  monthlyKm: number;
+};
+
 type TeamsResponse = {
   monthKey: string;
   currentUserTeamId: string | null;
   teams: TeamSummary[];
+  unassigned?: {
+    count: number;
+    totalDistanceKm: number;
+    totalElevation: number;
+    activeRiders: number;
+    riders: UnassignedRider[];
+  };
 };
 
 export default function TeamsPage() {
@@ -147,6 +162,21 @@ export default function TeamsPage() {
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </section>
 
+        {data && !data.currentUserTeamId && (
+          <section
+            className="glass-card p-4"
+            style={{ borderColor: "rgba(255,75,53,0.4)", background: "rgba(255,75,53,0.06)" }}
+          >
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-accent-foreground">
+              You&apos;re riding unassigned
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Your kilometres count in your league, but not toward any team yet. Join a team below
+              or create your own to start building team rankings.
+            </p>
+          </section>
+        )}
+
         {teams.length === 0 ? (
           <section className="glass-card p-8 text-center">
             <Users className="mx-auto text-muted-foreground" size={24} />
@@ -199,6 +229,58 @@ export default function TeamsPage() {
               </section>
             ))}
           </div>
+        )}
+
+        {data?.unassigned && data.unassigned.count > 0 && (
+          <section className="glass-card p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                  Unassigned Riders
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Opted-in riders without a team. They rank in their leagues — recruit them.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black text-foreground">{data.unassigned.count}</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">riders</p>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {data.unassigned.riders.map((rider) => {
+                const isMe = rider.id === currentUser.id;
+                return (
+                  <div
+                    key={rider.id}
+                    className="grid grid-cols-[2.25rem_1fr_auto] items-center gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-2.5"
+                    style={isMe ? { borderColor: "rgba(255,75,53,0.4)" } : undefined}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={rider.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rider.name)}`}
+                      alt={rider.name}
+                      className="h-9 w-9 rounded-full object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-black text-foreground">
+                        {rider.name}
+                        {isMe && <span className="ml-1.5 rounded-full bg-[#ff4b35]/15 px-1.5 py-0.5 text-[9px] font-black text-accent-foreground">YOU</span>}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground/70">{rider.leagueLevel} Club</p>
+                    </div>
+                    <p className="text-xs font-black text-accent-foreground">{rider.monthlyKm} km</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <TeamMetric label="Group km" value={String(data.unassigned.totalDistanceKm)} />
+              <TeamMetric label="Active" value={String(data.unassigned.activeRiders)} />
+            </div>
+          </section>
         )}
       </main>
       <NavBar />
