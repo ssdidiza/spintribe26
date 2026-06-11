@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
             user_strava_id: String(tokens.athleteId),
             name: a.name,
             distance: a.distance,
+            elevation_gain: a.total_elevation_gain ?? 0,
             moving_time: a.moving_time,
             type: a.type,
             date: a.start_date,
@@ -104,7 +105,7 @@ export async function GET(req: NextRequest) {
 
     let { data: existingUser } = await db
       .from("users")
-      .select("onboarded, role, tier, zone, leaderboard_consent, rewards_export_consent")
+      .select("onboarded, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, leaderboard_consent, rewards_export_consent")
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
 
@@ -122,7 +123,7 @@ export async function GET(req: NextRequest) {
         .from("users")
         .update(repair)
         .eq("strava_id", String(tokens.athleteId))
-        .select("onboarded, role, tier, zone, leaderboard_consent, rewards_export_consent")
+        .select("onboarded, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, leaderboard_consent, rewards_export_consent")
         .maybeSingle();
 
       if (repairError) {
@@ -149,6 +150,10 @@ export async function GET(req: NextRequest) {
       redirectUrl.searchParams.set("avatar", tokens.athleteProfile);
       if (existingUser.role) redirectUrl.searchParams.set("role", existingUser.role);
       if (existingUser.tier) redirectUrl.searchParams.set("tier", String(existingUser.tier));
+      if (existingUser.team_id) redirectUrl.searchParams.set("team_id", String(existingUser.team_id));
+      if (existingUser.current_league_id) redirectUrl.searchParams.set("current_league_id", String(existingUser.current_league_id));
+      if (existingUser.current_league_name) redirectUrl.searchParams.set("current_league_name", String(existingUser.current_league_name));
+      if (existingUser.current_league_threshold) redirectUrl.searchParams.set("current_league_threshold", String(existingUser.current_league_threshold));
       if (existingUser.zone) redirectUrl.searchParams.set("zone", existingUser.zone);
       redirectUrl.searchParams.set("leaderboard_consent", existingUser.leaderboard_consent ? "1" : "0");
       redirectUrl.searchParams.set("rewards_export_consent", existingUser.rewards_export_consent ? "1" : "0");

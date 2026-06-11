@@ -46,6 +46,10 @@ function OnboardingContent() {
     const roleParam = searchParams.get("role") as UserRole | null;
     const parsedTier = Number(searchParams.get("tier")) as Tier;
     const zoneParam = searchParams.get("zone") ?? undefined;
+    const teamIdParam = searchParams.get("team_id") ?? undefined;
+    const currentLeagueIdParam = searchParams.get("current_league_id") ?? undefined;
+    const currentLeagueNameParam = searchParams.get("current_league_name") ?? undefined;
+    const parsedCurrentLeagueThreshold = Number(searchParams.get("current_league_threshold"));
     const consentParam = searchParams.get("leaderboard_consent") === "1";
     const rewardsConsentParam = searchParams.get("rewards_export_consent") === "1";
     const restoredRole = roleParam && RESTORABLE_ROLES.includes(roleParam) ? roleParam : "member";
@@ -57,6 +61,12 @@ function OnboardingContent() {
       login(stravaId, name, avatar ?? "", {
         role: restoredRole,
         tier: restoredTier,
+        teamId: teamIdParam,
+        currentLeagueId: currentLeagueIdParam,
+        currentLeagueName: currentLeagueNameParam,
+        currentLeagueThreshold: VALID_TIERS.includes(parsedCurrentLeagueThreshold as Tier)
+          ? parsedCurrentLeagueThreshold
+          : restoredTier,
         zone: zoneParam,
         region: zoneParam,
         onboarded: true,

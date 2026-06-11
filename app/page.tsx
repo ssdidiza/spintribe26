@@ -119,13 +119,17 @@ export default function LandingPage() {
           });
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
+            .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
             login(data.user.id, row.name || displayName, "", {
               role: row.role,
               tier: row.tier,
+              teamId: row.team_id ?? undefined,
+              currentLeagueId: row.current_league_id ?? undefined,
+              currentLeagueName: row.current_league_name ?? undefined,
+              currentLeagueThreshold: row.current_league_threshold ?? undefined,
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,
@@ -153,13 +157,17 @@ export default function LandingPage() {
           });
           const { data: row } = await supabase
             .from("users")
-            .select("name, role, tier, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
+            .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
             .eq("strava_id", data.user.id)
             .maybeSingle();
           if (row?.onboarded) {
             login(data.user.id, row.name || displayName, "", {
               role: row.role,
               tier: row.tier,
+              teamId: row.team_id ?? undefined,
+              currentLeagueId: row.current_league_id ?? undefined,
+              currentLeagueName: row.current_league_name ?? undefined,
+              currentLeagueThreshold: row.current_league_threshold ?? undefined,
               zone: row.zone,
               region: row.zone,
               onboarded: row.onboarded,

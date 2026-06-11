@@ -15,7 +15,7 @@ const sessionPassword =
   process.env.SESSION_SECRET ??
   (process.env.NODE_ENV === "production" ? undefined : "dev-session-secret-for-local-routes-only-32");
 
-const sessionOptions = {
+export const sessionOptions = {
   cookieName: "spintribe_session",
   password: sessionPassword!, // min 32 chars; required in production env
   cookieOptions: {

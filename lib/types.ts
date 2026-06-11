@@ -22,6 +22,12 @@ export interface User {
   ftp?: number;        // Functional Threshold Power (watts) from Strava
   ftpCachedAt?: string;
   country?: string;
+  teamId?: string;
+  teamName?: string;
+  teamSlug?: string;
+  currentLeagueId?: string;
+  currentLeagueName?: string;
+  currentLeagueThreshold?: number;
 }
 
 export interface AppNotification {
@@ -91,6 +97,7 @@ export interface Activity {
   stravaId: string;
   name: string;
   distance: number; // metres
+  elevationGain?: number; // metres
   movingTime: number; // seconds
   type: string;
   date: string; // ISO
@@ -128,12 +135,18 @@ export interface ChampionSession {
 export interface LeaderboardEntry {
   user: User;
   totalKm: number;
-  targetKm: Tier;
+  totalElevation?: number;
+  targetKm: number;
+  promotionTargetKm?: number;
+  leagueName?: string;
   progressPct: number;
   rank: number;
   activityCount?: number;
   rideDays?: number;
   consistencyRank?: number;
+  rankElevation?: number;
+  rankRideCount?: number;
+  rankLongestRide?: number;
   longestRideKm?: number;
   averageRideKm?: number;
   lastRideAt?: string;

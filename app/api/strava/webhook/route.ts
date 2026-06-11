@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getStravaActivityById } from "@/lib/strava";
+import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
+import { detectZoneFromGPS } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -40,6 +43,32 @@ export async function POST(req: NextRequest) {
       .delete()
       .eq("user_strava_id", athleteId)
       .eq("strava_id", String(event.object_id));
+  } else if (event.aspect_type === "create" || event.aspect_type === "update") {
+    const accessToken = await getFreshStravaAccessToken(Number(event.owner_id));
+    if (accessToken) {
+      try {
+        const activity = await getStravaActivityById(accessToken, event.object_id);
+        const lat = activity.start_latlng?.[0];
+        const lng = activity.start_latlng?.[1];
+        await db.from("activities").upsert(
+          {
+            strava_id: String(activity.id),
+            user_strava_id: athleteId,
+            name: activity.name,
+            distance: activity.distance,
+            elevation_gain: activity.total_elevation_gain ?? 0,
+            moving_time: activity.moving_time,
+            type: activity.type,
+            date: activity.start_date,
+            kudos: activity.kudos_count,
+            detected_zone_id: detectZoneFromGPS(lat, lng),
+          },
+          { onConflict: "strava_id" }
+        );
+      } catch (error) {
+        console.warn("Strava webhook activity sync failed:", error);
+      }
+    }
   }
 
   await db

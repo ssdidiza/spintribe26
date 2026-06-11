@@ -33,6 +33,7 @@ export interface StravaActivity {
   id: number;
   name: string;
   distance: number; // metres
+  total_elevation_gain?: number; // metres
   moving_time: number; // seconds
   type: string;
   start_date: string; // ISO
@@ -173,6 +174,16 @@ export async function getStravaActivitiesForMonth(
   return activities.filter((a) =>
     ["Ride", "VirtualRide", "EBikeRide", "Velomobile"].includes(a.type)
   );
+}
+
+export async function getStravaActivityById(
+  accessToken: string,
+  activityId: string | number
+): Promise<StravaActivity> {
+  const res = await fetch(`${STRAVA_BASE}/activities/${activityId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return parseStravaResponse<StravaActivity>(res);
 }
 
 export async function deauthorizeStrava(accessToken: string): Promise<void> {
