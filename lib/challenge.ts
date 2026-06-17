@@ -124,18 +124,5 @@ export function getRewardStats(user: User, activities: Activity[], date = new Da
   };
 }
 
-export function canRequestTierUpgrade(user: User, activities: Activity[], date = new Date()) {
-  const nextTier = getNextTier(user.tier);
-  if (!nextTier) return null;
-
-  const monthlyKm = getMonthlyKmForUser(user.id, activities, date);
-  if (monthlyKm < user.tier) return null;
-
-  return {
-    currentTier: user.tier,
-    requestedTier: nextTier,
-    monthlyKm,
-    monthKey: getMonthKey(date),
-    effectiveOn: getNextMonthStart(date),
-  };
-}
+// Manual tier-upgrade requests were removed in the league-only model: promotion
+// is server-authoritative (fast-track in-month + month-end cron), never requested.

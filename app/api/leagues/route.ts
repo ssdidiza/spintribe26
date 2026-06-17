@@ -20,6 +20,7 @@ export async function GET() {
     usersResult,
     allActivitiesResult,
     membershipsResult,
+    promotionEventsResult,
   ] = await Promise.all([
     db
       .from("users")
@@ -47,10 +48,15 @@ export async function GET() {
       .from("league_memberships")
       // FK hint required: league_memberships has three FKs to leagues
       // (league_id, promoted_from_league_id, relegated_from_league_id).
-      .select("month_key,assigned_km,assigned_league_name,assigned_league_threshold,leagues!league_memberships_league_id_fkey(name,min_km,max_km)")
+      .select("month_key,assigned_km,assigned_league_name,assigned_league_threshold,promoted_from_league_id,relegated_from_league_id,leagues!league_memberships_league_id_fkey(name,min_km,max_km)")
       .eq("user_strava_id", userId)
       .order("month_key", { ascending: true })
       .limit(12),
+    db
+      .from("league_promotion_events")
+      .select("month_key,from_league_name,to_league_name,to_league_threshold,kind,km_at_promotion,created_at")
+      .eq("user_strava_id", userId)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (userResult.error) return NextResponse.json({ error: userResult.error.message }, { status: 500 });
@@ -58,6 +64,9 @@ export async function GET() {
   if (usersResult.error) return NextResponse.json({ error: usersResult.error.message }, { status: 500 });
   if (allActivitiesResult.error) return NextResponse.json({ error: allActivitiesResult.error.message }, { status: 500 });
   if (membershipsResult.error) return NextResponse.json({ error: membershipsResult.error.message }, { status: 500 });
+  // Soft-fail: if league_promotion_events isn't migrated yet, degrade to an
+  // empty promotion journey instead of 500-ing the whole league surface.
+  const promotionEventRows = promotionEventsResult.error ? [] : (promotionEventsResult.data ?? []);
 
   const monthlyKm = Math.round(
     (activitiesResult.data ?? [])
@@ -76,6 +85,26 @@ export async function GET() {
   const leaderboard = buildLeaderboardResponse(usersResult.data ?? [], allActivitiesResult.data ?? [], now);
   const currentEntry = findLeaderboardEntry(leaderboard.tiers, userId);
 
+  // Promotion journey (fast-track in-month + month-end), grouped by month, for
+  // the Profile "League Journey" and the fast-track badge in League Status.
+  const currentMonth = getMonthKey(now);
+  const promotionsByMonth = new Map<
+    string,
+    { toName: string; toThreshold: number; fromName: string | null; kind: string }[]
+  >();
+  for (const event of promotionEventRows) {
+    const list = promotionsByMonth.get(event.month_key) ?? [];
+    list.push({
+      toName: event.to_league_name,
+      toThreshold: Number(event.to_league_threshold),
+      fromName: event.from_league_name ?? null,
+      kind: event.kind,
+    });
+    promotionsByMonth.set(event.month_key, list);
+  }
+  const currentMonthPromotions = promotionsByMonth.get(currentMonth) ?? [];
+  const fastTrackedThisMonth = currentMonthPromotions.some((p) => p.kind === "fast_track");
+
   return NextResponse.json({
     monthKey: getMonthKey(now),
     leagues: LEAGUES,
@@ -87,10 +116,13 @@ export async function GET() {
         ...currentLeague,
         name: userResult.data?.current_league_name ?? currentLeague.name,
       },
+      leagueMinKm: currentLeague.minKm,
       nextLeague: progress.nextLeague,
       promotionTargetKm: progress.promotionTargetKm,
       remainingKm: progress.remainingKm,
       progressPct: progress.progressPct,
+      fastTrackedThisMonth,
+      promotions: currentMonthPromotions,
       rankDistance: currentEntry?.rank ?? null,
       rankElevation: currentEntry?.rankElevation ?? null,
       rankConsistency: currentEntry?.consistencyRank ?? null,
@@ -103,6 +135,9 @@ export async function GET() {
       assignedKm: row.assigned_km,
       leagueName: row.assigned_league_name,
       leagueThreshold: row.assigned_league_threshold,
+      promoted: !!row.promoted_from_league_id,
+      relegated: !!row.relegated_from_league_id,
+      promotions: promotionsByMonth.get(row.month_key) ?? [],
     })),
   });
 }

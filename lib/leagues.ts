@@ -47,7 +47,7 @@ export const LEAGUES: LeagueDefinition[] = [
     minKm: 800,
     maxKm: 1199,
     accent: "#ff7a2f",
-    description: "Advanced riders carrying serious monthly volume.",
+    description: "Serious riders carrying big monthly volume.",
   },
   {
     tier: 1000,

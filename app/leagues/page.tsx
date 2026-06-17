@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
+import LeagueStatus from "@/components/LeagueStatus";
 import { SperaIcon } from "@/components/SperaLogo";
 import { useHydrated } from "@/lib/useHydrated";
 import { useStore } from "@/lib/store";
@@ -16,7 +17,7 @@ import {
   type LeaderboardMetric,
 } from "@/lib/leagues";
 import { cn } from "@/lib/utils";
-import { BarChart3, CalendarDays, Mountain, Route, Trophy } from "lucide-react";
+import { BarChart3, CalendarDays, Mountain, Route, Trophy, User } from "lucide-react";
 
 type LeagueApiResponse = {
   current: {
@@ -30,6 +31,7 @@ type LeagueApiResponse = {
     rankDistance: number | null;
     rankElevation: number | null;
     rankConsistency: number | null;
+    fastTrackedThisMonth: boolean;
   };
   history: {
     monthKey: string;
@@ -129,37 +131,18 @@ export default function LeaguesPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-4">
-        <section className="glass-card p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-foreground">Your league</p>
-              <h2 className="mt-2 text-3xl font-black text-foreground">{leagueData?.current.league.name ?? `${currentUser.tier} Club`}</h2>
-              <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {leagueData?.current.nextLeague
-                  ? `${leagueData.current.remainingKm} km to ${leagueData.current.nextLeague.name}`
-                  : "Top league standing"}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-3xl font-black text-accent-foreground">{leagueData?.current.progressPct ?? 0}%</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">progress</p>
-            </div>
-          </div>
-          <div className="mt-5 h-2.5 rounded-full bg-foreground/[0.08] p-0.5">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${leagueData?.current.progressPct ?? 0}%`,
-                background: "linear-gradient(90deg,#ff7a2f,#ff4b35,#e0007a)",
-              }}
-            />
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <HeroMetric label="Distance Rank" value={leagueData?.current.rankDistance ? `#${leagueData.current.rankDistance}` : "-"} />
-            <HeroMetric label="Elevation Rank" value={leagueData?.current.rankElevation ? `#${leagueData.current.rankElevation}` : "-"} />
-            <HeroMetric label="Active Days" value={leagueData?.current.rankConsistency ? `#${leagueData.current.rankConsistency}` : "-"} />
-          </div>
-        </section>
+        <LeagueStatus
+          leagueName={leagueData?.current.league.name ?? `${currentUser.tier} Club`}
+          monthlyKm={leagueData?.current.monthlyKm ?? 0}
+          promotionTargetKm={leagueData?.current.promotionTargetKm ?? currentUser.tier}
+          remainingKm={leagueData?.current.remainingKm ?? 0}
+          progressPct={leagueData?.current.progressPct ?? 0}
+          nextLeagueName={leagueData?.current.nextLeague?.name ?? null}
+          leagueMinKm={leagueData?.current.league.minKm ?? 0}
+          fastTracked={leagueData?.current.fastTrackedThisMonth}
+          rank={leagueData?.current.rankDistance ?? null}
+          variant="card"
+        />
 
         {leagueData?.history && leagueData.history.length > 0 && (
           <section className="glass-card p-4">
@@ -278,8 +261,14 @@ export default function LeaguesPage() {
                 >
                   <div className="grid grid-cols-[2rem_2.5rem_1fr_auto] items-center gap-3">
                     <p className="text-sm font-black text-muted-foreground">#{rank}</p>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={entry.user.avatar} alt={entry.user.name} className="h-10 w-10 rounded-full object-cover" />
+                    {entry.user.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={entry.user.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground/[0.06] text-muted-foreground">
+                        <User size={18} />
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-sm font-black text-foreground">{entry.user.name}</p>
@@ -314,11 +303,3 @@ export default function LeaguesPage() {
   );
 }
 
-function HeroMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-center">
-      <p className="text-base font-black text-foreground">{value}</p>
-      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
-  );
-}

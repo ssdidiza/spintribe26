@@ -6,7 +6,7 @@ import NavBar from "@/components/NavBar";
 import { SperaIcon } from "@/components/SperaLogo";
 import { useHydrated } from "@/lib/useHydrated";
 import { useStore } from "@/lib/store";
-import { Bike, Mountain, Users } from "lucide-react";
+import { Bike, Users } from "lucide-react";
 
 type TeamProfile = {
   team: {
@@ -22,6 +22,8 @@ type TeamProfile = {
     totalDistanceKm: number;
     totalElevation: number;
     activeRiders: number;
+    yourContributionKm: number;
+    viewerIsMember: boolean;
   };
   members: {
     id: string;
@@ -31,14 +33,7 @@ type TeamProfile = {
     leagueName: string;
     leagueLevel: number;
     zone: string | null;
-  }[];
-  recentActivities: {
-    id: string;
-    userId: string;
-    name: string;
-    distanceKm: number;
-    elevationGain: number;
-    date: string;
+    isViewer?: boolean;
   }[];
 };
 
@@ -128,15 +123,26 @@ export default function TeamProfilePage() {
           <div className="space-y-2">
             {(profile?.members ?? []).map((member) => (
               <div key={member.id} className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.name)}`}
-                  alt={member.name}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
+                {member.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={member.avatar}
+                    alt=""
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground/[0.06] text-muted-foreground">
+                    <Users size={16} />
+                  </div>
+                )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-foreground">{member.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{member.zone ?? "No zone"}</p>
+                  <p className="truncate text-sm font-black text-foreground">
+                    {member.name}
+                    {member.isViewer && (
+                      <span className="ml-1.5 rounded-full bg-[#ff4b35]/15 px-1.5 py-0.5 text-[9px] font-black text-accent-foreground">YOU</span>
+                    )}
+                  </p>
+                  {member.zone && <p className="truncate text-[10px] text-muted-foreground">{member.zone}</p>}
                 </div>
                 <p className="text-xs font-black text-accent-foreground">{member.leagueName}</p>
               </div>
@@ -152,29 +158,22 @@ export default function TeamProfilePage() {
         <section className="glass-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <Bike size={15} className="text-accent-foreground" />
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Recent rides</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Your contribution</p>
           </div>
-          <div className="space-y-2">
-            {(profile?.recentActivities ?? []).map((activity) => (
-              <div key={activity.id} className="grid grid-cols-[1fr_auto] gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-foreground">{activity.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(activity.date).toLocaleDateString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-black text-accent-foreground">{activity.distanceKm} km</p>
-                  <p className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Mountain size={10} /> {activity.elevationGain} m
-                  </p>
-                </div>
-              </div>
-            ))}
-            {profile && profile.recentActivities.length === 0 && (
-              <p className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-xs text-muted-foreground">
-                No team rides synced this month.
+          {profile?.stats.viewerIsMember ? (
+            <div className="rounded-xl border border-[#ff4b35]/25 bg-[#ff4b35]/10 p-4">
+              <p className="text-3xl font-black text-accent-foreground">{profile.stats.yourContributionKm} km</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Your synced cycling distance counted toward this team this month. Other riders&apos;
+                individual rides stay private to them — only team totals are shared.
               </p>
-            )}
-          </div>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 text-xs leading-relaxed text-muted-foreground">
+              Join this team to add your monthly distance to its totals. Individual rides are never
+              shown for other riders — only privacy-safe team aggregates.
+            </p>
+          )}
         </section>
       </main>
       <NavBar />

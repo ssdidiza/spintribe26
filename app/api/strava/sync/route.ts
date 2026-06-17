@@ -9,6 +9,7 @@ import { getSession } from "@/lib/session";
 import { detectZoneFromGPS } from "@/lib/types";
 import type { LeaderboardApiResponse, LeaderboardEntry } from "@/lib/types";
 import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
+import { applyFastTrackPromotion } from "@/lib/league-progression";
 import {
   buildLeaderboardResponse,
   findLeaderboardEntry,
@@ -306,6 +307,14 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq("strava_id", athleteId);
+
+  // Server-authoritative in-month promotion off freshly synced distance.
+  // Upward-only and idempotent across duplicate syncs.
+  try {
+    await applyFastTrackPromotion(db, athleteId);
+  } catch (error) {
+    console.warn("Fast-track promotion check failed:", error);
+  }
 
   if (leaderboardBefore) {
     try {

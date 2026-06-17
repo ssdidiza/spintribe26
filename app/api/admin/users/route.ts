@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminContext, applyDueTierUpgrades } from "@/lib/admin-auth";
+import { getAdminContext } from "@/lib/admin-auth";
 import { getMonthKey } from "@/lib/challenge";
 
 export async function GET() {
@@ -7,8 +7,6 @@ export async function GET() {
   if ("error" in ctx) {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
-
-  await applyDueTierUpgrades(ctx.db);
 
   const now = new Date();
   const rangeStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();

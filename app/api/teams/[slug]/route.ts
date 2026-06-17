@@ -60,6 +60,15 @@ export async function GET(_req: NextRequest, ctx: Context) {
       )
     : 0;
 
+  // Privacy-first: the viewer's OWN contribution only. We never return another
+  // rider's individual ride titles, dates, distance, or elevation — Strava data
+  // for rider A may not be displayed to rider B. Only team aggregates are shared.
+  const yourContributionKm = Math.round(
+    teamActivities
+      .filter((activity) => String(activity.user_strava_id) === userId)
+      .reduce((sum, activity) => sum + Number(activity.distance ?? 0), 0) / 1000
+  );
+
   return NextResponse.json({
     team,
     stats: {
@@ -68,24 +77,23 @@ export async function GET(_req: NextRequest, ctx: Context) {
       totalDistanceKm,
       totalElevation,
       activeRiders,
+      yourContributionKm,
+      viewerIsMember: memberIds.has(userId),
     },
-    members: (members ?? []).map((member) => ({
-      id: member.strava_id,
-      name: member.name,
-      avatar: member.avatar,
-      role: member.role,
-      leagueName: member.current_league_name ?? `${member.tier} Club`,
-      leagueLevel: member.current_league_threshold ?? member.tier,
-      zone: member.zone,
-    })),
-    recentActivities: teamActivities.slice(0, 20).map((activity) => ({
-      id: activity.strava_id,
-      userId: activity.user_strava_id,
-      name: activity.name,
-      distanceKm: Math.round(Number(activity.distance ?? 0) / 1000),
-      elevationGain: Math.round(Number(activity.elevation_gain ?? 0)),
-      type: activity.type,
-      date: activity.date,
-    })),
+    // Privacy-first: the viewer sees their own row in full; other members are
+    // de-identified (no name/avatar/zone), keeping only their league band.
+    members: (members ?? []).map((member, index) => {
+      const isViewer = String(member.strava_id) === userId;
+      return {
+        id: isViewer ? String(member.strava_id) : `rider-${index}`,
+        name: isViewer ? (member.name ?? "You") : "Rider",
+        avatar: isViewer ? member.avatar : null,
+        role: member.role,
+        leagueName: member.current_league_name ?? `${member.tier} Club`,
+        leagueLevel: member.current_league_threshold ?? member.tier,
+        zone: isViewer ? member.zone : null,
+        isViewer,
+      };
+    }),
   });
 }
