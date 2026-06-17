@@ -18,6 +18,9 @@ export async function PATCH(req: NextRequest) {
   if (body.rewardsExportConsent !== undefined) {
     update.rewards_export_consent = body.rewardsExportConsent === true;
   }
+  if (typeof body.zone === "string") {
+    update.zone = body.zone.trim();
+  }
 
   if (Object.keys(update).length === 1) {
     return NextResponse.json({ error: "No preferences to update" }, { status: 400 });
@@ -27,12 +30,13 @@ export async function PATCH(req: NextRequest) {
     .from("users")
     .update(update)
     .eq("strava_id", userId)
-    .select("leaderboard_consent,rewards_export_consent")
+    .select("leaderboard_consent,rewards_export_consent,zone")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
     leaderboardConsent: data.leaderboard_consent === true,
     rewardsExportConsent: data.rewards_export_consent === true,
+    zone: data.zone ?? null,
   });
 }

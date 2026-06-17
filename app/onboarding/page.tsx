@@ -2,17 +2,9 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { Tier, UserRole, TIER_LABELS, TIER_COLORS, getPostLoginRoute } from "@/lib/types";
-import { Bike, ChevronRight, CheckCircle2, Trophy } from "lucide-react";
+import { Tier, UserRole, getPostLoginRoute } from "@/lib/types";
+import { Bike, ChevronRight, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const TIERS: { km: Tier; description: string }[] = [
-  { km: 200, description: "Beginner - official Team Vitality challenge" },
-  { km: 400, description: "Intermediate - official Team Vitality challenge" },
-  { km: 600, description: "Intermediate 2 - official Team Vitality challenge" },
-  { km: 800, description: "Advanced - official Team Vitality challenge" },
-  { km: 1000, description: "Unicorn - club-only stretch opt-in" },
-];
 
 const REGIONS = ["Gauteng", "Western Cape", "KwaZulu-Natal", "Eastern Cape", "Other"];
 
@@ -28,7 +20,6 @@ function OnboardingContent() {
   const handledReturningRef = useRef(false);
   const [step, setStep] = useState<Step>("role");
   const [role, setRole] = useState<UserRole | null>(null);
-  const [tier, setTier] = useState<Tier | null>(null);
   const [region, setRegion] = useState<string>("Gauteng");
   const [zone, setZone] = useState<string>("");
   const [inviteCode, setInviteCode] = useState<string>("");
@@ -117,17 +108,19 @@ function OnboardingContent() {
   }
 
   async function handleFinish() {
-    if (!role || !tier) return;
+    if (!role) return;
     if (role === "champion" && !zone.trim()) return;
     setSubmitting(true);
     const res = await fetch("/api/users/onboard", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, tier, zone: zone.trim() || region, leaderboardConsent, rewardsExportConsent }),
+      body: JSON.stringify({ role, zone: zone.trim() || region, leaderboardConsent, rewardsExportConsent }),
     });
     if (!res.ok) { setSubmitting(false); return; }
     const finalRole = currentUser?.role === "admin" ? "admin" : role;
-    completeOnboarding(finalRole, tier, zone.trim() || region, leaderboardConsent, rewardsExportConsent);
+    // Everyone starts in the 200 Club; the server places and fast-tracks from
+    // verified Strava distance. 200 is the local mirror until the next hydrate.
+    completeOnboarding(finalRole, 200, zone.trim() || region, leaderboardConsent, rewardsExportConsent);
     router.push(getPostLoginRoute({ role: finalRole }));
   }
 
@@ -268,43 +261,33 @@ function OnboardingContent() {
             <p className="text-[11px] font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--accent-foreground)" }}>
               Step {totalSteps} of {totalSteps}
             </p>
-            <h2 className="text-3xl font-black text-foreground mb-1">Pick your challenge</h2>
-            <p className="text-muted-foreground text-sm mb-6">How many km will you ride this month?</p>
+            <h2 className="text-3xl font-black text-foreground mb-1">You start in the 200 Club</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Everyone begins here — even pros. Ride this month and you&apos;ll be fast-tracked up the
+              moment your verified Strava distance crosses the next club.
+            </p>
 
-            <div className="space-y-3 mb-6">
-              {TIERS.map(({ km, description }) => {
-                const color = TIER_COLORS[km];
-                const selected = tier === km;
-                return (
-                  <button
-                    key={km}
-                    onClick={() => setTier(km)}
+            <div className="mb-6 rounded-2xl border border-[#ff4b35]/30 bg-[#ff4b35]/[0.08] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-accent-foreground">The clubs</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {["200 Club", "400 Club", "600 Club", "800 Club", "1000 Club"].map((club, i) => (
+                  <span
+                    key={club}
                     className={cn(
-                      "w-full flex items-center justify-between rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
-                      selected ? "border-foreground/30 bg-foreground/10" : "border-foreground/10 bg-foreground/5 hover:border-foreground/20"
+                      "rounded-full px-2.5 py-1 text-[11px] font-bold border",
+                      i === 0
+                        ? "bg-[#ff4b35]/20 text-accent-foreground border-[#ff4b35]/40"
+                        : "bg-foreground/[0.05] text-muted-foreground border-foreground/10"
                     )}
                   >
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-2xl font-black" style={{ color }}>{km}</span>
-                        <span className="text-muted-foreground text-sm">km / month</span>
-                        <span
-                          className="text-[10px] font-bold rounded-full px-2 py-0.5"
-                          style={{ background: `${color}20`, color }}
-                        >
-                          {TIER_LABELS[km]}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground text-xs">{description}</p>
-                    </div>
-                    {selected ? (
-                      <CheckCircle2 size={20} style={{ color: "var(--accent-foreground)" }} />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-foreground/20" />
-                    )}
-                  </button>
-                );
-              })}
+                    {club}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                Promotion is immediate when you cross a threshold. Demotions only happen at month-end.
+                No requests, no approvals — just verified kilometres.
+              </p>
             </div>
 
             {/* Zone input for champions */}
@@ -397,14 +380,14 @@ function OnboardingContent() {
 
             <button
               onClick={handleFinish}
-              disabled={!tier || (role === "champion" && !zone.trim()) || submitting}
+              disabled={(role === "champion" && !zone.trim()) || submitting}
               className={cn(
                 "w-full rounded-2xl py-4 font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2",
-                tier && (role !== "champion" || zone.trim()) && !submitting
+                (role !== "champion" || zone.trim()) && !submitting
                   ? "gradient-primary text-white hover:opacity-90 active:scale-[0.98]"
                   : "text-muted-foreground/60 cursor-not-allowed"
               )}
-              style={tier && (role !== "champion" || zone.trim()) && !submitting ? undefined : { background: "var(--fill-mid)" }}
+              style={(role !== "champion" || zone.trim()) && !submitting ? undefined : { background: "var(--fill-mid)" }}
             >
               {submitting ? "Setting up..." : <>START CHALLENGE <ChevronRight size={16} /></>}
             </button>

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 import { deauthorizeStrava } from "@/lib/strava";
 import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
+import { purgeStravaData } from "@/lib/strava-data";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -22,24 +23,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await db.from("activities").delete().eq("user_strava_id", athleteId);
-  await db.from("champion_sessions").delete().eq("user_strava_id", athleteId);
+  // Shared purge keeps disconnect and the Strava deauthorization webhook in
+  // lockstep (activities + champion sessions removed, tokens cleared).
+  await purgeStravaData(db, athleteId);
 
   if (deleteAccount) {
     await db.from("users").delete().eq("strava_id", athleteId);
-  } else {
-    await db
-      .from("users")
-      .update({
-        strava_access_token: null,
-        strava_refresh_token: null,
-        strava_token_expires_at: null,
-        last_strava_sync_at: null,
-        last_strava_sync_year: null,
-        last_strava_sync_month: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("strava_id", athleteId);
   }
 
   session.destroy();

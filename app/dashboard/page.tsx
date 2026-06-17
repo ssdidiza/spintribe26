@@ -5,11 +5,12 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import { getMonthlyKm } from "@/lib/mock-data";
 import { LeaderboardApiResponse } from "@/lib/types";
-import { canRequestTierUpgrade, getMonthlyActivityInsights, getNextTier } from "@/lib/challenge";
-import { formatLeagueRange, getLeagueByTier, getLeagueProgress, type LeagueDefinition } from "@/lib/leagues";
+import { getMonthlyActivityInsights } from "@/lib/challenge";
+import { getLeagueByTier, getLeagueProgress, type LeagueDefinition } from "@/lib/leagues";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
+import LeagueStatus from "@/components/LeagueStatus";
 import { BrandMark } from "@/components/SperaLogo";
 import {
   AlertTriangle,
@@ -24,6 +25,7 @@ import {
   RefreshCw,
   TrendingUp,
   Trophy,
+  User,
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -41,6 +43,7 @@ type LeagueApiSummary = {
     rankElevation: number | null;
     rankConsistency: number | null;
     leagueRiders: number;
+    fastTrackedThisMonth: boolean;
   };
 };
 
@@ -90,7 +93,6 @@ export default function DashboardPage() {
   } = useStore();
   const [syncing, setSyncing] = useState(false);
   const [refreshingFtp, setRefreshingFtp] = useState(false);
-  const [upgradeState, setUpgradeState] = useState<"idle" | "sending" | "sent" | "blocked">("idle");
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardApiResponse | null>(null);
   const [leagueSummary, setLeagueSummary] = useState<LeagueApiSummary | null>(null);
   const [teamsSummary, setTeamsSummary] = useState<TeamsApiSummary | null>(null);
@@ -254,19 +256,6 @@ export default function DashboardPage() {
   const statusCfg  = STATUS_CONFIG[progressStatus];
   const StatusIcon = statusCfg.Icon;
   const leaderboardScope = `${monthLabel} Strava distance - ${heroLeague.name} - opted-in riders`;
-  const upgradeOffer = canRequestTierUpgrade(currentUser, activities, now);
-  const pinnaclePush = !getNextTier(currentUser.tier) && pct >= 100;
-
-  async function requestUpgrade() {
-    if (!upgradeOffer || upgradeState === "sending") return;
-    setUpgradeState("sending");
-    const res = await fetch("/api/tier-upgrades", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestedTier: upgradeOffer.requestedTier }),
-    });
-    setUpgradeState(res.ok || res.status === 409 ? "sent" : "blocked");
-  }
 
   const STATS = [
     { label: "Ride days",   value: rideDays,                                             icon: <CalendarCheck size={14} className="text-accent-foreground" /> },
@@ -318,72 +307,19 @@ export default function DashboardPage() {
 
         <NotificationBanner />
 
-        <section
-          className="glass-card relative overflow-hidden p-5"
-          style={{ borderColor: "rgba(255,75,53,0.34)" }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-64 w-[min(460px,100%)] -translate-x-1/2"
-            style={{
-              background:
-                "radial-gradient(50% 60% at 50% 30%, rgba(255,75,53,0.18), transparent 70%)",
-            }}
-          />
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-foreground">
-                Current league
-              </p>
-              <h2 className="mt-2 text-4xl font-black leading-none tracking-tight text-foreground sm:text-5xl">
-                {heroLeague.name}
-              </h2>
-              <p className="mt-2 text-xs font-semibold text-muted-foreground">
-                {formatLeagueRange(heroLeague)} monthly band
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#ff4b35]/30 bg-[#ff4b35]/10 px-3 py-2 text-right">
-              <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">League rank</p>
-              <p className="text-2xl font-black text-accent-foreground">
-                {heroRankDistance ? `#${heroRankDistance}` : "-"}
-              </p>
-              <p className="text-[9px] text-muted-foreground">{heroLeagueRiders} riders</p>
-            </div>
-          </div>
-
-          <div className="relative mt-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  Promotion progress
-                </p>
-                <p className="text-xs font-bold text-foreground">
-                  {monthlyKm} / {heroPromotionTargetKm} km
-                </p>
-              </div>
-              <div className="h-3 rounded-full bg-foreground/[0.08] p-0.5">
-                <div
-                  className="gradient-primary h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${heroProgressPct}%`,
-                    boxShadow: "0 0 16px rgba(255,75,53,0.35)",
-                  }}
-                />
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                {heroNextLeague
-                  ? `${heroRemainingKm} km to promotion into the ${heroNextLeague.name}.`
-                  : heroRemainingKm > 0
-                    ? `${heroRemainingKm} km to defend your ${heroLeague.name} floor.`
-                    : `You are riding inside the top league. Every extra kilometre strengthens your standing.`}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:w-52">
-              <MiniLeagueStat label="Remaining" value={`${heroRemainingKm} km`} />
-              <MiniLeagueStat label="Progress" value={`${heroProgressPct}%`} />
-            </div>
-          </div>
-        </section>
+        <LeagueStatus
+          leagueName={heroLeague.name}
+          monthlyKm={monthlyKm}
+          promotionTargetKm={heroPromotionTargetKm}
+          remainingKm={heroRemainingKm}
+          progressPct={heroProgressPct}
+          nextLeagueName={heroNextLeague?.name ?? null}
+          leagueMinKm={heroLeague.minKm}
+          fastTracked={leagueSummary?.current.fastTrackedThisMonth}
+          rank={heroRankDistance}
+          leagueRiders={heroLeagueRiders}
+          variant="hero"
+        />
 
         {/* ── League rankings strip (live Supabase data only) ───────────── */}
         <div>
@@ -442,15 +378,21 @@ export default function DashboardPage() {
                       }}
                     >
                       <span className="text-base leading-none">{MEDALS[i] ?? `#${entry.rank}`}</span>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={entry.user.avatar}
-                        alt={entry.user.name}
-                        className="w-9 h-9 rounded-full object-cover"
-                        style={isMe ? { border: "2px solid #ff4b35" } : {}}
-                      />
+                      {entry.user.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={entry.user.avatar}
+                          alt=""
+                          className="w-9 h-9 rounded-full object-cover"
+                          style={isMe ? { border: "2px solid #ff4b35" } : {}}
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground/[0.06] text-muted-foreground">
+                          <User size={15} />
+                        </div>
+                      )}
                       <p className="text-[10px] font-bold text-foreground truncate w-full text-center">
-                        {entry.user.name.split(" ")[0]}
+                        {isMe ? entry.user.name.split(" ")[0] : `#${entry.rank}`}
                       </p>
                       <div className="w-full h-1 rounded-full bg-foreground/[0.08] overflow-hidden">
                         <div className="h-full rounded-full transition-all"
@@ -580,37 +522,6 @@ export default function DashboardPage() {
         </div>
 
         {/* ── 4-stat bento ─────────────────────────────────────────────── */}
-        {(upgradeOffer || pinnaclePush) && (
-          <div className="glass-card p-5" style={{ borderColor: "rgba(255,75,53,0.35)" }}>
-            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-accent-foreground mb-2">
-              {pinnaclePush ? "Unicorn mode" : "You have outgrown this league"}
-            </p>
-            {upgradeOffer ? (
-              <>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  You completed {upgradeOffer.currentTier} km. Request a next-month move to {upgradeOffer.requestedTier} km so this month&apos;s leaderboard stays fair.
-                </p>
-                <button
-                  type="button"
-                  onClick={requestUpgrade}
-                  disabled={upgradeState === "sending" || upgradeState === "sent"}
-                  className="mt-3 w-full rounded-2xl py-3 text-xs font-black tracking-widest text-white transition-all disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#ff4b35,#e0007a)" }}
-                >
-                  {upgradeState === "sent" ? "REQUEST SENT" : upgradeState === "sending" ? "SENDING..." : `REQUEST ${upgradeOffer.requestedTier} KM LEAGUE`}
-                </button>
-                {upgradeState === "blocked" && (
-                  <p className="mt-2 text-[10px] text-destructive">Could not send the request. Try again after your next sync.</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                You are riding beyond the official leagues. Unicorn is club-only stretch mode unless Team Vitality confirms it for rewards.
-              </p>
-            )}
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {STATS.map(({ label, value, icon }) => (
             <div key={label} className="glass-card p-3 text-center">
@@ -651,12 +562,14 @@ export default function DashboardPage() {
               href={`https://www.strava.com/activities/${lastSyncedRide.stravaId}`}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="View on Strava"
               className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3 transition-colors hover:border-[#FC4C02]/30"
             >
               <div className="min-w-0">
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Last synced ride</p>
                 <p className="mt-1 truncate text-sm font-bold text-foreground">{lastSyncedRide.name}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground/70">{format(new Date(lastSyncedRide.date), "MMM d")}</p>
+                <p className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-bold text-[#FC4C02]">View on Strava ↗</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-black text-accent-foreground">{(lastSyncedRide.distance / 1000).toFixed(1)} km</p>
@@ -737,6 +650,7 @@ export default function DashboardPage() {
                   href={`https://www.strava.com/activities/${activity.stravaId}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="View on Strava"
                   className="flex items-center gap-3 glass-card p-3 hover:border-[#FC4C02]/30 transition-colors"
                 >
                   <div className="w-9 h-9 rounded-xl glass flex items-center justify-center text-accent-foreground flex-shrink-0">
@@ -750,6 +664,7 @@ export default function DashboardPage() {
                         <span className="ml-1.5 text-foreground/70">- {activity.detectedZoneId.replace(/^[a-z]+-/, "").replace(/-/g, " ")}</span>
                       )}
                     </p>
+                    <p className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-bold text-[#FC4C02]">View on Strava ↗</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="font-bold text-sm text-accent-foreground">{(activity.distance / 1000).toFixed(1)} km</p>
@@ -774,15 +689,6 @@ export default function DashboardPage() {
 
       </main>
       <NavBar />
-    </div>
-  );
-}
-
-function MiniLeagueStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.035] p-3 text-center">
-      <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 text-base font-black text-foreground">{value}</p>
     </div>
   );
 }

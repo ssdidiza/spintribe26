@@ -43,35 +43,3 @@ export async function getAdminContext() {
 
   return { db, userId, caller };
 }
-
-export async function applyDueTierUpgrades(
-  db: ReturnType<typeof supabaseAdmin>,
-  userId?: string
-) {
-  const today = new Date().toISOString().slice(0, 10);
-  let query = db
-    .from("tier_upgrade_requests")
-    .select("id,user_strava_id,requested_tier")
-    .eq("status", "approved")
-    .is("applied_at", null)
-    .lte("effective_on", today);
-
-  if (userId) query = query.eq("user_strava_id", userId);
-
-  const { data: due, error } = await query;
-  if (error || !due?.length) return;
-
-  await Promise.all(
-    due.map(async (request) => {
-      await db
-        .from("users")
-        .update({ tier: Number(request.requested_tier), updated_at: new Date().toISOString() })
-        .eq("strava_id", request.user_strava_id);
-
-      await db
-        .from("tier_upgrade_requests")
-        .update({ applied_at: new Date().toISOString() })
-        .eq("id", request.id);
-    })
-  );
-}

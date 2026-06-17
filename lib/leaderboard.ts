@@ -240,3 +240,47 @@ export function findLeaderboardEntry(
   }
   return undefined;
 }
+
+/**
+ * Privacy-first (Level 1) leaderboard transform applied at the API boundary.
+ *
+ * The signed-in viewer keeps their own full row (their own data). Every other
+ * rider is stripped of identity — name, avatar, Strava id, profile link, team
+ * and zone — while keeping their competitive position (rank + km + progress)
+ * so the viewer can still see gaps and league size. This honors the Strava API
+ * Agreement: rider A's Strava data is not displayed to rider B. Levels 2/3
+ * (first-name, then full identity) are gated on explicit Strava approval and
+ * are not enabled here.
+ */
+export function anonymizeTiersForViewer(
+  tiers: LeaderboardApiResponse["tiers"],
+  viewerId: string
+): LeaderboardApiResponse["tiers"] {
+  const result: LeaderboardApiResponse["tiers"] = {};
+  for (const key of Object.keys(tiers)) {
+    const tierResult = tiers[key];
+    result[key] = {
+      ...tierResult,
+      entries: tierResult.entries.map((entry) => {
+        if (entry.user.id === viewerId) return entry;
+        return {
+          ...entry,
+          user: {
+            ...entry.user,
+            id: `rider-${entry.rank}`,
+            stravaId: "",
+            name: "Rider",
+            avatar: "",
+            zone: undefined,
+            region: undefined,
+            country: undefined,
+            teamId: undefined,
+            teamName: undefined,
+            teamSlug: undefined,
+          },
+        };
+      }),
+    };
+  }
+  return result;
+}

@@ -3,10 +3,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getSession, getEffectiveUserId } from "@/lib/session";
 import { UserRole } from "@/lib/types";
 import { founderDefaults, founderRepairTier, isFounderUserId } from "@/lib/founder";
-import { getLeagueByTier } from "@/lib/leagues";
+import { getLeagueByTier, getNextLeague } from "@/lib/leagues";
 
 const VALID_ROLES = ["champion", "member"];
-const VALID_TIERS = [200, 400, 600, 800, 1000];
 
 export async function PATCH(req: NextRequest) {
   const session = await getSession();
@@ -17,7 +16,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { role, tier, zone, region, leaderboardConsent, rewardsExportConsent } = body;
+  const { role, zone, region, leaderboardConsent, rewardsExportConsent } = body;
   const leaderboardOptIn = leaderboardConsent !== false;
   const rewardsOptIn = rewardsExportConsent !== false;
 
@@ -26,15 +25,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  // Validate tier
-  if (!VALID_TIERS.includes(Number(tier))) {
-    return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
-  }
-
   const db = supabaseAdmin();
   const { data: existingUser, error: existingUserError } = await db
     .from("users")
-    .select("role,zone")
+    .select("role,zone,current_league_threshold")
     .eq("strava_id", userId)
     .maybeSingle();
 
@@ -49,12 +43,20 @@ export async function PATCH(req: NextRequest) {
   const isFounder = isFounderUserId(userId);
   const founder = founderDefaults();
   const roleForUpdate: UserRole = existingRole === "admin" || isFounder ? "admin" : role;
-  const tierForUpdate = isFounder ? founderRepairTier(tier) : Number(tier);
-  const selectedLeague = getLeagueByTier(tierForUpdate);
-  const { data: selectedLeagueRow } = await db
+
+  // League-only model: there is no chosen tier. Every new rider starts in the
+  // 200 Club and earns higher clubs through verified Strava distance
+  // (fast-track in-month, cron at month-end). Founders keep their configured
+  // starting club, and re-running onboarding never demotes an already-placed
+  // rider (leagues are earned, not reset).
+  const baselineThreshold = isFounder ? founderRepairTier(200) : 200;
+  const effectiveThreshold =
+    Math.max(baselineThreshold, Number(existingUser?.current_league_threshold ?? 0)) || 200;
+  const league = getLeagueByTier(effectiveThreshold);
+  const { data: leagueRow } = await db
     .from("leagues")
     .select("id")
-    .eq("name", selectedLeague.name)
+    .eq("name", league.name)
     .maybeSingle();
 
   // Champions and admins require a champ zone. Preserve the existing zone when
@@ -79,10 +81,10 @@ export async function PATCH(req: NextRequest) {
     .from("users")
     .update({
       role: roleForUpdate,
-      tier: tierForUpdate,
-      current_league_id: selectedLeagueRow?.id ?? null,
-      current_league_name: selectedLeague.name,
-      current_league_threshold: selectedLeague.tier,
+      tier: league.tier,
+      current_league_id: leagueRow?.id ?? null,
+      current_league_name: league.name,
+      current_league_threshold: league.tier,
       zone: effectiveZone,
       onboarded: true,
       leaderboard_consent: leaderboardOptIn,
@@ -96,8 +98,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "DB update failed" }, { status: 500 });
   }
 
-  // Create welcome notification
-  const welcomeBody = `Here's how to get started: 1) Sync your Strava rides to track monthly km. 2) Check the leaderboard to see how you rank. 3) Champions: log champing check-ins only when a ride was actually champing. Your goal is ${tier}km this month - let's go!`;
+  // Create welcome notification (league-first copy).
+  const nextLeague = getNextLeague(league.tier);
+  const welcomeBody = nextLeague
+    ? `You're starting in the ${league.name}. Sync your Strava rides to track this month's distance — cross ${nextLeague.minKm} km and you'll be fast-tracked straight into the ${nextLeague.name}.`
+    : `You're in the ${league.name}, the top league. Sync your Strava rides and keep your monthly distance high to hold your standing.`;
 
   const { error: notifError } = await db.from("notifications").insert({
     user_strava_id: userId,

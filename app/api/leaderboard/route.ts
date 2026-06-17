@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CHALLENGE_TIERS, getMonthKey } from "@/lib/challenge";
 import { getLeagueByTier, getLeagueProgress } from "@/lib/leagues";
-import { buildLeaderboardResponse, getLeaderboardMonthRange } from "@/lib/leaderboard";
+import { anonymizeTiersForViewer, buildLeaderboardResponse, getLeaderboardMonthRange } from "@/lib/leaderboard";
 import { getEffectiveUserId, getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { LeaderboardApiResponse, LeaderboardEntry, Tier, User, UserRole } from "@/lib/types";
@@ -134,7 +134,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(buildHistoricalResponse((data ?? []) as HistoricalStandingRow[], requestedMonth));
+    const historical = buildHistoricalResponse((data ?? []) as HistoricalStandingRow[], requestedMonth);
+    historical.tiers = anonymizeTiersForViewer(historical.tiers, userId);
+    return NextResponse.json(historical);
   }
 
   const { rangeStart, rangeEnd } = getLeaderboardMonthRange(now);
@@ -159,5 +161,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: activitiesError.message }, { status: 500 });
   }
 
-  return NextResponse.json(buildLeaderboardResponse(users ?? [], activities ?? [], now));
+  const response = buildLeaderboardResponse(users ?? [], activities ?? [], now);
+  response.tiers = anonymizeTiersForViewer(response.tiers, userId);
+  return NextResponse.json(response);
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
+import LeagueStatus from "@/components/LeagueStatus";
 import { SperaIcon } from "@/components/SperaLogo";
 import { useHydrated } from "@/lib/useHydrated";
 import { useStore } from "@/lib/store";
@@ -34,11 +35,27 @@ type ZonesResponse = {
   };
 };
 
+type LeagueSummary = {
+  current: {
+    league: { name: string };
+    monthlyKm: number;
+    promotionTargetKm: number;
+    remainingKm: number;
+    progressPct: number;
+    nextLeague: { name: string } | null;
+    leagueMinKm: number;
+    fastTrackedThisMonth: boolean;
+    rankDistance: number | null;
+    leagueRiders: number;
+  };
+};
+
 export default function ZonesPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded } = useStore();
   const [data, setData] = useState<ZonesResponse | null>(null);
+  const [league, setLeague] = useState<LeagueSummary | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -61,6 +78,16 @@ export default function ZonesPage() {
     return () => controller.abort();
   }, [hydrated, currentUser, isOnboarded]);
 
+  useEffect(() => {
+    if (!hydrated || !currentUser || !isOnboarded) return;
+    const controller = new AbortController();
+    fetch("/api/leagues", { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((leagueJson) => { if (leagueJson) setLeague(leagueJson as LeagueSummary); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [hydrated, currentUser, isOnboarded]);
+
   if (!hydrated || !currentUser) return null;
 
   const zones = data?.zones ?? [];
@@ -77,6 +104,21 @@ export default function ZonesPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-3xl px-5 py-5 space-y-4">
+        {league && (
+          <LeagueStatus
+            leagueName={league.current.league.name}
+            monthlyKm={league.current.monthlyKm}
+            promotionTargetKm={league.current.promotionTargetKm}
+            remainingKm={league.current.remainingKm}
+            progressPct={league.current.progressPct}
+            nextLeagueName={league.current.nextLeague?.name ?? null}
+            leagueMinKm={league.current.leagueMinKm}
+            fastTracked={league.current.fastTrackedThisMonth}
+            rank={league.current.rankDistance}
+            leagueRiders={league.current.leagueRiders}
+            variant="compact"
+          />
+        )}
         <section className="glass-card p-5">
           <div className="flex items-start justify-between gap-4">
             <div>

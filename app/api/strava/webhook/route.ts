@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getStravaActivityById } from "@/lib/strava";
 import { getFreshStravaAccessToken } from "@/lib/strava-tokens";
 import { detectZoneFromGPS } from "@/lib/types";
+import { purgeStravaData } from "@/lib/strava-data";
+import { applyFastTrackPromotion } from "@/lib/league-progression";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,12 +26,27 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const event = await req.json().catch(() => null);
-  if (!event?.owner_id || !event?.object_id || event.object_type !== "activity") {
+  if (!event?.owner_id) {
     return NextResponse.json({ received: true });
   }
 
   const db = supabaseAdmin();
   const athleteId = String(event.owner_id);
+
+  // Athlete deauthorization (the athlete revoked SpinTribe from Strava's side).
+  // Strava sends object_type "athlete" with updates.authorized = "false".
+  // Honor deletion-on-deauthorization by purging Strava-derived data. The purge
+  // is idempotent, so duplicate deliveries are safe.
+  if (event.object_type === "athlete") {
+    if (event.aspect_type === "update" && String(event.updates?.authorized) === "false") {
+      await purgeStravaData(db, athleteId);
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.object_type !== "activity" || !event.object_id) {
+    return NextResponse.json({ received: true });
+  }
 
   if (event.aspect_type === "delete") {
     await db
@@ -65,6 +82,8 @@ export async function POST(req: NextRequest) {
           },
           { onConflict: "strava_id" }
         );
+        // Server-authoritative in-month promotion off the updated distance.
+        await applyFastTrackPromotion(db, athleteId);
       } catch (error) {
         console.warn("Strava webhook activity sync failed:", error);
       }

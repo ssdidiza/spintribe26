@@ -144,12 +144,6 @@ async function buildTeamsResponse(userId: string) {
       totalElevation: Math.round(stats?.totalElevation ?? 0),
       activeRiders: stats?.activeRiders.size ?? 0,
       isCurrentUserTeam: currentUserTeamId === team.id,
-      members: members.slice(0, 8).map((member) => ({
-        id: member.strava_id,
-        name: member.name ?? "SpinTribe rider",
-        avatar: member.avatar,
-        leagueLevel: Number(member.current_league_threshold ?? member.tier ?? 200),
-      })),
     };
   });
 
@@ -161,16 +155,29 @@ async function buildTeamsResponse(userId: string) {
     totalDistanceKm: Math.round(unassignedStats.totalMetres / 1000),
     totalElevation: Math.round(unassignedStats.totalElevation),
     activeRiders: unassignedStats.activeRiders.size,
+    // Privacy-first: only the viewer's own row is identifiable. Other riders
+    // keep their competitive position (league + monthly km) but no name/avatar.
     riders: unassignedUsers
-      .map((user) => ({
-        id: String(user.strava_id),
-        name: user.name ?? "SpinTribe rider",
-        avatar: user.avatar,
-        leagueLevel: Number(user.current_league_threshold ?? user.tier ?? 200),
-        monthlyKm: Math.round((metresByUser.get(String(user.strava_id)) ?? 0) / 1000),
-      }))
+      .map((user) => {
+        const isViewer = String(user.strava_id) === userId;
+        return {
+          isViewer,
+          realId: String(user.strava_id),
+          name: isViewer ? (user.name ?? "You") : "Rider",
+          avatar: isViewer ? user.avatar : null,
+          leagueLevel: Number(user.current_league_threshold ?? user.tier ?? 200),
+          monthlyKm: Math.round((metresByUser.get(String(user.strava_id)) ?? 0) / 1000),
+        };
+      })
       .sort((a, b) => b.monthlyKm - a.monthlyKm || a.name.localeCompare(b.name))
-      .slice(0, 12),
+      .slice(0, 12)
+      .map((rider, index) => ({
+        id: rider.isViewer ? rider.realId : `rider-${index}`,
+        name: rider.name,
+        avatar: rider.avatar,
+        leagueLevel: rider.leagueLevel,
+        monthlyKm: rider.monthlyKm,
+      })),
   };
 
   return {

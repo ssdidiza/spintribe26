@@ -6,22 +6,19 @@ import { useHydrated } from "@/lib/useHydrated";
 import NavBar from "@/components/NavBar";
 import FeedbackBoard from "@/components/FeedbackBoard";
 import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
-import { Tier, TIER_LABELS, UserRole } from "@/lib/types";
+import { Tier, UserRole } from "@/lib/types";
 import {
   Bell,
-  Check,
-  ClipboardList,
   Download,
   MessageSquare,
   ShieldCheck,
   Star,
   Trophy,
   Users,
-  X,
 } from "lucide-react";
 import { format } from "date-fns";
 
-type AdminTab = "riders" | "rewards" | "upgrades" | "champing" | "notifications" | "feedback";
+type AdminTab = "riders" | "rewards" | "champing" | "notifications" | "feedback";
 
 type AdminUser = {
   id: string;
@@ -60,20 +57,6 @@ type RewardRow = {
   overTierReview: boolean;
 };
 
-type UpgradeRequest = {
-  id: string;
-  userName: string;
-  avatar?: string;
-  currentTier: Tier;
-  requestedTier: Tier;
-  monthKey: string;
-  monthlyKm: number;
-  status: "pending" | "approved" | "rejected";
-  requestedAt: string;
-  effectiveOn: string;
-  adminNote?: string;
-};
-
 type ChampingSession = {
   id: string;
   userName: string;
@@ -105,7 +88,6 @@ const ROLES: UserRole[] = ["member", "champion", "admin"];
 const TAB_META: Record<AdminTab, { label: string; Icon: typeof Users }> = {
   riders: { label: "Riders", Icon: Users },
   rewards: { label: "Rewards", Icon: Trophy },
-  upgrades: { label: "Upgrades", Icon: ClipboardList },
   champing: { label: "Champing", Icon: Star },
   notifications: { label: "Comms", Icon: Bell },
   feedback: { label: "Feedback", Icon: MessageSquare },
@@ -152,7 +134,6 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [monthKey, setMonthKey] = useState("");
   const [rewards, setRewards] = useState<RewardRow[]>([]);
-  const [upgrades, setUpgrades] = useState<UpgradeRequest[]>([]);
   const [champing, setChamping] = useState<ChampingSession[]>([]);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [commTitle, setCommTitle] = useState("");
@@ -201,30 +182,27 @@ export default function AdminPage() {
 
       const optionalResults = await Promise.allSettled([
         fetchWithTimeout("/api/admin/rewards"),
-        fetchWithTimeout("/api/admin/tier-upgrades"),
         fetchWithTimeout("/api/admin/champing"),
         fetchWithTimeout("/api/admin/notifications"),
       ]);
       const optionalFailures = optionalResults.filter((result) => result.status === "rejected").length;
-      const [rewardsRes, upgradesRes, champingRes, notificationsRes] = optionalResults.map((result) => (
+      const [rewardsRes, champingRes, notificationsRes] = optionalResults.map((result) => (
         result.status === "fulfilled" ? result.value : undefined
       ));
 
-      const [rewardsData, upgradesData, champingData, notificationsData] = await Promise.all([
+      const [rewardsData, champingData, notificationsData] = await Promise.all([
         readJsonOr<{ monthKey?: string; rows?: RewardRow[] }>(rewardsRes, { rows: [] }),
-        readJsonOr<{ requests?: UpgradeRequest[] }>(upgradesRes, { requests: [] }),
         readJsonOr<{ sessions?: ChampingSession[] }>(champingRes, { sessions: [] }),
         readJsonOr<{ notifications?: AdminNotification[] }>(notificationsRes, { notifications: [] }),
       ]);
 
       setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
       setRewards(rewardsData.rows ?? []);
-      setUpgrades(upgradesData.requests ?? []);
       setChamping(champingData.sessions ?? []);
       setNotifications(notificationsData.notifications ?? []);
       hasRenderedAdminData.current = true;
 
-      const nonOkPanels = [rewardsRes, upgradesRes, champingRes, notificationsRes]
+      const nonOkPanels = [rewardsRes, champingRes, notificationsRes]
         .filter((response) => response && !response.ok).length;
       if (optionalFailures || nonOkPanels) {
         setAdminNotice("Some founder panels did not refresh. Feedback and loaded panels are still available.");
@@ -259,7 +237,6 @@ export default function AdminPage() {
     () => users.find((user) => user.isCurrentUser),
     [users]
   );
-  const pendingUpgrades = upgrades.filter((request) => request.status === "pending");
   const eligibleRewards = rewards.filter((row) => row.eligibleForExport);
 
   async function patchUser(stravaId: string, patch: Record<string, unknown>) {
@@ -269,20 +246,6 @@ export default function AdminPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
-      });
-      if (res.ok) await loadAdminData();
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  async function decideUpgrade(id: string, status: "approved" | "rejected") {
-    setSaving(id);
-    try {
-      const res = await fetch(`/api/admin/tier-upgrades/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
       });
       if (res.ok) await loadAdminData();
     } finally {
@@ -326,7 +289,7 @@ export default function AdminPage() {
       monthKey,
       row.name,
       row.stravaId,
-      `${row.tier} km ${TIER_LABELS[row.tier]}`,
+      `${row.tier} Club`,
       row.totalKm,
       row.outdoorKm,
       row.indoorKm,
@@ -362,11 +325,10 @@ export default function AdminPage() {
       </header>
 
       <main className="mx-auto w-full max-w-lg md:max-w-4xl px-5 py-6 space-y-5">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {[
             { label: "Riders", value: users.length, Icon: Users },
             { label: "Eligible", value: eligibleRewards.length, Icon: Trophy },
-            { label: "Pending", value: pendingUpgrades.length, Icon: ClipboardList },
             { label: "Champing", value: champing.length, Icon: Star },
           ].map(({ label, value, Icon }) => (
             <div key={label} className="glass-card p-3 text-center">
@@ -443,7 +405,7 @@ export default function AdminPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-accent-foreground">{user.tier} km</p>
-                        <p className="text-[9px] text-muted-foreground">{TIER_LABELS[user.tier]}</p>
+                        <p className="text-[9px] text-muted-foreground">{user.tier} Club</p>
                       </div>
                     </div>
 
@@ -493,37 +455,10 @@ export default function AdminPage() {
                   <div key={row.stravaId} className="glass-card p-4 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-foreground truncate">{row.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{row.tier} km {TIER_LABELS[row.tier]} - outdoor {row.outdoorKm} km - indoor {row.indoorKm} km</p>
+                      <p className="text-[10px] text-muted-foreground">{row.tier} Club - outdoor {row.outdoorKm} km - indoor {row.indoorKm} km</p>
                     </div>
                     <StatusPill label={row.eligibleForExport ? "export" : row.complete ? "complete" : "not yet"} active={row.eligibleForExport} />
                     {row.overTierReview && <StatusPill label="upgrade" active />}
-                  </div>
-                ))}
-              </section>
-            )}
-
-            {activeTab === "upgrades" && (
-              <section className="space-y-2">
-                {upgrades.length === 0 ? <EmptyState text="No league upgrade requests yet." /> : upgrades.map((request) => (
-                  <div key={request.id} className="glass-card p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{request.userName}</p>
-                        <p className="text-[10px] text-muted-foreground">{request.currentTier} km to {request.requestedTier} km - {request.monthlyKm} km in {request.monthKey}</p>
-                        <p className="text-[10px] text-muted-foreground/70">Effective {request.effectiveOn}</p>
-                      </div>
-                      <StatusPill label={request.status} active={request.status === "approved"} />
-                    </div>
-                    {request.status === "pending" && (
-                      <div className="mt-3 flex gap-2">
-                        <button onClick={() => decideUpgrade(request.id, "approved")} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white bg-emerald-500/80">
-                          <Check size={13} /> Approve
-                        </button>
-                        <button onClick={() => decideUpgrade(request.id, "rejected")} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-[#ffb4ab] border border-red-500/30">
-                          <X size={13} /> Reject
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ))}
               </section>

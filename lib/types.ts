@@ -190,28 +190,12 @@ export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined): 
 
 // ─── Tier metadata ────────────────────────────────────────────────────────────
 
-export const TIER_LABELS: Record<Tier, string> = {
-  200: "Beginner",
-  400: "Intermediate",
-  600: "Intermediate 2",
-  800: "Advanced",
-  1000: "Unicorn",
-};
-
 export const TIER_COLORS: Record<Tier, string> = {
   200: "#b8b8b8",
   400: "#ffffff",
   600: "#ffb1c1",
   800: "#ff7a2f",
   1000: "#ff4b35",
-};
-
-export const TIER_GRADIENT: Record<Tier, string> = {
-  200: "from-zinc-400 to-zinc-600",
-  400: "from-white to-zinc-300",
-  600: "from-rose-200 to-orange-400",
-  800: "from-orange-400 to-red-500",
-  1000: "from-red-500 to-pink-700",
 };
 
 // ─── Geographic zone bounding boxes (lat/lng) ────────────────────────────────
