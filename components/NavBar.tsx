@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MapPin, ShieldCheck, Trophy, User, Users } from "lucide-react";
+import { Flag, LayoutDashboard, MapPin, ShieldCheck, Trophy, User, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { hasAdminRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
   { href: "/leagues",   icon: Trophy,          label: "Leagues",   adminOnly: false },
+  { href: "/races",     icon: Flag,            label: "Races",     adminOnly: false },
   { href: "/teams",     icon: Users,           label: "Teams",     adminOnly: false },
   { href: "/zones",     icon: MapPin,          label: "Zones",     adminOnly: false },
   { href: "/profile",   icon: User,            label: "Profile",   adminOnly: false },
