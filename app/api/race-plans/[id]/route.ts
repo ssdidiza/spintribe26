@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 const RACE_COLUMNS =
   "id,slug,name,country,province,city,race_date,year_label,distance_km,elevation_m,difficulty,route_type,segments_json,data_verified,is_active";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * GET /api/race-plans/:id — a single PRIVATE plan. The `user_strava_id` filter
  * means another rider's plan is never returned (it 404s, not 403, so we don't
@@ -18,6 +20,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  // Plan ids are uuids; a malformed id can't match a real plan and would
+  // otherwise trigger a Postgres 22P02 (→ 500). Treat it as not found, which
+  // also keeps the privacy-preserving "404, never confirm existence" behaviour.
+  if (!UUID_RE.test(id)) return NextResponse.json({ error: "Race plan not found" }, { status: 404 });
+
   const db = supabaseAdmin();
 
   const { data, error } = await db

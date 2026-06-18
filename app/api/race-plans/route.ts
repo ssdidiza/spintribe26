@@ -69,6 +69,11 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+  // req.json() also resolves for valid JSON primitives (e.g. `null`), which would
+  // otherwise throw a TypeError on the property reads below (→ 500).
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
   const raceId = String(body.raceId ?? "").trim();
   const targetMode = String(body.targetMode ?? "") as TargetMode;

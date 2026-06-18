@@ -128,7 +128,10 @@ export interface RaceRow {
 function coerceSegments(value: unknown): RaceSegment[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((raw) => {
+    .map((raw): RaceSegment | null => {
+      // Guard non-object entries (null / primitives) — accessing properties on
+      // them would throw, crashing the mapper on an unexpected DB payload.
+      if (!raw || typeof raw !== "object") return null;
       const seg = raw as Record<string, unknown>;
       const terrain = String(seg.terrain ?? "rolling") as SegmentTerrain;
       return {
@@ -138,7 +141,7 @@ function coerceSegments(value: unknown): RaceSegment[] {
         terrain: terrain in TERRAIN_SPEED_MULTIPLIER ? terrain : "rolling",
       } satisfies RaceSegment;
     })
-    .filter((seg) => seg.distanceKm > 0);
+    .filter((seg): seg is RaceSegment => !!seg && seg.distanceKm > 0);
 }
 
 export function mapRaceRow(row: RaceRow): Race {
