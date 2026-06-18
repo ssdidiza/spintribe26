@@ -7,6 +7,7 @@ import { getMonthlyKm } from "@/lib/mock-data";
 import { LeaderboardApiResponse } from "@/lib/types";
 import { getMonthlyActivityInsights } from "@/lib/challenge";
 import { getLeagueByTier, getLeagueProgress, type LeagueDefinition } from "@/lib/leagues";
+import { READINESS_META, formatDurationMinutes, formatRaceWhen, type Race, type TargetMode } from "@/lib/races";
 import NavBar from "@/components/NavBar";
 import PoweredByStrava from "@/components/PoweredByStrava";
 import NotificationBanner from "@/components/NotificationBanner";
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Flag,
   Flame,
   Route,
   PartyPopper,
@@ -78,6 +80,15 @@ type ZonesApiSummary = {
   }[];
 };
 
+type RacePlanSummary = {
+  id: string;
+  raceId: string;
+  mode: TargetMode;
+  readinessStatus: keyof typeof READINESS_META;
+  finishMinutes: number | null;
+  race: Race | null;
+};
+
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -97,6 +108,7 @@ export default function DashboardPage() {
   const [leagueSummary, setLeagueSummary] = useState<LeagueApiSummary | null>(null);
   const [teamsSummary, setTeamsSummary] = useState<TeamsApiSummary | null>(null);
   const [zonesSummary, setZonesSummary] = useState<ZonesApiSummary | null>(null);
+  const [racePlans, setRacePlans] = useState<RacePlanSummary[]>([]);
   const [rankingsStatus, setRankingsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [communityRefreshNonce, setCommunityRefreshNonce] = useState(0);
   const currentUserId = currentUser?.id;
@@ -138,16 +150,18 @@ export default function DashboardPage() {
 
     async function loadCommunityData() {
       try {
-        const [leaderboardJson, leaguesJson, teamsJson, zonesJson] = await Promise.all([
+        const [leaderboardJson, leaguesJson, teamsJson, zonesJson, racePlansJson] = await Promise.all([
           fetchJson<LeaderboardApiResponse>("/api/leaderboard"),
           fetchJson<LeagueApiSummary>("/api/leagues"),
           fetchJson<TeamsApiSummary>("/api/teams"),
           fetchJson<ZonesApiSummary>("/api/zones"),
+          fetchJson<{ plans: RacePlanSummary[] }>("/api/race-plans"),
         ]);
         setLiveLeaderboard(leaderboardJson);
         setLeagueSummary(leaguesJson);
         if (teamsJson) setTeamsSummary(teamsJson);
         if (zonesJson) setZonesSummary(zonesJson);
+        if (racePlansJson) setRacePlans(racePlansJson.plans ?? []);
         setRankingsStatus(leaderboardJson ? "ready" : "error");
       } catch {
         // Aborted (navigation/unmount) — leave state as-is.
@@ -202,6 +216,16 @@ export default function DashboardPage() {
   );
   const topTeams = teamsSummary?.teams.slice(0, 3) ?? [];
   const topZones = zonesSummary?.zones.slice(0, 3) ?? [];
+  const upcomingRacePlan = useMemo(() => {
+    if (racePlans.length === 0) return null;
+    const now = new Date().getTime();
+    const dated = racePlans
+      .filter((p) => p.race?.raceDate && new Date(p.race.raceDate).getTime() >= now)
+      .sort((a, b) => new Date(a.race!.raceDate!).getTime() - new Date(b.race!.raceDate!).getTime());
+    // Prefer the soonest upcoming dated race; otherwise the most recently
+    // updated plan (the API returns plans newest-first).
+    return dated[0] ?? racePlans[0];
+  }, [racePlans]);
 
   if (!hydrated || !currentUser) return null;
 
@@ -452,6 +476,62 @@ export default function DashboardPage() {
               empty="Zone rankings build from GPS-detected rides and riders' profile zones. Set your zone in your profile to count for your area."
             />
           </div>
+        )}
+
+        {/* ── Race pace plan (private to you) ────────────────────────────── */}
+        {upcomingRacePlan && upcomingRacePlan.race ? (
+          <a
+            href={`/race-plans/${upcomingRacePlan.id}`}
+            className="glass-card block p-4 transition-colors hover:border-[#ff4b35]/30"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#ff4b35]/12 text-accent-foreground">
+                  <Flag size={15} />
+                </span>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                  Your race plan
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground" />
+            </div>
+            <p className="text-base font-black text-foreground">{upcomingRacePlan.race.name}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{formatRaceWhen(upcomingRacePlan.race)}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-black"
+                style={{
+                  background: `${READINESS_META[upcomingRacePlan.readinessStatus].accent}1f`,
+                  color: READINESS_META[upcomingRacePlan.readinessStatus].accent,
+                }}
+              >
+                {READINESS_META[upcomingRacePlan.readinessStatus].label}
+              </span>
+              {upcomingRacePlan.finishMinutes != null && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-foreground/10 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                  <Clock size={11} /> ~{formatDurationMinutes(upcomingRacePlan.finishMinutes)}
+                </span>
+              )}
+            </div>
+          </a>
+        ) : (
+          <a
+            href="/races"
+            className="glass-card flex items-center justify-between gap-3 p-4 transition-colors hover:border-[#ff4b35]/30"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ff4b35]/12 text-accent-foreground">
+                <Flag size={16} />
+              </span>
+              <div>
+                <p className="text-sm font-black text-foreground">Plan your next race</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Pick a race — get a private pacing plan from your own riding.
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="flex-shrink-0 text-muted-foreground" />
+          </a>
         )}
 
         {/* ── Progress tracking card ────────────────────────────────────── */}
