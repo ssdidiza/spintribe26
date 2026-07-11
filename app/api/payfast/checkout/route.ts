@@ -123,7 +123,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const paymentUrl = new URL(location, getPayFastProcessUrl());
+  let paymentUrl: URL;
+  try {
+    paymentUrl = new URL(location, getPayFastProcessUrl());
+  } catch {
+    return NextResponse.json({ error: "PayFast returned an invalid payment URL." }, { status: 502 });
+  }
+
   const allowedHosts = new Set(["payment.payfast.io", "www.payfast.co.za", "sandbox.payfast.co.za"]);
   if (paymentUrl.protocol !== "https:" || !allowedHosts.has(paymentUrl.hostname)) {
     return NextResponse.json({ error: "PayFast returned an invalid payment URL." }, { status: 502 });
