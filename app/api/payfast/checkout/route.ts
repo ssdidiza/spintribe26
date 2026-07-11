@@ -112,15 +112,16 @@ export async function GET(req: NextRequest) {
   ).join("");
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Continue to PayFast</title></head>
-<body><main><p>Opening secure payment...</p><form id="payfast" method="post" action="${escapeHtml(getPayFastProcessUrl())}">${inputs}<button type="submit">Continue to PayFast</button></form></main>
-<script>document.getElementById("payfast").submit()</script></body></html>`;
+<title>Continue to PayFast</title>
+<style>body{font-family:system-ui,sans-serif;margin:0;background:#f7f8f4;color:#182014}main{max-width:30rem;margin:12vh auto;padding:2rem;text-align:center}.button{display:inline-block;margin-top:1rem;padding:.8rem 1.2rem;border:0;border-radius:.6rem;background:#182014;color:#fff;font:inherit;font-weight:700;cursor:pointer}</style>
+<script src="/payfast-auto-submit.js" defer></script></head>
+<body><main><h1>Opening secure payment…</h1><p>You’ll be redirected to PayFast. If nothing happens, use the button below.</p><form id="payfast" method="post" action="${escapeHtml(getPayFastProcessUrl())}">${inputs}<button class="button" type="submit">Continue to PayFast</button></form><noscript><p>JavaScript is off, so please use the button.</p></noscript></main></body></html>`;
 
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store, max-age=0",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action https://www.payfast.co.za https://sandbox.payfast.co.za; base-uri 'none'; frame-ancestors 'none'",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; form-action https://www.payfast.co.za https://sandbox.payfast.co.za; base-uri 'none'; frame-ancestors 'none'",
       "Referrer-Policy": "no-referrer",
     },
   });
