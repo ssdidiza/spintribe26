@@ -5,15 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   BarChart3,
   Bike,
   CalendarCheck,
+  CreditCard,
+  Clock3,
   MapPin,
   Route,
   Target,
   Trophy,
   TrendingUp,
   Users,
+  WalletCards,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -195,6 +199,18 @@ export default function LandingPage() {
     window.location.href = "/api/auth/strava";
   }
 
+  function handleLessonSignup() {
+    setMode("signup");
+    setError("");
+    setInfo("");
+    window.setTimeout(() => {
+      const details = document.getElementById("email-auth") as HTMLDetailsElement | null;
+      if (!details) return;
+      details.open = true;
+      details.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
+  }
+
   if (!hydrated) return null;
 
   return (
@@ -255,7 +271,7 @@ export default function LandingPage() {
                 </span>
               </div>
 
-              <details className="mt-6 max-w-sm rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
+              <details id="email-auth" className="mt-6 max-w-sm rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
                 <summary className="cursor-pointer text-sm font-bold text-foreground/70 transition-colors hover:text-foreground">
                   Use email instead
                 </summary>
@@ -379,6 +395,38 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-foreground/10 bg-foreground/[0.025] px-5 py-10 sm:px-8 lg:px-12">
+          <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">One-to-one cycling lessons</p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-foreground sm:text-4xl">Learn to ride or build confidence on the bike.</h2>
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
+                Book beginner instruction or coached riding sessions at R399 per hour.
+              </p>
+              <button
+                type="button"
+                onClick={handleLessonSignup}
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#ff4b35] px-5 py-3 text-sm font-black text-white transition-opacity hover:opacity-90"
+              >
+                Create account to book <ArrowRight size={15} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-foreground/10 border-y border-foreground/10 py-5">
+              {[
+                { label: "Price", value: "R399/hr", Icon: CreditCard },
+                { label: "Credits", value: "Track online", Icon: WalletCards },
+                { label: "Booking", value: "Choose a time", Icon: Clock3 },
+              ].map(({ label, value, Icon }) => (
+                <div key={label} className="px-3 text-center">
+                  <Icon size={17} className="mx-auto text-accent-foreground" />
+                  <p className="mt-2 text-sm font-black text-foreground">{value}</p>
+                  <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

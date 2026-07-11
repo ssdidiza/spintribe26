@@ -5,20 +5,31 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 import NavBar from "@/components/NavBar";
 import FeedbackBoard from "@/components/FeedbackBoard";
+import AdminLessonCalendar from "@/components/AdminLessonCalendar";
+import AdminLessonAvailability from "@/components/AdminLessonAvailability";
+import AdminLessonRideAttribution from "@/components/AdminLessonRideAttribution";
 import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
+import { formatCredits, formatMoneyCents } from "@/lib/lessons";
 import { Tier, UserRole } from "@/lib/types";
 import {
   Bell,
+  Bike,
+  CalendarCheck,
+  CheckCircle2,
+  Copy,
+  CreditCard,
   Download,
   MessageSquare,
   ShieldCheck,
   Star,
   Trophy,
+  UserX,
   Users,
+  XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
-type AdminTab = "riders" | "rewards" | "champing" | "notifications" | "feedback";
+type AdminTab = "riders" | "lessons" | "rewards" | "champing" | "notifications" | "feedback";
 
 type AdminUser = {
   id: string;
@@ -83,10 +94,111 @@ type AdminCaller = {
   rewards_export_consent?: boolean;
 };
 
+type AdminLessonSummary = {
+  paidCredits: number;
+  availableCredits: number;
+  bookedCredits: number;
+  completedCredits: number;
+  forfeitedCredits: number;
+  totalPaidCents: number;
+  pendingAmountCents: number;
+  pendingCredits: number;
+  pendingPayments: number;
+  xeroErrors: number;
+};
+
+type AdminLessonRider = {
+  rider: {
+    id: string;
+    name: string;
+    avatar: string | null;
+  };
+  summary: {
+    paidCredits: number;
+    availableCredits: number;
+    bookedCredits: number;
+    completedCredits: number;
+    forfeitedCredits: number;
+    totalPaidCents: number;
+    pendingAmountCents: number;
+    pendingCredits: number;
+  };
+};
+
+type AdminLessonPurchase = {
+  id: string;
+  lessonCount: number;
+  totalAmountCents: number;
+  currency: string;
+  status: "draft" | "pending_payment" | "paid" | "cancelled";
+  xeroInvoiceNumber: string | null;
+  xeroSyncStatus: string | null;
+  xeroError: string | null;
+  payfastCheckoutUrl: string | null;
+  createdAt: string;
+  rider: {
+    id: string;
+    name: string;
+    avatar: string | null;
+  };
+};
+
+type AdminLessonSession = {
+  id: string;
+  status: "pending_payment" | "booked" | "completed" | "cancelled" | "no_show" | "coach_cancelled";
+  startsAt: string;
+  durationMinutes: number;
+  creditAmount: number;
+  location: string | null;
+  rider: {
+    id: string;
+    name: string;
+    avatar: string | null;
+  };
+};
+
+type AdminLessonsData = {
+  summary: AdminLessonSummary;
+  riders: AdminLessonRider[];
+  purchases: AdminLessonPurchase[];
+  sessions: AdminLessonSession[];
+};
+
+type AdminService = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  durationMinutes: number;
+  priceCents: number;
+  currency: string;
+  active: boolean;
+  sortOrder: number;
+};
+
+const EMPTY_ADMIN_LESSONS: AdminLessonsData = {
+  summary: {
+    paidCredits: 0,
+    availableCredits: 0,
+    bookedCredits: 0,
+    completedCredits: 0,
+    forfeitedCredits: 0,
+    totalPaidCents: 0,
+    pendingAmountCents: 0,
+    pendingCredits: 0,
+    pendingPayments: 0,
+    xeroErrors: 0,
+  },
+  riders: [],
+  purchases: [],
+  sessions: [],
+};
+
 const ROLES: UserRole[] = ["member", "champion", "admin"];
 
 const TAB_META: Record<AdminTab, { label: string; Icon: typeof Users }> = {
   riders: { label: "Riders", Icon: Users },
+  lessons: { label: "Lessons", Icon: Bike },
   rewards: { label: "Rewards", Icon: Trophy },
   champing: { label: "Champing", Icon: Star },
   notifications: { label: "Comms", Icon: Bell },
@@ -136,6 +248,16 @@ export default function AdminPage() {
   const [rewards, setRewards] = useState<RewardRow[]>([]);
   const [champing, setChamping] = useState<ChampingSession[]>([]);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [lessons, setLessons] = useState<AdminLessonsData>(EMPTY_ADMIN_LESSONS);
+  const [lessonUserId, setLessonUserId] = useState("");
+  const [lessonCount, setLessonCount] = useState(1);
+  const [lessonDiscount, setLessonDiscount] = useState(0);
+  const [lessonEmail, setLessonEmail] = useState("");
+  const [lessonAlreadyPaid, setLessonAlreadyPaid] = useState(false);
+  const [lessonXeroInvoiceNumber, setLessonXeroInvoiceNumber] = useState("");
+  const [lessonPaymentLink, setLessonPaymentLink] = useState("");
+  const [lessonServices, setLessonServices] = useState<AdminService[]>([]);
+  const [newService, setNewService] = useState({ name: "", durationMinutes: 60, priceRands: 399 });
   const [commTitle, setCommTitle] = useState("");
   const [commBody, setCommBody] = useState("");
   const hasRenderedAdminData = useRef(false);
@@ -184,25 +306,28 @@ export default function AdminPage() {
         fetchWithTimeout("/api/admin/rewards"),
         fetchWithTimeout("/api/admin/champing"),
         fetchWithTimeout("/api/admin/notifications"),
+        fetchWithTimeout("/api/admin/lessons"),
       ]);
       const optionalFailures = optionalResults.filter((result) => result.status === "rejected").length;
-      const [rewardsRes, champingRes, notificationsRes] = optionalResults.map((result) => (
+      const [rewardsRes, champingRes, notificationsRes, lessonsRes] = optionalResults.map((result) => (
         result.status === "fulfilled" ? result.value : undefined
       ));
 
-      const [rewardsData, champingData, notificationsData] = await Promise.all([
+      const [rewardsData, champingData, notificationsData, lessonsData] = await Promise.all([
         readJsonOr<{ monthKey?: string; rows?: RewardRow[] }>(rewardsRes, { rows: [] }),
         readJsonOr<{ sessions?: ChampingSession[] }>(champingRes, { sessions: [] }),
         readJsonOr<{ notifications?: AdminNotification[] }>(notificationsRes, { notifications: [] }),
+        readJsonOr<AdminLessonsData>(lessonsRes, EMPTY_ADMIN_LESSONS),
       ]);
 
       setMonthKey(usersData.monthKey ?? rewardsData.monthKey ?? "");
       setRewards(rewardsData.rows ?? []);
       setChamping(champingData.sessions ?? []);
       setNotifications(notificationsData.notifications ?? []);
+      setLessons(lessonsData);
       hasRenderedAdminData.current = true;
 
-      const nonOkPanels = [rewardsRes, champingRes, notificationsRes]
+      const nonOkPanels = [rewardsRes, champingRes, notificationsRes, lessonsRes]
         .filter((response) => response && !response.ok).length;
       if (optionalFailures || nonOkPanels) {
         setAdminNotice("Some founder panels did not refresh. Feedback and loaded panels are still available.");
@@ -225,19 +350,36 @@ export default function AdminPage() {
     router,
   ]);
 
+  const loadLessonServices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/lessons/services", { cache: "no-store" });
+      const data = await res.json().catch(() => ({})) as { services?: AdminService[] };
+      if (res.ok) setLessonServices(data.services ?? []);
+    } catch {
+      // Service catalog is non-critical; the rest of the console still loads.
+    }
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUserId) { router.replace("/"); return; }
     if (!isOnboarded) { router.replace("/onboarding"); return; }
-    const timer = window.setTimeout(() => { void loadAdminData(); }, 0);
+    const timer = window.setTimeout(() => {
+      void loadAdminData();
+      void loadLessonServices();
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [hydrated, currentUserId, isOnboarded, router, loadAdminData]);
+  }, [hydrated, currentUserId, isOnboarded, router, loadAdminData, loadLessonServices]);
 
   const founder = useMemo(
     () => users.find((user) => user.isCurrentUser),
     [users]
   );
   const eligibleRewards = rewards.filter((row) => row.eligibleForExport);
+  const selectedLessonUserId = lessonUserId || users[0]?.stravaId || "";
+  const upcomingLessons = lessons.sessions
+    .filter((lessonSession) => lessonSession.status === "booked")
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
   async function patchUser(stravaId: string, patch: Record<string, unknown>) {
     setSaving(stravaId);
@@ -267,6 +409,180 @@ export default function AdminPage() {
         setCommBody("");
         await loadAdminData();
       }
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function createLessonPackage() {
+    if (!selectedLessonUserId || lessonCount <= 0) return;
+    setSaving("lesson-package");
+    setLessonPaymentLink("");
+    setAdminNotice("");
+    try {
+      const createPayment = !lessonAlreadyPaid && Boolean(lessonEmail.trim());
+      const response = await fetch("/api/lessons/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedLessonUserId,
+          lessonCount,
+          discountPercent: lessonDiscount,
+          customerEmail: lessonEmail,
+          createPayment,
+          markPaid: lessonAlreadyPaid,
+          syncXero: !lessonAlreadyPaid,
+          xeroInvoiceNumber: lessonAlreadyPaid ? lessonXeroInvoiceNumber : "",
+          description: "Cycling lesson package",
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as {
+        error?: string;
+        payment?: { authorizationUrl?: string } | null;
+        xeroWarning?: string | null;
+      };
+      if (!response.ok) throw new Error(data.error || "Unable to create lesson package");
+
+      const paymentLink = data.payment?.authorizationUrl ?? "";
+      setLessonPaymentLink(paymentLink);
+      await loadAdminData();
+      setAdminNotice(
+        lessonAlreadyPaid
+          ? "Paid package imported and credits activated."
+          : paymentLink
+            ? "Package created. Copy the PayFast link below."
+            : data.xeroWarning
+              ? `Package saved. Xero needs review: ${data.xeroWarning}`
+              : "Package saved as a draft."
+      );
+      setLessonAlreadyPaid(false);
+      setLessonXeroInvoiceNumber("");
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to create lesson package");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function updateLessonSessionStatus(
+    sessionId: string,
+    status: "completed" | "no_show" | "coach_cancelled"
+  ) {
+    setSaving(sessionId);
+    setAdminNotice("");
+    try {
+      const response = await fetch(`/api/lessons/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to update lesson");
+      await loadAdminData();
+      setAdminNotice(`Lesson marked ${status.replace("_", " ")}.`);
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to update lesson");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function copyLessonPaymentLink() {
+    if (!lessonPaymentLink) return;
+    await navigator.clipboard.writeText(lessonPaymentLink);
+    setAdminNotice("PayFast payment link copied.");
+  }
+
+  function updateServiceField(id: string, patch: Partial<AdminService>) {
+    setLessonServices((prev) => prev.map((service) => (service.id === id ? { ...service, ...patch } : service)));
+  }
+
+  async function saveService(service: AdminService) {
+    setSaving(`service-${service.id}`);
+    setAdminNotice("");
+    try {
+      const response = await fetch("/api/admin/lessons/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          durationMinutes: service.durationMinutes,
+          priceCents: Math.round(service.priceCents),
+          sortOrder: service.sortOrder,
+          active: service.active,
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to save service");
+      await loadLessonServices();
+      setAdminNotice(`Saved "${service.name}".`);
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to save service");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function toggleService(service: AdminService) {
+    setSaving(`service-${service.id}`);
+    try {
+      const response = await fetch("/api/admin/lessons/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: service.id, active: !service.active }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to update service");
+      await loadLessonServices();
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to update service");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function createService() {
+    if (newService.name.trim().length < 2) {
+      setAdminNotice("Enter a service name.");
+      return;
+    }
+    setSaving("service-new");
+    setAdminNotice("");
+    try {
+      const response = await fetch("/api/admin/lessons/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newService.name,
+          durationMinutes: newService.durationMinutes,
+          priceCents: Math.round(newService.priceRands * 100),
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to add service");
+      setNewService({ name: "", durationMinutes: 60, priceRands: 399 });
+      await loadLessonServices();
+      setAdminNotice("Service added.");
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to add service");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function deleteService(id: string, name: string) {
+    setSaving(`service-${id}`);
+    setAdminNotice("");
+    try {
+      const response = await fetch(`/api/admin/lessons/services?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to remove service");
+      await loadLessonServices();
+      setAdminNotice(`Removed "${name}".`);
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to remove service");
     } finally {
       setSaving(null);
     }
@@ -437,6 +753,373 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </section>
+            )}
+
+            {activeTab === "lessons" && (
+              <section className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <MiniMetric label="Available" value={formatCredits(lessons.summary.availableCredits)} />
+                  <MiniMetric label="Booked" value={formatCredits(lessons.summary.bookedCredits)} />
+                  <MiniMetric label="Completed" value={formatCredits(lessons.summary.completedCredits)} />
+                  <MiniMetric label="Pending pay" value={lessons.summary.pendingPayments} />
+                </div>
+
+                <AdminLessonAvailability />
+
+                <AdminLessonRideAttribution riders={users.map((user) => ({ id: user.stravaId, name: user.name }))} />
+
+                <div className="glass-card p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Bike size={15} className="text-accent-foreground" />
+                      <p className="text-sm font-black text-foreground">Public booking page</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`${window.location.origin}/book`);
+                        setAdminNotice("Booking link copied — share it with students.");
+                      }}
+                      className="rounded-lg border border-foreground/15 px-3 py-1.5 text-[10px] font-black text-accent-foreground"
+                    >
+                      Copy /book link
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Share <span className="font-bold text-foreground">{`${typeof window !== "undefined" ? window.location.host : "speradidiza.cc"}/book`}</span> — anyone can book and pay without a Strava account. The services below are what they see.
+                  </p>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <CreditCard size={15} className="text-accent-foreground" />
+                    <p className="text-sm font-black text-foreground">Services &amp; pricing</p>
+                  </div>
+                  {lessonServices.length === 0 ? (
+                    <p className="mb-3 text-[11px] text-muted-foreground">No services yet. Add your first one below.</p>
+                  ) : (
+                    <div className="mb-3 space-y-2">
+                      {lessonServices.map((service) => (
+                        <div key={service.id} className="rounded-xl border border-foreground/10 bg-foreground/[0.02] p-3">
+                          <div className="grid grid-cols-2 gap-2 md:grid-cols-[2fr_1fr_1fr_auto]">
+                            <label className="col-span-2 block md:col-span-1">
+                              <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Name</span>
+                              <input
+                                value={service.name}
+                                onChange={(event) => updateServiceField(service.id, { name: event.target.value })}
+                                className="mt-1 w-full rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs font-bold text-foreground outline-none"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Minutes</span>
+                              <input
+                                type="number"
+                                min={15}
+                                max={480}
+                                value={service.durationMinutes}
+                                onChange={(event) => updateServiceField(service.id, { durationMinutes: Number(event.target.value) || 0 })}
+                                className="mt-1 w-full rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs font-bold text-foreground outline-none"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Price (R)</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={10}
+                                value={Math.round(service.priceCents) / 100}
+                                onChange={(event) => updateServiceField(service.id, { priceCents: Math.round((Number(event.target.value) || 0) * 100) })}
+                                className="mt-1 w-full rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs font-bold text-foreground outline-none"
+                              />
+                            </label>
+                            <div className="col-span-2 flex items-end gap-1.5 md:col-span-1">
+                              <button
+                                type="button"
+                                onClick={() => saveService(service)}
+                                disabled={saving === `service-${service.id}`}
+                                className="flex-1 rounded-lg bg-[#ff4b35] px-2.5 py-2 text-[10px] font-black text-white disabled:opacity-50"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleService(service)}
+                                disabled={saving === `service-${service.id}`}
+                                title={service.active ? "Hide from booking page" : "Show on booking page"}
+                                className="rounded-lg border border-foreground/15 px-2.5 py-2 text-[10px] font-black text-muted-foreground disabled:opacity-50"
+                              >
+                                {service.active ? "Live" : "Hidden"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteService(service.id, service.name)}
+                                disabled={saving === `service-${service.id}`}
+                                aria-label="Delete service"
+                                className="rounded-lg border border-foreground/15 px-2.5 py-2 text-[10px] font-black text-red-500 disabled:opacity-50"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 border-t border-foreground/10 pt-3 md:grid-cols-[2fr_1fr_1fr_auto]">
+                    <input
+                      value={newService.name}
+                      onChange={(event) => setNewService((prev) => ({ ...prev, name: event.target.value }))}
+                      placeholder="New service name"
+                      className="col-span-2 rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/60 md:col-span-1"
+                    />
+                    <input
+                      type="number"
+                      min={15}
+                      max={480}
+                      value={newService.durationMinutes}
+                      onChange={(event) => setNewService((prev) => ({ ...prev, durationMinutes: Number(event.target.value) || 0 }))}
+                      placeholder="Minutes"
+                      className="rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs text-foreground outline-none"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={10}
+                      value={newService.priceRands}
+                      onChange={(event) => setNewService((prev) => ({ ...prev, priceRands: Number(event.target.value) || 0 }))}
+                      placeholder="Price (R)"
+                      className="rounded-lg border border-foreground/10 bg-card px-2.5 py-2 text-xs text-foreground outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={createService}
+                      disabled={saving === "service-new"}
+                      className="col-span-2 rounded-lg border border-[#ff4b35]/45 bg-[#ff4b35]/10 px-2.5 py-2 text-[10px] font-black text-accent-foreground disabled:opacity-50 md:col-span-1"
+                    >
+                      Add service
+                    </button>
+                  </div>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <CreditCard size={15} className="text-accent-foreground" />
+                    <div>
+                      <p className="text-sm font-black text-foreground">Create lesson package</p>
+                      <p className="text-[10px] text-muted-foreground">{formatMoneyCents(39900)} per hour</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <label className="col-span-2 block">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Rider</span>
+                      <select
+                        value={selectedLessonUserId}
+                        onChange={(event) => setLessonUserId(event.target.value)}
+                        className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-xs font-bold text-foreground outline-none"
+                      >
+                        {users.map((user) => (
+                          <option key={user.stravaId} value={user.stravaId}>{user.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Lessons</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={lessonCount}
+                        onChange={(event) => setLessonCount(Math.max(1, Number(event.target.value) || 1))}
+                        className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-xs font-bold text-foreground outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Discount %</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={lessonDiscount}
+                        onChange={(event) => setLessonDiscount(Math.min(100, Math.max(0, Number(event.target.value) || 0)))}
+                        className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-xs font-bold text-foreground outline-none"
+                      />
+                    </label>
+                    <label className="col-span-2 block md:col-span-3">
+                      <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Payment email</span>
+                      <input
+                        type="email"
+                        value={lessonEmail}
+                        disabled={lessonAlreadyPaid}
+                        onChange={(event) => setLessonEmail(event.target.value)}
+                        placeholder={lessonAlreadyPaid ? "Not required for paid import" : "Client email for PayFast"}
+                        className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/60 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 self-end rounded-xl border border-foreground/10 bg-foreground/[0.03] px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={lessonAlreadyPaid}
+                        onChange={(event) => setLessonAlreadyPaid(event.target.checked)}
+                        className="h-4 w-4 accent-[#ff4b35]"
+                      />
+                      <span className="text-[10px] font-bold text-foreground">Already paid</span>
+                    </label>
+                    {lessonAlreadyPaid && (
+                      <label className="col-span-2 block md:col-span-4">
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Existing Xero invoice</span>
+                        <input
+                          value={lessonXeroInvoiceNumber}
+                          onChange={(event) => setLessonXeroInvoiceNumber(event.target.value)}
+                          placeholder="INV-1074"
+                          className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={createLessonPackage}
+                    disabled={!selectedLessonUserId || saving === "lesson-package"}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ff4b35] px-4 py-3 text-xs font-black text-white disabled:opacity-50"
+                  >
+                    <CreditCard size={14} />
+                    {lessonAlreadyPaid ? "Import paid package" : lessonEmail.trim() ? "Create PayFast link" : "Create invoice draft"}
+                  </button>
+                  {lessonPaymentLink && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <input
+                        readOnly
+                        value={lessonPaymentLink}
+                        className="min-w-0 flex-1 rounded-xl border border-foreground/10 bg-foreground/[0.03] px-3 py-2.5 text-[10px] text-muted-foreground outline-none"
+                      />
+                      <button
+                        type="button"
+                        title="Copy PayFast payment link"
+                        aria-label="Copy PayFast payment link"
+                        onClick={copyLessonPaymentLink}
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[#ff4b35]/40 text-accent-foreground"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <AdminLessonCalendar sessions={upcomingLessons} />
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Upcoming lessons</p>
+                    <span className="text-[10px] font-bold text-accent-foreground">{upcomingLessons.length}</span>
+                  </div>
+                  {upcomingLessons.length === 0 ? (
+                    <EmptyState text="No booked lessons." />
+                  ) : (
+                    <div className="space-y-2">
+                      {upcomingLessons.map((lessonSession) => (
+                        <div key={lessonSession.id} className="glass-card p-4">
+                          <div className="flex items-start gap-3">
+                            <CalendarCheck size={16} className="mt-0.5 flex-shrink-0 text-accent-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-black text-foreground">{lessonSession.rider.name}</p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                {format(new Date(lessonSession.startsAt), "EEE, d MMM - HH:mm")} - {lessonSession.durationMinutes} min
+                              </p>
+                              {lessonSession.location && (
+                                <p className="mt-1 truncate text-[10px] text-muted-foreground">{lessonSession.location}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              disabled={saving === lessonSession.id}
+                              onClick={() => updateLessonSessionStatus(lessonSession.id, "completed")}
+                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-2 text-[9px] font-black text-emerald-600 disabled:opacity-40"
+                            >
+                              <CheckCircle2 size={11} /> Complete
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving === lessonSession.id}
+                              onClick={() => updateLessonSessionStatus(lessonSession.id, "no_show")}
+                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-[9px] font-black text-amber-600 disabled:opacity-40"
+                            >
+                              <UserX size={11} /> No-show
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving === lessonSession.id}
+                              onClick={() => updateLessonSessionStatus(lessonSession.id, "coach_cancelled")}
+                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-2 text-[9px] font-black text-red-600 disabled:opacity-40"
+                            >
+                              <XCircle size={11} /> Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Client balances</p>
+                    <span className="text-[10px] font-bold text-muted-foreground">{lessons.riders.length}</span>
+                  </div>
+                  {lessons.riders.length === 0 ? (
+                    <EmptyState text="No lesson clients yet." />
+                  ) : (
+                    <div className="space-y-2">
+                      {lessons.riders.map((row) => (
+                        <div key={row.rider.id} className="glass-card flex items-center gap-3 p-4">
+                          <Bike size={15} className="text-accent-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-foreground">{row.rider.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatCredits(row.summary.bookedCredits)} booked - {formatCredits(row.summary.completedCredits)} completed
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-accent-foreground">{formatCredits(row.summary.availableCredits)}</p>
+                            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">available</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Recent packages</p>
+                    <span className="text-[10px] font-bold text-muted-foreground">{lessons.purchases.length}</span>
+                  </div>
+                  {lessons.purchases.length === 0 ? (
+                    <EmptyState text="No lesson packages yet." />
+                  ) : (
+                    <div className="space-y-2">
+                      {lessons.purchases.slice(0, 15).map((purchase) => (
+                        <div key={purchase.id} className="glass-card flex items-center gap-3 p-4">
+                          <CreditCard size={15} className="text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-foreground">
+                              {purchase.rider.name} - {formatCredits(purchase.lessonCount)} lessons
+                            </p>
+                            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                              {formatMoneyCents(purchase.totalAmountCents, purchase.currency)}
+                              {purchase.xeroInvoiceNumber ? ` - ${purchase.xeroInvoiceNumber}` : ""}
+                              {purchase.xeroSyncStatus === "error" ? " - Xero sync error" : ""}
+                            </p>
+                          </div>
+                          <StatusPill label={purchase.status.replace("_", " ")} active={purchase.status === "paid"} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
             )}
 
