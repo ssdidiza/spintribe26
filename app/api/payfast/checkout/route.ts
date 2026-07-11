@@ -10,15 +10,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 function appOrigin(req: NextRequest) {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim();
   return configured ? configured.replace(/\/$/, "") : req.nextUrl.origin;
@@ -107,21 +98,42 @@ export async function GET(req: NextRequest) {
     customerEmail: purchase.customer_email,
     customerName,
   });
-  const inputs = fields.map(([name, value]) =>
-    `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`
-  ).join("");
-  const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Continue to PayFast</title>
-<style>body{font-family:system-ui,sans-serif;margin:0;background:#f7f8f4;color:#182014}main{max-width:30rem;margin:12vh auto;padding:2rem;text-align:center}.button{display:inline-block;margin-top:1rem;padding:.8rem 1.2rem;border:0;border-radius:.6rem;background:#182014;color:#fff;font:inherit;font-weight:700;cursor:pointer}</style>
-<script src="/payfast-auto-submit.js" defer></script></head>
-<body><main><h1>Opening secure payment…</h1><p>You’ll be redirected to PayFast. If nothing happens, use the button below.</p><form id="payfast" method="post" action="${escapeHtml(getPayFastProcessUrl())}">${inputs}<button class="button" type="submit">Continue to PayFast</button></form><noscript><p>JavaScript is off, so please use the button.</p></noscript></main></body></html>`;
+  let payfastResponse: Response;
+  try {
+    payfastResponse = await fetch(getPayFastProcessUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(fields),
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "PayFast could not be reached. Please try again." },
+      { status: 502 },
+    );
+  }
 
-  return new Response(html, {
+  const location = payfastResponse.headers.get("location");
+  if (!location || payfastResponse.status < 300 || payfastResponse.status >= 400) {
+    return NextResponse.json(
+      { error: "PayFast did not start the payment. Please try again." },
+      { status: 502 },
+    );
+  }
+
+  const paymentUrl = new URL(location, getPayFastProcessUrl());
+  const allowedHosts = new Set(["payment.payfast.io", "www.payfast.co.za", "sandbox.payfast.co.za"]);
+  if (paymentUrl.protocol !== "https:" || !allowedHosts.has(paymentUrl.hostname)) {
+    return NextResponse.json({ error: "PayFast returned an invalid payment URL." }, { status: 502 });
+  }
+
+  return new Response(null, {
+    status: 303,
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      Location: paymentUrl.toString(),
       "Cache-Control": "no-store, max-age=0",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; form-action https://www.payfast.co.za https://sandbox.payfast.co.za; base-uri 'none'; frame-ancestors 'none'",
       "Referrer-Policy": "no-referrer",
     },
   });
