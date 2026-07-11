@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getLessonAvailability, isDateKey, lessonBookingWindowDays } from "@/lib/lesson-availability";
+import { LessonServiceRow } from "@/lib/lesson-services";
+import { supabaseAdmin } from "@/lib/supabase";
+
+export const runtime = "nodejs";
+
+export async function GET(req: NextRequest) {
+  const serviceId = req.nextUrl.searchParams.get("serviceId")?.trim();
+  const fromDate = req.nextUrl.searchParams.get("from")?.trim();
+  const daysValue = Number(req.nextUrl.searchParams.get("days") ?? lessonBookingWindowDays());
+
+  if (!serviceId) return NextResponse.json({ error: "serviceId is required" }, { status: 400 });
+  if (fromDate && !isDateKey(fromDate)) {
+    return NextResponse.json({ error: "from must be a date in YYYY-MM-DD format" }, { status: 400 });
+  }
+  if (!Number.isFinite(daysValue) || daysValue < 1 || daysValue > 60) {
+    return NextResponse.json({ error: "days must be between 1 and 60" }, { status: 400 });
+  }
+
+  try {
+    const db = supabaseAdmin();
+    const { data, error } = await db
+      .from("lesson_services")
+      .select("*")
+      .eq("id", serviceId)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: "That service is no longer available" }, { status: 404 });
+
+    const availability = await getLessonAvailability(db, data as LessonServiceRow, {
+      fromDate: fromDate || undefined,
+      days: Math.trunc(daysValue),
+    });
+
+    return NextResponse.json(
+      { availability },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load lesson availability";
+    return NextResponse.json({ error: message, availability: [] }, { status: 500 });
+  }
+}
