@@ -42,6 +42,8 @@ export function normalizeWhatsAppNumber(raw: string | null | undefined): string 
   const digits = (raw ?? "").replace(/\D/g, "");
   if (!digits) return null;
   if (digits.length === 10 && digits.startsWith("0")) return `27${digits.slice(1)}`;
+  // "+27 (0)71 234 5678" — country code plus redundant trunk zero.
+  if (digits.length === 12 && digits.startsWith("270")) return `27${digits.slice(3)}`;
   if (digits.length >= 10 && digits.length <= 15) return digits;
   return null;
 }

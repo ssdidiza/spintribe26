@@ -157,10 +157,12 @@ Setup state as of 2026-07-12 — steps 1–3 are DONE:
    omitted).
    Also add a **payment method** on the WhatsApp account (WhatsApp Manager -> API Setup step 6)
    — required for business-initiated sends beyond the free test allowance.
-5. **Cron cadence**: `vercel.json` schedules `/api/lessons/reminders/send` every 10 minutes.
-   Vercel **Hobby-plan crons only trigger about once per day** — on Hobby, point an external
-   scheduler (e.g. cron-job.org) at the route every 10 minutes with the
-   `Authorization: Bearer <CRON_SECRET>` header, or upgrade to Pro.
+5. **Cron cadence**: the project is on the Vercel **Hobby plan, which only allows daily crons**
+   (a `*/10` schedule fails the deploy outright — confirmed on PR #21). `vercel.json` therefore
+   schedules `/api/lessons/reminders/send` once daily (04:00 UTC / 06:00 SAST) as a safety-net
+   sweep only. The real 10-minute cadence must come from an external scheduler — point
+   cron-job.org (or similar) at the route every 10 minutes with the
+   `Authorization: Bearer <CRON_SECRET>` header — or upgrade to Pro and restore `*/10 * * * *`.
 
 ### Caveats
 

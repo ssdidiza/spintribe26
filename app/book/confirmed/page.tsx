@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CalendarPlus, CheckCircle2, Clock3, Loader2, MapPin, Sparkles } from "lucide-react";
 import {
   COACHING_PACKAGE_TIERS,
@@ -42,12 +43,19 @@ function formatMoneyCents(cents: number, currency = "ZAR") {
 }
 
 export default function BookingConfirmedPage() {
+  // useSearchParams needs a Suspense boundary on statically prerendered pages.
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <BookingConfirmedContent />
+    </Suspense>
+  );
+}
+
+function BookingConfirmedContent() {
   const [data, setData] = useState<BookingStatus | null>(null);
   const [pending, setPending] = useState(true);
   const [error, setError] = useState("");
-  const [reference] = useState(() =>
-    typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("reference") ?? ""
-  );
+  const reference = useSearchParams().get("reference") ?? "";
 
   useEffect(() => {
     let cancelled = false;

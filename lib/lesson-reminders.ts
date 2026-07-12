@@ -164,10 +164,15 @@ async function finishReminder(
   id: string,
   patch: Record<string, unknown>
 ) {
-  await db
+  const { error } = await db
     .from("lesson_reminders")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id);
+  if (error) {
+    // Surfaced in Vercel runtime logs; the row would otherwise sit in
+    // "sending" with no trace of why.
+    console.error(`lesson_reminders: failed to update ${id}: ${error.message}`);
+  }
 }
 
 /**
@@ -197,12 +202,16 @@ export async function sendDueLessonReminders(
 
   for (const reminder of due) {
     // Claim: only proceed if this run flipped the row from pending.
-    const { data: claimed } = await db
+    const { data: claimed, error: claimError } = await db
       .from("lesson_reminders")
       .update({ status: "sending", updated_at: new Date().toISOString() })
       .eq("id", reminder.id)
       .eq("status", "pending")
       .select("id");
+    if (claimError) {
+      console.error(`lesson_reminders: failed to claim ${reminder.id}: ${claimError.message}`);
+      continue;
+    }
     if (!claimed?.length) continue;
 
     // Stale rows (e.g. cron was down) are skipped, not sent hours late.
