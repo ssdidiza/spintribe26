@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildLessonIcs } from "@/lib/ics";
+import { COACHING_PACKAGE_TIERS, coachingPackageSavingsCents } from "@/lib/coaching-packages";
+import { enqueueLessonWhatsAppReminders } from "@/lib/lesson-reminders";
 
 /**
  * Booking notifications, modelled on PayFast/Xero: best-effort and
@@ -25,6 +27,10 @@ function coachName() {
 
 function resendFrom() {
   return process.env.RESEND_FROM?.trim() || "SpinTribe <onboarding@resend.dev>";
+}
+
+function appOrigin() {
+  return (process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "").replace(/\/$/, "");
 }
 
 function isEmailConfigured() {
@@ -100,6 +106,11 @@ export async function dispatchLessonBookingNotifications(
   const ends = new Date(input.endsAt);
   const when = formatWhen(starts);
   const contact = [input.customerEmail, input.customerPhone].filter(Boolean).join(" · ");
+  const fourSessionBlock = COACHING_PACKAGE_TIERS[0];
+  const origin = appOrigin();
+  const addBlockUrl = origin && input.reference
+    ? `${origin}/book?package=${encodeURIComponent(fourSessionBlock.id)}&from=${encodeURIComponent(input.reference)}`
+    : "";
 
   // 1. In-app notification for the coach (always — reuses the notifications table).
   const stravaId = coachStravaId();
@@ -122,13 +133,32 @@ export async function dispatchLessonBookingNotifications(
     }
   }
 
+  // 2. Durable WhatsApp reminder queue (24h + 1h before the session),
+  // drained by /api/lessons/reminders/send. Enqueued here — immediately
+  // after PayFast confirmation — regardless of email configuration.
+  if (input.customerPhone) {
+    try {
+      await enqueueLessonWhatsAppReminders(db, {
+        sessionId: input.sessionId,
+        serviceName: input.serviceName,
+        startsAt: input.startsAt,
+        location: input.location,
+        notes: input.notes,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+      });
+    } catch {
+      // Best-effort like the rest of this path; never block the payment ack.
+    }
+  }
+
   if (!isEmailConfigured()) return;
 
   const ics = buildLessonIcs({
     uid: `lesson-${input.sessionId}@spintribe`,
     startsAt: starts,
     endsAt: ends,
-    summary: `${input.serviceName} — SpinTribe`,
+    summary: `${input.serviceName} - SpinTribe Coaching`,
     description: input.notes ?? "",
     location: input.location ?? "",
     organizerName: coachName(),
@@ -137,7 +167,7 @@ export async function dispatchLessonBookingNotifications(
     attendeeEmail: input.customerEmail ?? coachEmail(),
   });
 
-  // 2. Email the coach.
+  // 3. Email the coach.
   try {
     await sendEmail({
       to: coachEmail(),
@@ -157,19 +187,24 @@ ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
     // ignore — coach still has the in-app notification
   }
 
-  // 3. Email the student a confirmation + invite.
+  // 4. Email the student a confirmation + invite.
   if (input.customerEmail) {
     try {
       await sendEmail({
         to: input.customerEmail,
-        subject: `Your SpinTribe lesson is booked — ${when}`,
-        html: `<h2>You're booked in 🚴</h2>
-<p>Hi ${input.customerName}, your <strong>${input.serviceName}</strong> is confirmed.</p>
+        subject: `Your SpinTribe Coaching session is confirmed - ${when}`,
+        html: `<h2>You're booked in</h2>
+<p>Hi ${input.customerName}, your <strong>${input.serviceName}</strong> with <strong>SpinTribe Coaching</strong> is confirmed.</p>
 <ul>
 <li><strong>When:</strong> ${when} (${input.durationMinutes} min)</li>
 ${input.location ? `<li><strong>Where:</strong> ${input.location}</li>` : ""}
 </ul>
-<p>The calendar invite is attached. See you there!</p>`,
+<p>The calendar invite is attached. You can also add it from the confirmation screen.</p>
+${addBlockUrl ? `<hr />
+<h3>Keep the progression going</h3>
+<p>After one session, the best next step is a structured Performance Block: four FTP-based sessions with continuity, follow-up, and a lower per-session rate.</p>
+<p><a href="${addBlockUrl}">Add the 4-session Performance Block</a> and save R${Math.round(coachingPackageSavingsCents(fourSessionBlock) / 100)} versus booking four Skills &amp; Training Rides one at a time.</p>` : ""}
+<p>Already use SpinTribe? Sign in with Strava from the confirmation screen if you want this lesson linked to your own SpinTribe history. Booking and reminders do not pull Strava metrics.</p>`,
         ics,
       });
     } catch {
