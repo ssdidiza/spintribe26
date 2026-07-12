@@ -4,6 +4,10 @@
     {
       "path": "/api/leagues/assign-monthly",
       "schedule": "10 2 1 * *"
+    },
+    {
+      "path": "/api/lessons/reminders/send",
+      "schedule": "0 4 * * *"
     }
   ]
 }
