@@ -69,12 +69,9 @@ export async function POST(req: NextRequest) {
     if (purchase.kind === "cart") {
       await activateCartLessonPurchase(db, purchase, {
         paidAt: new Date().toISOString(),
+        payfastPaymentId: params.get("pf_payment_id"),
         paymentMetadata: metadata,
       });
-      await db.from("lesson_purchases").update({
-        payfast_payment_id: params.get("pf_payment_id"),
-        updated_at: new Date().toISOString(),
-      }).eq("id", purchase.id);
 
       // Best-effort: never let a notification failure fail the ITN ack.
       const { data: itemRows } = await db

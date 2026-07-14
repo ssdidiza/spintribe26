@@ -101,7 +101,11 @@ export async function activateDirectLessonBooking(
 export async function activateCartLessonPurchase(
   db: SupabaseClient,
   purchase: LessonPurchaseRow,
-  input: { paidAt: string; paymentMetadata?: Record<string, unknown> | null }
+  input: {
+    paidAt: string;
+    payfastPaymentId?: string | null;
+    paymentMetadata?: Record<string, unknown> | null;
+  }
 ) {
   const paidAt = input.paidAt || new Date().toISOString();
   const { error: updateError } = await db
@@ -110,6 +114,7 @@ export async function activateCartLessonPurchase(
       status: "paid",
       paid_at: purchase.paid_at ?? paidAt,
       payfast_paid_at: purchase.payfast_paid_at ?? paidAt,
+      payfast_payment_id: input.payfastPaymentId ?? purchase.payfast_payment_id ?? null,
       payfast_metadata: input.paymentMetadata ?? purchase.payfast_metadata ?? null,
       updated_at: new Date().toISOString(),
     })

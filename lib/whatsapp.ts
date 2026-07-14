@@ -92,7 +92,7 @@ export async function sendWhatsAppTemplate(input: {
     components.push({
       type: "button",
       sub_type: "url",
-      index: "0",
+      index: 0,
       parameters: [{ type: "text", text: input.urlButtonParam }],
     });
   }

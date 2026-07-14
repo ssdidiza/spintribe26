@@ -104,6 +104,15 @@ export async function GET() {
     list.push(item);
     itemsByPurchase.set(item.purchase_id, list);
   }
+  const bookedCountByPurchase = new Map<string, number>();
+  for (const lessonSession of sessions) {
+    if (lessonSession.purchase_id && lessonSession.status === "booked") {
+      bookedCountByPurchase.set(
+        lessonSession.purchase_id,
+        (bookedCountByPurchase.get(lessonSession.purchase_id) ?? 0) + 1
+      );
+    }
+  }
   const openPackages = purchases
     .filter((purchase) => purchase.status === "paid")
     .map((purchase) => {
@@ -121,10 +130,7 @@ export async function GET() {
       remainingSessions: row.remaining,
       scheduleToken: row.purchase.schedule_token,
       items: row.items.map(serializeLessonPurchaseItem),
-      upcomingSessions: sessions.filter(
-        (lessonSession) =>
-          lessonSession.purchase_id === row.purchase.id && lessonSession.status === "booked"
-      ).length,
+      upcomingSessions: bookedCountByPurchase.get(row.purchase.id) ?? 0,
     }));
 
   return NextResponse.json({

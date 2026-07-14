@@ -157,12 +157,15 @@ export async function POST(req: NextRequest) {
 
   // Atomic: decrements the balance and inserts the session in one transaction;
   // the exclusion constraint rejects overlapping slots and rolls both back.
-  const { data: sessionData, error: bookError } = await db.rpc("book_package_session", {
-    p_item_id: item.id,
-    p_starts_at: startsAt.toISOString(),
-    p_location: location || null,
-    p_client_notes: notes || null,
-  });
+  // .single() forces the row-typed RPC result to come back as one object.
+  const { data: sessionData, error: bookError } = await db
+    .rpc("book_package_session", {
+      p_item_id: item.id,
+      p_starts_at: startsAt.toISOString(),
+      p_location: location || null,
+      p_client_notes: notes || null,
+    })
+    .single();
 
   if (bookError) {
     if (isSlotConstraintError(bookError)) {
