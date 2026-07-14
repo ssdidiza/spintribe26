@@ -84,6 +84,10 @@ export interface PlannedSegment {
   speedKmh: number;
   timeMinutes: number;
   cumulativeMinutes: number;
+  /** Distance covered from the start line through the end of this segment. */
+  cumulativeKm: number;
+  /** Total climbing from the start line through the end of this segment. */
+  cumulativeElevationM: number;
 }
 
 export interface TargetSummary {
@@ -241,11 +245,15 @@ function routeConstant(race: Race): number {
 
 function paceSegments(race: Race, flatSpeedKmh: number): PlannedSegment[] {
   let cumulative = 0;
+  let cumulativeKm = 0;
+  let cumulativeElevationM = 0;
   return race.segments.map((seg) => {
     const mult = TERRAIN_SPEED_MULTIPLIER[seg.terrain] ?? 0.95;
     const speed = flatSpeedKmh * mult;
     const minutes = (seg.distanceKm / speed) * 60;
     cumulative += minutes;
+    cumulativeKm += seg.distanceKm;
+    cumulativeElevationM += seg.elevationM;
     return {
       name: seg.name,
       distanceKm: seg.distanceKm,
@@ -254,6 +262,8 @@ function paceSegments(race: Race, flatSpeedKmh: number): PlannedSegment[] {
       speedKmh: round1(speed),
       timeMinutes: Math.round(minutes),
       cumulativeMinutes: Math.round(cumulative),
+      cumulativeKm: round1(cumulativeKm),
+      cumulativeElevationM: Math.round(cumulativeElevationM),
     };
   });
 }
