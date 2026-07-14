@@ -317,20 +317,93 @@ export default function RacePlanPage() {
               >
                 Change target or pick another race
               </button>
-              <a
-                href="/api/donate"
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] py-2.5 text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
-              >
-                <Heart size={14} />
-                Enjoying SpinTribe? Buy us a coffee
-              </a>
             </section>
           </>
         )}
       </main>
+      {status === "ready" && <DonateButton />}
       <NavBar />
+    </div>
+  );
+}
+
+const DONATE_AMOUNTS = [20, 50, 100] as const;
+
+/**
+ * Floating "buy us a coffee" button. PayFast PayNow links require an amount,
+ * so the picker chooses one before handing off to /api/donate, which builds
+ * the redirect. Kill criteria mirrors /api/donate.
+ */
+function DonateButton() {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+
+  return (
+    <div
+      className="fixed right-5 z-[51] flex flex-col items-end gap-2"
+      style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+    >
+      {open && (
+        <div className="glass-card w-56 p-3 shadow-xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+            Buy us a coffee
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            {DONATE_AMOUNTS.map((amount) => (
+              <a
+                key={amount}
+                href={`/api/donate?amount=${amount}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] py-2 text-center text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
+              >
+                R{amount}
+              </a>
+            ))}
+          </div>
+          <form
+            className="mt-1.5 flex gap-1.5"
+            action="/api/donate"
+            method="GET"
+            target="_blank"
+            onSubmit={() => {
+              setOpen(false);
+              setCustom("");
+            }}
+          >
+            <input
+              type="number"
+              name="amount"
+              min={5}
+              max={10000}
+              required
+              inputMode="numeric"
+              placeholder="Own amount (R)"
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-foreground/10 bg-transparent px-2 py-2 text-xs font-bold text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="rounded-lg border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] px-3 text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
+            >
+              Go
+            </button>
+          </form>
+          <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground/70">
+            Opens PayFast in a new tab.
+          </p>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Support SpinTribe"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-[#ff4b35]/40 bg-[#ff4b35] text-white shadow-lg transition-transform hover:scale-105"
+      >
+        <Heart size={20} fill="currentColor" />
+      </button>
     </div>
   );
 }
