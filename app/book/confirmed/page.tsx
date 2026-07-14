@@ -13,6 +13,7 @@ import {
 type BookingStatus = {
   status: string;
   confirmed: boolean;
+  kind?: string;
   service: string;
   customerName: string;
   customerEmail: string | null;
@@ -24,6 +25,8 @@ type BookingStatus = {
   totalAmountCents: number;
   currency: string;
   discountAmountCents: number;
+  remainingSessions?: number;
+  scheduleToken?: string | null;
 };
 
 function formatWhen(value: string | null) {
@@ -100,7 +103,9 @@ function BookingConfirmedContent() {
   }, [reference, pollRun]);
 
   const fourSessionBlock = COACHING_PACKAGE_TIERS[0];
-  const showUpsell = Boolean(data?.confirmed && data.lessonCount <= 1);
+  const remainingSessions = data?.remainingSessions ?? 0;
+  const scheduleUrl = data?.scheduleToken ? `/schedule?token=${encodeURIComponent(data.scheduleToken)}` : "";
+  const showUpsell = Boolean(data?.confirmed && data.lessonCount <= 1 && remainingSessions === 0);
   const addOnAmountCents = useMemo(
     () => Math.max(0, fourSessionBlock.totalPriceCents - (data?.totalAmountCents ?? 0)),
     [data?.totalAmountCents, fourSessionBlock.totalPriceCents]
@@ -120,7 +125,9 @@ function BookingConfirmedContent() {
             <div className="glass-card flex flex-col items-center gap-3 p-8">
               <CheckCircle2 size={40} className="text-emerald-500" />
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">SpinTribe Coaching</p>
-              <h1 className="text-xl font-black text-foreground">You&apos;re booked!</h1>
+              <h1 className="text-xl font-black text-foreground">
+                {data.kind === "cart" ? "Payment received!" : "You're booked!"}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 {data.customerName ? `${data.customerName}, your ` : "Your "}
                 <span className="font-bold text-foreground">{data.service}</span> is confirmed.
@@ -138,7 +145,15 @@ function BookingConfirmedContent() {
                 </div>
               )}
               <div className="mt-3 grid w-full gap-2">
-                {reference && (
+                {scheduleUrl && remainingSessions > 0 && (
+                  <Link
+                    href={scheduleUrl}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3 text-xs font-black text-white"
+                  >
+                    <CalendarPlus size={14} /> Schedule your {remainingSessions} session{remainingSessions === 1 ? "" : "s"}
+                  </Link>
+                )}
+                {reference && data.startsAt && (
                   <a
                     href={`/api/lessons/book/calendar?reference=${encodeURIComponent(reference)}`}
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#ff4b35]/40 px-4 py-3 text-xs font-black text-accent-foreground"
@@ -154,8 +169,9 @@ function BookingConfirmedContent() {
                 </a>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                The confirmation email includes the calendar invite. WhatsApp reminders use the number you entered and do
-                not depend on your calendar app.
+                {remainingSessions > 0
+                  ? "Your scheduling link is also in your email and WhatsApp — keep it, it works for every session in this package."
+                  : "The confirmation email includes the calendar invite. WhatsApp reminders use the number you entered and do not depend on your calendar app."}
               </p>
             </div>
 

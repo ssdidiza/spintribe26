@@ -35,8 +35,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payment link" }, { status: 403 });
   }
   const isDirect = purchase.kind === "direct";
+  // Carts pay first and schedule after, so they follow the guest (public) URLs
+  // but skip the slot-hold checks — no session exists yet.
+  const isGuestCheckout = isDirect || purchase.kind === "cart";
   if (purchase.status === "paid") {
-    const paidUrl = isDirect
+    const paidUrl = isGuestCheckout
       ? `/book/confirmed?reference=${encodeURIComponent(reference)}`
       : "/lessons?payment=already_paid";
     return NextResponse.redirect(new URL(paidUrl, appOrigin(req)));
@@ -75,14 +78,14 @@ export async function GET(req: NextRequest) {
   }
 
   const origin = appOrigin(req);
-  const itemName = isDirect
+  const itemName = isGuestCheckout
     ? (purchase.description || "SpinTribe cycling lesson").slice(0, 100)
     : `${Number(purchase.lesson_count)} SpinTribe cycling lessons`;
-  // Guests have no login, so direct bookings return to the public confirmation page.
-  const returnUrl = isDirect
+  // Guests have no login, so direct/cart bookings return to the public confirmation page.
+  const returnUrl = isGuestCheckout
     ? `${origin}/book/confirmed?reference=${encodeURIComponent(reference)}`
     : `${origin}/lessons?reference=${encodeURIComponent(reference)}`;
-  const cancelUrl = isDirect ? `${origin}/book?payment=cancelled` : `${origin}/lessons?payment=cancelled`;
+  const cancelUrl = isGuestCheckout ? `${origin}/book?payment=cancelled` : `${origin}/lessons?payment=cancelled`;
 
   const fields = createPayFastPaymentFields({
     reference,

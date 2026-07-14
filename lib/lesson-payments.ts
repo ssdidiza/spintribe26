@@ -93,6 +93,50 @@ export async function activateDirectLessonBooking(
   return session;
 }
 
+/**
+ * Cart (multi-session) purchase: payment confirmed → mark paid. No session is
+ * created here — the rider schedules each session from /schedule against the
+ * purchase's line-item balances. Idempotent on ITN retry.
+ */
+export async function activateCartLessonPurchase(
+  db: SupabaseClient,
+  purchase: LessonPurchaseRow,
+  input: { paidAt: string; paymentMetadata?: Record<string, unknown> | null }
+) {
+  const paidAt = input.paidAt || new Date().toISOString();
+  const { error: updateError } = await db
+    .from("lesson_purchases")
+    .update({
+      status: "paid",
+      paid_at: purchase.paid_at ?? paidAt,
+      payfast_paid_at: purchase.payfast_paid_at ?? paidAt,
+      payfast_metadata: input.paymentMetadata ?? purchase.payfast_metadata ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", purchase.id);
+  if (updateError) throw updateError;
+
+  if (purchase.xero_invoice_id && purchase.payfast_reference) {
+    try {
+      await recordXeroPaymentForLessonPurchase({
+        invoiceId: purchase.xero_invoice_id,
+        amountCents: purchase.total_amount_cents,
+        reference: purchase.payfast_reference,
+        paidAt,
+      });
+    } catch (error) {
+      await db
+        .from("lesson_purchases")
+        .update({
+          xero_sync_status: "error",
+          xero_error: errorMessage(error).slice(0, 1000),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", purchase.id);
+    }
+  }
+}
+
 export async function activateLessonPurchase(
   db: SupabaseClient,
   purchase: LessonPurchaseRow,

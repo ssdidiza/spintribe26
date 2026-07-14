@@ -8,6 +8,8 @@ import {
   Clock3,
   Loader2,
   MapPin,
+  Minus,
+  Plus,
   ReceiptText,
   ShieldCheck,
   Sparkles,
@@ -38,6 +40,8 @@ type BookingStatus = {
   location?: string | null;
 };
 
+const CART_MAX_PER_LINE = 10;
+
 function formatMoneyCents(cents: number, currency = "ZAR") {
   return new Intl.NumberFormat("en-ZA", { style: "currency", currency, minimumFractionDigits: 0 }).format(cents / 100);
 }
@@ -56,7 +60,9 @@ function findPerformanceService(list: LessonService[]) {
 export default function BookPage() {
   const [services, setServices] = useState<LessonService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [serviceId, setServiceId] = useState("");
+  // One quantity per service. 1 session total = pick-a-slot-then-pay (the
+  // classic flow); 2+ = pay first, schedule each session from /schedule.
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [packageTierId, setPackageTierId] = useState<CoachingPackageTier["id"] | "">("");
   const [startsAt, setStartsAt] = useState("");
   const [availability, setAvailability] = useState<LessonAvailabilityDay[]>([]);
@@ -86,11 +92,14 @@ export default function BookPage() {
 
         const list = data.services ?? [];
         const requestedPackage = COACHING_PACKAGE_TIERS.find((tier) => tier.id === params.get("package"));
-        const initialService = requestedPackage ? findPerformanceService(list) : list[0] ?? null;
         setServices(list);
-        setServiceId((current) => current || initialService?.id || "");
-        setPackageTierId(requestedPackage?.id ?? "");
-        setAvailabilityLoading(Boolean(initialService));
+        if (requestedPackage) {
+          setPackageTierId(requestedPackage.id);
+          setAvailabilityLoading(Boolean(findPerformanceService(list)));
+        } else if (list[0]) {
+          setCart({ [list[0].id]: 1 });
+          setAvailabilityLoading(true);
+        }
 
         const fromReference = params.get("from");
         if (fromReference) {
@@ -118,12 +127,33 @@ export default function BookPage() {
     };
   }, []);
 
+  const selectedPackage = useMemo(
+    () => COACHING_PACKAGE_TIERS.find((tier) => tier.id === packageTierId) ?? null,
+    [packageTierId]
+  );
+  const cartLines = useMemo(
+    () =>
+      services
+        .map((service) => ({ service, quantity: cart[service.id] ?? 0 }))
+        .filter((line) => line.quantity > 0),
+    [services, cart]
+  );
+  const totalQuantity = cartLines.reduce((sum, line) => sum + line.quantity, 0);
+  const cartTotalCents = cartLines.reduce((sum, line) => sum + line.quantity * line.service.priceCents, 0);
+  const singleService = !selectedPackage && totalQuantity === 1 ? cartLines[0]?.service ?? null : null;
+  const needsSlot = Boolean(selectedPackage || singleService);
+  // The service whose availability drives the slot picker.
+  const slotServiceId = selectedPackage ? findPerformanceService(services)?.id ?? "" : singleService?.id ?? "";
+  const slotDurationMinutes = selectedPackage?.durationMinutes ?? singleService?.durationMinutes ?? 0;
+
   useEffect(() => {
-    if (!serviceId) return;
+    if (!slotServiceId || !needsSlot) return;
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(`/api/lessons/availability?serviceId=${encodeURIComponent(serviceId)}`, {
+        const params = new URLSearchParams({ serviceId: slotServiceId });
+        if (slotDurationMinutes) params.set("durationMinutes", String(slotDurationMinutes));
+        const response = await fetch(`/api/lessons/availability?${params}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -141,10 +171,11 @@ export default function BookPage() {
       }
     })();
     return () => controller.abort();
-  }, [serviceId]);
+  }, [slotServiceId, slotDurationMinutes, needsSlot]);
 
-  function chooseService(id: string) {
-    setServiceId(id);
+  function setQuantity(serviceId: string, quantity: number) {
+    const next = Math.max(0, Math.min(CART_MAX_PER_LINE, quantity));
+    setCart((current) => ({ ...current, [serviceId]: next }));
     setPackageTierId("");
     setStartsAt("");
     setAvailability([]);
@@ -153,9 +184,8 @@ export default function BookPage() {
   }
 
   function choosePackage(tier: CoachingPackageTier) {
-    const baseService = findPerformanceService(services);
-    if (!baseService) return;
-    setServiceId(baseService.id);
+    if (!findPerformanceService(services)) return;
+    setCart({});
     setPackageTierId(tier.id);
     setStartsAt("");
     setAvailability([]);
@@ -163,22 +193,19 @@ export default function BookPage() {
     setError("");
   }
 
-  const selectedService = useMemo(
-    () => services.find((service) => service.id === serviceId) ?? null,
-    [services, serviceId]
-  );
-  const selectedPackage = useMemo(
-    () => COACHING_PACKAGE_TIERS.find((tier) => tier.id === packageTierId) ?? null,
-    [packageTierId]
-  );
   const selectedOffer = selectedPackage
     ? {
         name: selectedPackage.name,
         priceCents: selectedPackage.totalPriceCents,
         currency: selectedPackage.currency,
-        durationMinutes: selectedPackage.durationMinutes,
       }
-    : selectedService;
+    : totalQuantity > 0
+      ? {
+          name: cartLines.map((line) => `${line.quantity}x ${line.service.name}`).join(" + "),
+          priceCents: cartTotalCents,
+          currency: cartLines[0]?.service.currency ?? "ZAR",
+        }
+      : null;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -186,19 +213,25 @@ export default function BookPage() {
     setError("");
     setNotice("");
     try {
+      const payload: Record<string, unknown> = {
+        customerName: name,
+        customerEmail: email,
+        customerPhone: phone,
+        location,
+        notes,
+      };
+      if (selectedPackage) {
+        payload.packageTierId = selectedPackage.id;
+        payload.serviceId = findPerformanceService(services)?.id ?? "";
+        payload.startsAt = startsAt;
+      } else {
+        payload.items = cartLines.map((line) => ({ serviceId: line.service.id, quantity: line.quantity }));
+        if (singleService) payload.startsAt = startsAt;
+      }
       const response = await fetch("/api/lessons/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serviceId,
-          packageTierId: selectedPackage?.id,
-          startsAt,
-          customerName: name,
-          customerEmail: email,
-          customerPhone: phone,
-          location,
-          notes,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await response.json().catch(() => ({}))) as { authorizationUrl?: string; error?: string };
       if (!response.ok) throw new Error(data.error || "Unable to start booking");
@@ -212,6 +245,8 @@ export default function BookPage() {
       setWorking(false);
     }
   }
+
+  const canSubmit = selectedPackage ? Boolean(startsAt) : totalQuantity > 0 && (!singleService || Boolean(startsAt));
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,8 +265,8 @@ export default function BookPage() {
       <main className="mx-auto w-full max-w-lg space-y-5 px-5 py-6 md:max-w-3xl">
         <section className="space-y-3">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            One-on-one cycling coaching in Johannesburg: start with a single session, or commit to a structured
-            Performance Block with a better per-session rate.
+            One-on-one cycling coaching in Johannesburg: book a single session, mix multiple session types in one
+            checkout, or commit to a structured Performance Block with a better per-session rate.
           </p>
           <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-muted-foreground md:grid-cols-4">
             {["Choose", "Pick time", "Add details", "PayFast"].map((step, index) => (
@@ -271,21 +306,21 @@ export default function BookPage() {
             <section className="space-y-3">
               <div>
                 <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  1. Choose a session or block
+                  1. Choose your sessions
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Single sessions are the entry point. Performance Blocks give you a structured progression after that first ride.
+                  Set how many of each session you want — mix types in one checkout. Performance Blocks give you a
+                  structured progression at a lower per-session rate.
                 </p>
               </div>
 
               <div className="grid gap-2 md:grid-cols-2">
                 {services.map((service) => {
-                  const active = !selectedPackage && service.id === serviceId;
+                  const quantity = selectedPackage ? 0 : cart[service.id] ?? 0;
+                  const active = quantity > 0;
                   return (
-                    <button
-                      type="button"
+                    <div
                       key={service.id}
-                      onClick={() => chooseService(service.id)}
                       className={`glass-card flex min-h-36 items-start gap-3 p-4 text-left transition-colors ${
                         active ? "ring-2 ring-[#ff4b35]" : ""
                       }`}
@@ -299,11 +334,36 @@ export default function BookPage() {
                           <p className="text-sm font-black text-accent-foreground">{formatMoneyCents(service.priceCents, service.currency)}</p>
                         </div>
                         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{service.description}</p>
-                        <p className="mt-2 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Clock3 size={11} /> {service.durationMinutes} min
-                        </p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <p className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Clock3 size={11} /> {service.durationMinutes} min
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              aria-label={`Fewer ${service.name}`}
+                              onClick={() => setQuantity(service.id, quantity - 1)}
+                              disabled={quantity === 0}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-foreground/10 text-muted-foreground disabled:opacity-40"
+                            >
+                              <Minus size={13} />
+                            </button>
+                            <span className={`w-7 text-center text-sm font-black ${active ? "text-accent-foreground" : "text-muted-foreground"}`}>
+                              {quantity}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`More ${service.name}`}
+                              onClick={() => setQuantity(service.id, quantity + 1)}
+                              disabled={quantity >= CART_MAX_PER_LINE}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-foreground/10 text-foreground disabled:opacity-40"
+                            >
+                              <Plus size={13} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -354,27 +414,36 @@ export default function BookPage() {
               </div>
               {selectedPackage && (
                 <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300">
-                  This checkout books the first {selectedPackage.durationMinutes}-minute block session now. The remaining{" "}
-                  {selectedPackage.sessions - 1} sessions are captured on the paid Performance Block for follow-up scheduling.
+                  This checkout books the first {selectedPackage.durationMinutes}-minute block session now. You&apos;ll
+                  get a personal scheduling link for the remaining {selectedPackage.sessions - 1} sessions the moment
+                  payment is confirmed.
+                </p>
+              )}
+              {!selectedPackage && totalQuantity > 1 && (
+                <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300">
+                  You&apos;re booking {totalQuantity} sessions in one payment. After PayFast confirms, you&apos;ll get a
+                  personal scheduling link (email + WhatsApp) to pick a time for each session.
                 </p>
               )}
             </section>
 
-            <section className="space-y-2">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                2. Choose an available time
-              </h2>
-              <LessonSlotCalendar
-                availability={availability}
-                selectedSlot={startsAt}
-                onSelect={setStartsAt}
-                loading={availabilityLoading}
-              />
-            </section>
+            {needsSlot && (
+              <section className="space-y-2">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                  2. Choose an available time
+                </h2>
+                <LessonSlotCalendar
+                  availability={availability}
+                  selectedSlot={startsAt}
+                  onSelect={setStartsAt}
+                  loading={availabilityLoading}
+                />
+              </section>
+            )}
 
             <section className="glass-card space-y-3 p-5">
               <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                3. Rider details
+                {needsSlot ? "3." : "2."} Rider details
               </h2>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="block">
@@ -405,7 +474,7 @@ export default function BookPage() {
               </div>
             </section>
 
-            <button type="submit" disabled={working || !serviceId || !startsAt}
+            <button type="submit" disabled={working || !canSubmit}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50">
               {working ? <Loader2 size={16} className="animate-spin" /> : <CalendarCheck size={16} />}
               {selectedOffer ? `Pay ${formatMoneyCents(selectedOffer.priceCents, selectedOffer.currency)} with PayFast` : "Book"}
