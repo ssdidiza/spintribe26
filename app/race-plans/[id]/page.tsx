@@ -338,13 +338,6 @@ function DonateButton() {
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
 
-  const donate = (amount: number) => {
-    if (!Number.isFinite(amount) || amount < 5) return;
-    window.open(`/api/donate?amount=${amount}`, "_blank", "noopener,noreferrer");
-    setOpen(false);
-    setCustom("");
-  };
-
   return (
     <div
       className="fixed right-5 z-[51] flex flex-col items-end gap-2"
@@ -357,27 +350,34 @@ function DonateButton() {
           </p>
           <div className="mt-2 grid grid-cols-3 gap-1.5">
             {DONATE_AMOUNTS.map((amount) => (
-              <button
+              <a
                 key={amount}
-                type="button"
-                onClick={() => donate(amount)}
-                className="rounded-lg border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] py-2 text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
+                href={`/api/donate?amount=${amount}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] py-2 text-center text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
               >
                 R{amount}
-              </button>
+              </a>
             ))}
           </div>
           <form
             className="mt-1.5 flex gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              donate(Number.parseFloat(custom));
+            action="/api/donate"
+            method="GET"
+            target="_blank"
+            onSubmit={() => {
+              setOpen(false);
+              setCustom("");
             }}
           >
             <input
               type="number"
+              name="amount"
               min={5}
               max={10000}
+              required
               inputMode="numeric"
               placeholder="Own amount (R)"
               value={custom}
