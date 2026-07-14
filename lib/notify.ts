@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildLessonIcs } from "@/lib/ics";
 import { COACHING_PACKAGE_TIERS, coachingPackageSavingsCents } from "@/lib/coaching-packages";
-import { enqueueLessonWhatsAppReminders } from "@/lib/lesson-reminders";
+import { sendLessonWhatsAppConfirmation } from "@/lib/lesson-reminders";
 
 /**
  * Booking notifications, modelled on PayFast/Xero: best-effort and
@@ -133,17 +133,16 @@ export async function dispatchLessonBookingNotifications(
     }
   }
 
-  // 2. Durable WhatsApp reminder queue (24h + 1h before the session),
-  // drained by /api/lessons/reminders/send. Enqueued here — immediately
-  // after PayFast confirmation — regardless of email configuration.
+  // 2. Instant WhatsApp booking confirmation — fires the moment PayFast
+  // confirms, alongside the email; never waits for a cron. (The daily
+  // 04:00 SAST digest cron handles day-of reminders separately.)
   if (input.customerPhone) {
     try {
-      await enqueueLessonWhatsAppReminders(db, {
+      await sendLessonWhatsAppConfirmation(db, {
         sessionId: input.sessionId,
         serviceName: input.serviceName,
         startsAt: input.startsAt,
         location: input.location,
-        notes: input.notes,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
       });

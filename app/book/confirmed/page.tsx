@@ -55,6 +55,8 @@ function BookingConfirmedContent() {
   const [data, setData] = useState<BookingStatus | null>(null);
   const [pending, setPending] = useState(true);
   const [error, setError] = useState("");
+  // Bumping this restarts the polling loop ("Check again").
+  const [pollRun, setPollRun] = useState(0);
   const reference = useSearchParams().get("reference") ?? "";
 
   useEffect(() => {
@@ -82,8 +84,10 @@ function BookingConfirmedContent() {
       } catch (pollError) {
         if (!cancelled) setError(pollError instanceof Error ? pollError.message : "Unable to load booking");
       }
-      if (!cancelled && attempts < 8) {
-        window.setTimeout(poll, 2000);
+      // PayFast ITNs usually land in seconds but can retry for minutes —
+      // poll for ~2 minutes before handing over to the "Check again" button.
+      if (!cancelled && attempts < 40) {
+        window.setTimeout(poll, 3000);
       } else if (!cancelled) {
         setPending(false);
       }
@@ -93,7 +97,7 @@ function BookingConfirmedContent() {
     return () => {
       cancelled = true;
     };
-  }, [reference]);
+  }, [reference, pollRun]);
 
   const fourSessionBlock = COACHING_PACKAGE_TIERS[0];
   const showUpsell = Boolean(data?.confirmed && data.lessonCount <= 1);
@@ -191,6 +195,17 @@ function BookingConfirmedContent() {
             <p className="text-sm text-muted-foreground">
               {error || "PayFast is still confirming your payment. Your booking will be confirmed by email shortly."}
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                setPending(true);
+                setError("");
+                setPollRun((run) => run + 1);
+              }}
+              className="mt-2 rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground"
+            >
+              Check again
+            </button>
           </div>
         )}
 

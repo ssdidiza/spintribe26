@@ -22,7 +22,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock,
+  Download,
   Gauge,
+  Heart,
   Info,
   Lock,
   Mountain,
@@ -218,14 +220,24 @@ export default function RacePlanPage() {
             {/* ── Segment pacing ──────────────────────────────────────────── */}
             {plan.selected.segments.length > 0 && (
               <section className="glass-card p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <Route size={15} className="text-accent-foreground" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
-                    Pace by segment
-                  </p>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Route size={15} className="text-accent-foreground" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                      Pace by segment
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => downloadSplitsCard(race, plan)}
+                    className="flex items-center gap-1.5 rounded-full border border-foreground/10 px-3 py-1.5 text-[10px] font-black text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Download size={12} />
+                    Download splits
+                  </button>
                 </div>
                 <div className="space-y-2">
-                  {plan.selected.segments.map((seg, index) => (
+                  {withCumulative(plan.selected.segments).map((seg, index) => (
                     <div
                       key={`${seg.name}-${index}`}
                       className="rounded-xl border border-foreground/[0.06] bg-foreground/[0.03] p-3"
@@ -236,6 +248,9 @@ export default function RacePlanPage() {
                           <p className="mt-0.5 text-[10px] text-muted-foreground">
                             {seg.distanceKm} km · {seg.elevationM} m ·{" "}
                             {TERRAIN_META[seg.terrain as SegmentTerrain]?.label ?? seg.terrain}
+                          </p>
+                          <p className="mt-0.5 text-[10px] font-bold text-muted-foreground">
+                            at {seg.cumulativeKm} km · {seg.cumulativeElevationM} m climbed
                           </p>
                         </div>
                         <div className="text-right">
@@ -250,8 +265,9 @@ export default function RacePlanPage() {
                   ))}
                 </div>
                 <p className="mt-3 text-[10px] leading-snug text-muted-foreground/70">
-                  Segment speeds scale your flat-road target by terrain. Cumulative times assume
-                  steady riding without stops.
+                  Segment speeds scale your flat-road target by terrain. Cumulative distance,
+                  climbing and clock times assume steady riding without stops. Download the splits
+                  card and stick it on your stem or bottle.
                 </p>
               </section>
             )}
@@ -301,6 +317,15 @@ export default function RacePlanPage() {
               >
                 Change target or pick another race
               </button>
+              <a
+                href="/api/donate"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#ff4b35]/30 bg-[#ff4b35]/[0.06] py-2.5 text-xs font-black text-accent-foreground transition-colors hover:bg-[#ff4b35]/[0.12]"
+              >
+                <Heart size={14} />
+                Enjoying SpinTribe? Buy us a coffee
+              </a>
             </section>
           </>
         )}
@@ -312,6 +337,134 @@ export default function RacePlanPage() {
 
 function modeLabel(mode: TargetMode): string {
   return TARGET_MODES.find((m) => m.id === mode)?.label ?? mode;
+}
+
+type SegmentSplit = RacePlanResult["selected"]["segments"][number] & {
+  cumulativeKm: number;
+  cumulativeElevationM: number;
+};
+
+/**
+ * Older stored plans predate cumulative distance/elevation, so always derive
+ * them client-side from the per-segment figures (which every plan has).
+ */
+function withCumulative(segments: RacePlanResult["selected"]["segments"]): SegmentSplit[] {
+  let km = 0;
+  let elevation = 0;
+  return segments.map((seg) => {
+    km += seg.distanceKm;
+    elevation += seg.elevationM;
+    return {
+      ...seg,
+      cumulativeKm: Math.round(km * 10) / 10,
+      cumulativeElevationM: Math.round(elevation),
+    };
+  });
+}
+
+/**
+ * Render the splits as a high-res PNG card the rider can print and tape to a
+ * stem or bottle. Pure client-side canvas — no personal data leaves the page.
+ */
+function downloadSplitsCard(race: Race, plan: RacePlanResult) {
+  const splits = withCumulative(plan.selected.segments);
+  if (splits.length === 0) return;
+
+  const width = 900;
+  const margin = 28;
+  const headerH = 118;
+  const tableHeadH = 34;
+  const rowH = 40;
+  const footerH = 56;
+  const height = headerH + tableHeadH + splits.length * rowH + footerH;
+
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.scale(scale, scale);
+
+  const font = (spec: string) => `${spec} system-ui, -apple-system, 'Segoe UI', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  // Header
+  ctx.fillStyle = "#111111";
+  ctx.font = font("800 24px");
+  ctx.fillText(race.name, margin, 42);
+  ctx.font = font("500 13px");
+  ctx.fillStyle = "#6b7280";
+  ctx.fillText(`${formatRaceLocation(race)} · ${formatRaceWhen(race)}`, margin, 64);
+  ctx.font = font("800 16px");
+  ctx.fillStyle = "#ff4b35";
+  ctx.fillText(
+    `Target ${formatDurationMinutes(plan.selected.finishMinutes)} · ${plan.selected.requiredAvgSpeedKmh} km/h avg`,
+    margin,
+    92
+  );
+
+  // Column x positions (right-aligned numeric columns).
+  const colName = margin;
+  const colKm = 468;
+  const colClimb = 560;
+  const colSpeed = 648;
+  const colSplit = 748;
+  const colClock = width - margin;
+
+  // Table head
+  const headY = headerH + 22;
+  ctx.font = font("800 10px");
+  ctx.fillStyle = "#9ca3af";
+  ctx.textAlign = "left";
+  ctx.fillText("SEGMENT", colName, headY);
+  ctx.textAlign = "right";
+  ctx.fillText("AT KM", colKm, headY);
+  ctx.fillText("CLIMBED", colClimb, headY);
+  ctx.fillText("KM/H", colSpeed, headY);
+  ctx.fillText("SPLIT", colSplit, headY);
+  ctx.fillText("CLOCK", colClock, headY);
+
+  // Rows
+  splits.forEach((seg, index) => {
+    const top = headerH + tableHeadH + index * rowH;
+    if (index % 2 === 0) {
+      ctx.fillStyle = "#f6f7f8";
+      ctx.fillRect(margin - 12, top, width - (margin - 12) * 2, rowH);
+    }
+    const y = top + 26;
+
+    ctx.textAlign = "left";
+    ctx.font = font("700 14px");
+    ctx.fillStyle = "#111111";
+    const name = seg.name.length > 34 ? `${seg.name.slice(0, 33)}…` : seg.name;
+    ctx.fillText(name, colName, y);
+
+    ctx.textAlign = "right";
+    ctx.font = font("600 14px");
+    ctx.fillStyle = "#111111";
+    ctx.fillText(`${seg.cumulativeKm}`, colKm, y);
+    ctx.fillText(`${seg.cumulativeElevationM} m`, colClimb, y);
+    ctx.fillText(`${seg.speedKmh}`, colSpeed, y);
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText(formatDurationMinutes(seg.timeMinutes), colSplit, y);
+    ctx.font = font("800 14px");
+    ctx.fillStyle = "#ff4b35";
+    ctx.fillText(formatDurationMinutes(seg.cumulativeMinutes), colClock, y);
+  });
+
+  // Footer
+  const footerY = height - 24;
+  ctx.textAlign = "left";
+  ctx.font = font("500 11px");
+  ctx.fillStyle = "#9ca3af";
+  ctx.fillText("SpinTribe · speradidiza.cc — a guide, not a guarantee. Ride to how you feel.", margin, footerY);
+
+  const link = document.createElement("a");
+  link.download = `${race.slug || "race"}-splits.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
 }
 
 function HeroStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

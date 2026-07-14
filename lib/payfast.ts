@@ -137,12 +137,35 @@ export function createPayFastCheckoutUrl(input: {
   return url.toString();
 }
 
+// ITN rules differ from checkout rules: PayFast signs EVERY posted field in
+// the order received — including empty ones — with values encoded verbatim
+// (no trimming, no blank-filtering). Filtering empties here (the checkout
+// rule) made every real ITN fail signature verification with a 401.
+function phpUrlEncodeItn(value: string) {
+  return encodeURIComponent(value)
+    .replace(/[!'()*~]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%20/g, "+");
+}
+
+export function buildPayFastItnParamString(fields: PayFastField[]) {
+  return fields
+    .filter(([name]) => name !== "signature")
+    .map(([name, value]) => `${name}=${phpUrlEncodeItn(value)}`)
+    .join("&");
+}
+
+function generatePayFastItnSignature(fields: PayFastField[]) {
+  const paramString = buildPayFastItnParamString(fields);
+  const passphrase = payFastPassphrase();
+  return md5(passphrase ? `${paramString}&passphrase=${phpUrlEncodeItn(passphrase)}` : paramString);
+}
+
 export function verifyPayFastItnSignature(params: URLSearchParams) {
   const received = params.get("signature")?.toLowerCase();
   if (!received || !/^[a-f0-9]{32}$/.test(received)) return false;
 
-  const fields = Array.from(params.entries()).filter(([name]) => name !== "signature") as PayFastField[];
-  const expected = Buffer.from(generatePayFastSignature(fields), "hex");
+  const fields = Array.from(params.entries()) as PayFastField[];
+  const expected = Buffer.from(generatePayFastItnSignature(fields), "hex");
   const actual = Buffer.from(received, "hex");
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
@@ -170,11 +193,13 @@ export function isPayFastSourceIp(ip: string | null) {
 }
 
 export async function verifyPayFastServerConfirmation(params: URLSearchParams) {
-  const fields = Array.from(params.entries()).filter(([name]) => name !== "signature") as PayFastField[];
+  // Same ITN rules as the signature: echo back every field as posted
+  // (minus signature), empties included.
+  const fields = Array.from(params.entries()) as PayFastField[];
   const response = await fetch(getPayFastValidationUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: buildPayFastParamString(fields),
+    body: buildPayFastItnParamString(fields),
     cache: "no-store",
   });
   return response.ok && (await response.text()).trim() === "VALID";
