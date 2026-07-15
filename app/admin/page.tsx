@@ -15,6 +15,7 @@ import {
   Bell,
   Bike,
   CalendarCheck,
+  CalendarDays,
   CheckCircle2,
   Copy,
   CreditCard,
@@ -157,11 +158,24 @@ type AdminLessonSession = {
   };
 };
 
+type AdminOpenPackage = {
+  purchaseId: string;
+  customerName: string;
+  customerPhone: string | null;
+  description: string | null;
+  paidAt: string | null;
+  remainingSessions: number;
+  scheduleToken: string | null;
+  items: Array<{ id: string; name: string; quantity: number; quantityRemaining: number }>;
+  upcomingSessions: number;
+};
+
 type AdminLessonsData = {
   summary: AdminLessonSummary;
   riders: AdminLessonRider[];
   purchases: AdminLessonPurchase[];
   sessions: AdminLessonSession[];
+  openPackages?: AdminOpenPackage[];
 };
 
 type AdminService = {
@@ -192,6 +206,7 @@ const EMPTY_ADMIN_LESSONS: AdminLessonsData = {
   riders: [],
   purchases: [],
   sessions: [],
+  openPackages: [],
 };
 
 const ROLES: UserRole[] = ["member", "champion", "admin"];
@@ -1091,6 +1106,45 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+
+                {(lessons.openPackages ?? []).length > 0 && (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Sessions to schedule</p>
+                      <span className="text-[10px] font-bold text-muted-foreground">{(lessons.openPackages ?? []).length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(lessons.openPackages ?? []).map((pkg) => (
+                        <div key={pkg.purchaseId} className="glass-card flex items-center gap-3 p-4">
+                          <CalendarDays size={15} className="text-accent-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-foreground">{pkg.customerName}</p>
+                            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                              {pkg.items.map((item) => `${item.quantityRemaining}/${item.quantity} ${item.name}`).join(" - ")}
+                              {pkg.upcomingSessions ? ` - ${pkg.upcomingSessions} booked` : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-black text-accent-foreground">{pkg.remainingSessions}</span>
+                            {pkg.scheduleToken && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigator.clipboard.writeText(
+                                    `${window.location.origin}/schedule?token=${encodeURIComponent(pkg.scheduleToken ?? "")}`
+                                  );
+                                }}
+                                className="rounded-lg border border-foreground/10 px-2 py-2 text-[9px] font-black text-muted-foreground"
+                              >
+                                Copy link
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">

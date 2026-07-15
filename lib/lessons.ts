@@ -16,7 +16,8 @@ export type LessonPurchaseRow = {
   id: string;
   user_strava_id: string | null;
   created_by: string | null;
-  kind: "package" | "direct";
+  kind: "package" | "direct" | "cart";
+  schedule_token: string | null;
   service_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
@@ -51,6 +52,7 @@ export type LessonPurchaseRow = {
 export type LessonSessionRow = {
   id: string;
   purchase_id: string | null;
+  purchase_item_id: string | null;
   user_strava_id: string | null;
   coach_strava_id: string | null;
   service_id: string | null;
@@ -67,6 +69,19 @@ export type LessonSessionRow = {
   client_notes: string | null;
   google_calendar_event_id: string | null;
   hold_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LessonPurchaseItemRow = {
+  id: string;
+  purchase_id: string;
+  service_id: string | null;
+  item_name: string;
+  duration_minutes: number;
+  unit_price_cents: number;
+  quantity: number;
+  quantity_remaining: number;
   created_at: string;
   updated_at: string;
 };
@@ -172,6 +187,7 @@ export function serializeLessonPurchase(row: LessonPurchaseRow) {
     id: row.id,
     userId: row.user_strava_id ? String(row.user_strava_id) : null,
     kind: row.kind ?? "package",
+    scheduleToken: row.schedule_token ?? null,
     serviceId: row.service_id ?? null,
     customerName: row.customer_name ?? null,
     customerPhone: row.customer_phone ?? null,
@@ -198,6 +214,19 @@ export function serializeLessonPurchase(row: LessonPurchaseRow) {
     paidAt: row.paid_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function serializeLessonPurchaseItem(row: LessonPurchaseItemRow) {
+  return {
+    id: row.id,
+    purchaseId: row.purchase_id,
+    serviceId: row.service_id,
+    name: row.item_name,
+    durationMinutes: Number(row.duration_minutes ?? 60),
+    unitPriceCents: Number(row.unit_price_cents ?? 0),
+    quantity: Number(row.quantity ?? 0),
+    quantityRemaining: Number(row.quantity_remaining ?? 0),
   };
 }
 

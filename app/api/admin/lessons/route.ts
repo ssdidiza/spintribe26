@@ -3,9 +3,11 @@ import { getAdminContext } from "@/lib/admin-auth";
 import {
   buildLessonSummary,
   LessonLedgerRow,
+  LessonPurchaseItemRow,
   LessonPurchaseRow,
   LessonSessionRow,
   serializeLessonPurchase,
+  serializeLessonPurchaseItem,
   serializeLessonSession,
 } from "@/lib/lessons";
 
@@ -15,19 +17,22 @@ export async function GET() {
     return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
 
-  const [purchasesResult, sessionsResult, ledgerResult] = await Promise.all([
+  const [purchasesResult, sessionsResult, ledgerResult, itemsResult] = await Promise.all([
     ctx.db.from("lesson_purchases").select("*").order("created_at", { ascending: false }),
     ctx.db.from("lesson_sessions").select("*").order("starts_at", { ascending: true }),
     ctx.db.from("lesson_credit_ledger").select("*").order("created_at", { ascending: false }),
+    ctx.db.from("lesson_purchase_items").select("*").order("created_at", { ascending: true }),
   ]);
 
   if (purchasesResult.error) return NextResponse.json({ error: purchasesResult.error.message }, { status: 500 });
   if (sessionsResult.error) return NextResponse.json({ error: sessionsResult.error.message }, { status: 500 });
   if (ledgerResult.error) return NextResponse.json({ error: ledgerResult.error.message }, { status: 500 });
+  if (itemsResult.error) return NextResponse.json({ error: itemsResult.error.message }, { status: 500 });
 
   const purchases = (purchasesResult.data ?? []) as LessonPurchaseRow[];
   const sessions = (sessionsResult.data ?? []) as LessonSessionRow[];
   const ledger = (ledgerResult.data ?? []) as LessonLedgerRow[];
+  const purchaseItems = (itemsResult.data ?? []) as LessonPurchaseItemRow[];
   const userIds = Array.from(new Set([
     ...purchases.map((purchase) => String(purchase.user_strava_id ?? "")),
     ...sessions.map((lessonSession) => String(lessonSession.user_strava_id ?? "")),
@@ -91,7 +96,45 @@ export async function GET() {
     .reduce((sum, purchase) => sum + Number(purchase.total_amount_cents ?? 0), 0);
   const directBookings = sessions.filter((lessonSession) => !lessonSession.user_strava_id).length;
 
+  // Open packages: paid purchases with sessions still to schedule. Includes the
+  // schedule link so the coach can resend it to the client in one tap.
+  const itemsByPurchase = new Map<string, LessonPurchaseItemRow[]>();
+  for (const item of purchaseItems) {
+    const list = itemsByPurchase.get(item.purchase_id) ?? [];
+    list.push(item);
+    itemsByPurchase.set(item.purchase_id, list);
+  }
+  const bookedCountByPurchase = new Map<string, number>();
+  for (const lessonSession of sessions) {
+    if (lessonSession.purchase_id && lessonSession.status === "booked") {
+      bookedCountByPurchase.set(
+        lessonSession.purchase_id,
+        (bookedCountByPurchase.get(lessonSession.purchase_id) ?? 0) + 1
+      );
+    }
+  }
+  const openPackages = purchases
+    .filter((purchase) => purchase.status === "paid")
+    .map((purchase) => {
+      const items = itemsByPurchase.get(purchase.id) ?? [];
+      const remaining = items.reduce((sum, item) => sum + Number(item.quantity_remaining ?? 0), 0);
+      return { purchase, items, remaining };
+    })
+    .filter((row) => row.remaining > 0)
+    .map((row) => ({
+      purchaseId: row.purchase.id,
+      customerName: row.purchase.customer_name || "Guest",
+      customerPhone: row.purchase.customer_phone,
+      description: row.purchase.description,
+      paidAt: row.purchase.paid_at,
+      remainingSessions: row.remaining,
+      scheduleToken: row.purchase.schedule_token,
+      items: row.items.map(serializeLessonPurchaseItem),
+      upcomingSessions: bookedCountByPurchase.get(row.purchase.id) ?? 0,
+    }));
+
   return NextResponse.json({
+    openPackages,
     summary: {
       ...aggregate,
       totalPaidCents: aggregate.totalPaidCents + directPaidCents,

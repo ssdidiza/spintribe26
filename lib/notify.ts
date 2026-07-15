@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildLessonIcs } from "@/lib/ics";
 import { COACHING_PACKAGE_TIERS, coachingPackageSavingsCents } from "@/lib/coaching-packages";
 import { sendLessonWhatsAppConfirmation } from "@/lib/lesson-reminders";
+import {
+  isWhatsAppConfigured,
+  normalizeWhatsAppNumber,
+  sendWhatsAppTemplate,
+  sendWhatsAppText,
+  whatsAppSendMode,
+} from "@/lib/whatsapp";
 
 /**
  * Booking notifications, modelled on PayFast/Xero: best-effort and
@@ -100,6 +107,9 @@ export async function dispatchLessonBookingNotifications(
     customerEmail?: string | null;
     customerPhone?: string | null;
     reference?: string | null;
+    /** Set for package/cart purchases with sessions still to schedule. */
+    scheduleUrl?: string | null;
+    remainingSessions?: number;
   }
 ) {
   const starts = new Date(input.startsAt);
@@ -108,7 +118,8 @@ export async function dispatchLessonBookingNotifications(
   const contact = [input.customerEmail, input.customerPhone].filter(Boolean).join(" · ");
   const fourSessionBlock = COACHING_PACKAGE_TIERS[0];
   const origin = appOrigin();
-  const addBlockUrl = origin && input.reference
+  // Upsell a block only after a single session — not to someone who just bought one.
+  const addBlockUrl = origin && input.reference && !(input.remainingSessions && input.remainingSessions > 0)
     ? `${origin}/book?package=${encodeURIComponent(fourSessionBlock.id)}&from=${encodeURIComponent(input.reference)}`
     : "";
 
@@ -186,7 +197,7 @@ ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
     // ignore — coach still has the in-app notification
   }
 
-  // 4. Email the student a confirmation + invite.
+  // 4. Email the rider a confirmation + invite.
   if (input.customerEmail) {
     try {
       await sendEmail({
@@ -199,6 +210,9 @@ ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
 ${input.location ? `<li><strong>Where:</strong> ${input.location}</li>` : ""}
 </ul>
 <p>The calendar invite is attached. You can also add it from the confirmation screen.</p>
+${input.scheduleUrl && (input.remainingSessions ?? 0) > 0 ? `<p><strong>You have ${input.remainingSessions} more session${
+          (input.remainingSessions ?? 0) === 1 ? "" : "s"
+        } to schedule.</strong> <a href="${input.scheduleUrl}">Pick your next time here</a> — keep this link, it's your scheduling page.</p>` : ""}
 ${addBlockUrl ? `<hr />
 <h3>Keep the progression going</h3>
 <p>After one session, the best next step is a structured Performance Block: four FTP-based sessions with continuity, follow-up, and a lower per-session rate.</p>
@@ -208,6 +222,132 @@ ${addBlockUrl ? `<hr />
       });
     } catch {
       // ignore — booking is already confirmed
+    }
+  }
+}
+
+function packagePaidTemplateName() {
+  return process.env.WHATSAPP_TEMPLATE_PACKAGE_PAID?.trim() || "package_paid";
+}
+
+/**
+ * Cart/package payment confirmed: one invoice-style email and one WhatsApp,
+ * both carrying the /schedule link. No session exists yet — per-session
+ * confirmations fire from /schedule as each slot is booked. Best-effort,
+ * same contract as dispatchLessonBookingNotifications.
+ */
+export async function dispatchCartPurchaseNotifications(
+  db: SupabaseClient,
+  input: {
+    purchaseId: string;
+    items: Array<{ name: string; quantity: number; unitPriceCents: number }>;
+    totalAmountCents: number;
+    currency: string;
+    customerName: string;
+    customerEmail?: string | null;
+    customerPhone?: string | null;
+    scheduleToken: string | null;
+    reference?: string | null;
+  }
+) {
+  const origin = appOrigin();
+  const scheduleUrl = origin && input.scheduleToken
+    ? `${origin}/schedule?token=${encodeURIComponent(input.scheduleToken)}`
+    : "";
+  const totalSessions = input.items.reduce((sum, item) => sum + item.quantity, 0);
+  const summary = input.items.map((item) => `${item.quantity}x ${item.name}`).join(", ");
+  const firstName = input.customerName.trim().split(/\s+/)[0] || "there";
+  const money = (cents: number) =>
+    new Intl.NumberFormat("en-ZA", { style: "currency", currency: input.currency || "ZAR" }).format(cents / 100);
+
+  // 1. In-app notification for the coach (deduped against ITN retries).
+  const stravaId = coachStravaId();
+  if (stravaId) {
+    try {
+      await db.from("notifications").upsert(
+        {
+          user_strava_id: stravaId,
+          type: "info",
+          title: `Package paid: ${input.customerName}`,
+          body: `${summary} — ${money(input.totalAmountCents)}. ${totalSessions} session${
+            totalSessions === 1 ? "" : "s"
+          } to schedule.`,
+          dedupe_key: `cart_paid:${input.purchaseId}`,
+        },
+        { onConflict: "dedupe_key", ignoreDuplicates: true }
+      );
+    } catch {
+      // best-effort
+    }
+  }
+
+  // 2. WhatsApp with the schedule link. Template mode uses a URL button whose
+  // dynamic suffix is the token (template URL: {origin}/schedule?token={{1}}).
+  const phone = normalizeWhatsAppNumber(input.customerPhone ?? "");
+  if (phone && isWhatsAppConfigured() && scheduleUrl) {
+    try {
+      if (whatsAppSendMode() === "text") {
+        await sendWhatsAppText({
+          to: phone,
+          text: `Hi ${firstName}, your SpinTribe Coaching package is paid: ${summary}.
+
+Pick your session times here (keep this link): ${scheduleUrl}`,
+        });
+      } else {
+        await sendWhatsAppTemplate({
+          to: phone,
+          templateName: packagePaidTemplateName(),
+          bodyParams: [firstName, summary].map((value) => value.replace(/\s+/g, " ").trim()),
+          urlButtonParam: input.scheduleToken ?? "",
+        });
+      }
+    } catch {
+      // best-effort — the email below carries the same link
+    }
+  }
+
+  const itemRowsHtml = input.items
+    .map(
+      (item) =>
+        `<tr><td>${item.quantity}x ${item.name}</td><td style="text-align:right">${money(
+          item.quantity * item.unitPriceCents
+        )}</td></tr>`
+    )
+    .join("");
+
+  // 3. Email the coach.
+  if (isEmailConfigured()) {
+    try {
+      await sendEmail({
+        to: coachEmail(),
+        subject: `Package paid: ${input.customerName} — ${totalSessions} sessions to schedule`,
+        html: `<h2>Package paid</h2>
+<p><strong>${input.customerName}</strong> paid ${money(input.totalAmountCents)} for: ${summary}.</p>
+<p>They'll schedule their sessions from their link; each booking sends the usual confirmations.</p>`,
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  // 4. Email the rider the receipt + schedule link.
+  if (input.customerEmail && process.env.RESEND_API_KEY?.trim()) {
+    try {
+      await sendEmail({
+        to: input.customerEmail,
+        subject: `Payment received — schedule your ${totalSessions} SpinTribe sessions`,
+        html: `<h2>Payment received</h2>
+<p>Hi ${firstName}, thanks — your SpinTribe Coaching package is confirmed.</p>
+<table style="width:100%;max-width:420px">${itemRowsHtml}
+<tr><td style="border-top:1px solid #ccc"><strong>Total paid</strong></td><td style="border-top:1px solid #ccc;text-align:right"><strong>${money(
+          input.totalAmountCents
+        )}</strong></td></tr></table>
+${scheduleUrl ? `<p style="margin-top:16px"><a href="${scheduleUrl}" style="display:inline-block;background:#ff4b35;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Schedule your sessions</a></p>
+<p>Keep this link — it's your scheduling page for every session in this package. Each session you book gets its own calendar invite and WhatsApp confirmation.</p>` : ""}
+${input.reference ? `<p style="color:#888;font-size:12px">Payment reference: ${input.reference}</p>` : ""}`,
+      });
+    } catch {
+      // ignore — payment is already confirmed
     }
   }
 }

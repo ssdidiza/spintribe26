@@ -10,32 +10,52 @@ export async function GET(req: NextRequest) {
   const reference = req.nextUrl.searchParams.get("reference")?.trim();
   if (!reference) return NextResponse.json({ error: "reference is required" }, { status: 400 });
 
-  const { data, error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+  const { data, error } = await db
     .from("lesson_purchases")
-    .select("status,description,booking_starts_at,booking_duration_minutes,booking_location,customer_name,customer_email,customer_phone,lesson_count,total_amount_cents,currency,discount_amount_cents")
+    .select("id,kind,status,schedule_token,description,booking_starts_at,booking_duration_minutes,booking_location,customer_name,customer_email,customer_phone,lesson_count,total_amount_cents,currency,discount_amount_cents")
     .eq("payfast_reference", reference)
-    .eq("kind", "direct")
+    .in("kind", ["direct", "cart"])
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
 
-  const purchase = data as Partial<LessonPurchaseRow> & {
-    booking_starts_at?: string | null;
-    booking_duration_minutes?: number | null;
-    booking_location?: string | null;
-    customer_name?: string | null;
-    customer_email?: string | null;
-    customer_phone?: string | null;
-    lesson_count?: number | string | null;
-    total_amount_cents?: number | null;
-    currency?: string | null;
-    discount_amount_cents?: number | null;
-  };
+  const purchase = data as Pick<
+    LessonPurchaseRow,
+    | "id"
+    | "kind"
+    | "status"
+    | "schedule_token"
+    | "description"
+    | "booking_starts_at"
+    | "booking_duration_minutes"
+    | "booking_location"
+    | "customer_name"
+    | "customer_email"
+    | "customer_phone"
+    | "lesson_count"
+    | "total_amount_cents"
+    | "currency"
+    | "discount_amount_cents"
+  >;
+  const confirmed = purchase.status === "paid";
+
+  // Sessions still to schedule (cart lines + Performance Block remainders).
+  // The schedule token only travels once payment is confirmed.
+  let remainingSessions = 0;
+  if (confirmed) {
+    const { data: items } = await db
+      .from("lesson_purchase_items")
+      .select("quantity_remaining")
+      .eq("purchase_id", purchase.id);
+    remainingSessions = (items ?? []).reduce((sum, item) => sum + Number(item.quantity_remaining ?? 0), 0);
+  }
 
   return NextResponse.json({
     status: purchase.status,
-    confirmed: purchase.status === "paid",
+    confirmed,
+    kind: purchase.kind,
     service: purchase.description ?? "Cycling lesson",
     customerName: purchase.customer_name ?? "",
     customerEmail: purchase.customer_email ?? null,
@@ -47,5 +67,7 @@ export async function GET(req: NextRequest) {
     totalAmountCents: Number(purchase.total_amount_cents ?? 0),
     currency: purchase.currency ?? "ZAR",
     discountAmountCents: Number(purchase.discount_amount_cents ?? 0),
+    remainingSessions,
+    scheduleToken: confirmed && remainingSessions > 0 ? purchase.schedule_token : null,
   });
 }

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { activateDirectLessonBooking, activateLessonPurchase } from "@/lib/lesson-payments";
-import { LessonPurchaseRow } from "@/lib/lessons";
-import { dispatchLessonBookingNotifications } from "@/lib/notify";
+import {
+  activateCartLessonPurchase,
+  activateDirectLessonBooking,
+  activateLessonPurchase,
+} from "@/lib/lesson-payments";
+import { LessonPurchaseItemRow, LessonPurchaseRow } from "@/lib/lessons";
+import { dispatchCartPurchaseNotifications, dispatchLessonBookingNotifications } from "@/lib/notify";
 import {
   isPayFastSourceIp,
   verifyPayFastItnSignature,
@@ -62,6 +66,37 @@ export async function POST(req: NextRequest) {
 
   const metadata = Object.fromEntries(params.entries());
   try {
+    if (purchase.kind === "cart") {
+      await activateCartLessonPurchase(db, purchase, {
+        paidAt: new Date().toISOString(),
+        payfastPaymentId: params.get("pf_payment_id"),
+        paymentMetadata: metadata,
+      });
+
+      // Best-effort: never let a notification failure fail the ITN ack.
+      const { data: itemRows } = await db
+        .from("lesson_purchase_items")
+        .select("*")
+        .eq("purchase_id", purchase.id);
+      await dispatchCartPurchaseNotifications(db, {
+        purchaseId: purchase.id,
+        items: ((itemRows ?? []) as LessonPurchaseItemRow[]).map((item) => ({
+          name: item.item_name,
+          quantity: Number(item.quantity ?? 0),
+          unitPriceCents: Number(item.unit_price_cents ?? 0),
+        })),
+        totalAmountCents: purchase.total_amount_cents,
+        currency: purchase.currency,
+        customerName: purchase.customer_name || "Guest rider",
+        customerEmail: purchase.customer_email,
+        customerPhone: purchase.customer_phone,
+        scheduleToken: purchase.schedule_token,
+        reference,
+      }).catch(() => undefined);
+
+      return NextResponse.json({ ok: true, status: "paid" });
+    }
+
     if (purchase.kind === "direct") {
       const lessonSession = await activateDirectLessonBooking(db, purchase, {
         paidAt: new Date().toISOString(),
@@ -71,6 +106,21 @@ export async function POST(req: NextRequest) {
         payfast_payment_id: params.get("pf_payment_id"),
         updated_at: new Date().toISOString(),
       }).eq("id", purchase.id);
+
+      // Performance Blocks carry a line-item balance: the remaining sessions
+      // are scheduled from /schedule, so the confirmation carries that link.
+      const { data: itemRows } = await db
+        .from("lesson_purchase_items")
+        .select("quantity_remaining")
+        .eq("purchase_id", purchase.id);
+      const remainingSessions = (itemRows ?? []).reduce(
+        (sum, item) => sum + Number(item.quantity_remaining ?? 0),
+        0
+      );
+      const origin = (process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "").replace(/\/$/, "");
+      const scheduleUrl = remainingSessions > 0 && origin && purchase.schedule_token
+        ? `${origin}/schedule?token=${encodeURIComponent(purchase.schedule_token)}`
+        : null;
 
       // Best-effort: never let a notification failure fail the ITN ack.
       await dispatchLessonBookingNotifications(db, {
@@ -85,6 +135,8 @@ export async function POST(req: NextRequest) {
         customerEmail: purchase.customer_email,
         customerPhone: purchase.customer_phone,
         reference,
+        scheduleUrl,
+        remainingSessions,
       }).catch(() => undefined);
 
       return NextResponse.json({ ok: true, status: "paid" });

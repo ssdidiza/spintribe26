@@ -9,8 +9,15 @@ export async function GET(req: NextRequest) {
   const serviceId = req.nextUrl.searchParams.get("serviceId")?.trim();
   const fromDate = req.nextUrl.searchParams.get("from")?.trim();
   const daysValue = Number(req.nextUrl.searchParams.get("days") ?? lessonBookingWindowDays());
+  // Package line items snapshot their duration at purchase time, which may
+  // differ from the service's current duration — callers pass it explicitly.
+  const durationValue = req.nextUrl.searchParams.get("durationMinutes");
+  const durationMinutes = durationValue === null ? null : Number(durationValue);
 
   if (!serviceId) return NextResponse.json({ error: "serviceId is required" }, { status: 400 });
+  if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 480)) {
+    return NextResponse.json({ error: "durationMinutes must be between 15 and 480" }, { status: 400 });
+  }
   if (fromDate && !isDateKey(fromDate)) {
     return NextResponse.json({ error: "from must be a date in YYYY-MM-DD format" }, { status: 400 });
   }
@@ -30,10 +37,15 @@ export async function GET(req: NextRequest) {
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "That service is no longer available" }, { status: 404 });
 
-    const availability = await getLessonAvailability(db, data as LessonServiceRow, {
-      fromDate: fromDate || undefined,
-      days: Math.trunc(daysValue),
-    });
+    const service = data as LessonServiceRow;
+    const availability = await getLessonAvailability(
+      db,
+      durationMinutes ? { ...service, duration_minutes: durationMinutes } : service,
+      {
+        fromDate: fromDate || undefined,
+        days: Math.trunc(daysValue),
+      }
+    );
 
     return NextResponse.json(
       { availability },

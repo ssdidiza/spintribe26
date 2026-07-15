@@ -75,19 +75,34 @@ export async function sendWhatsAppTemplate(input: {
   to: string;
   templateName: string;
   bodyParams: string[];
+  /**
+   * Dynamic suffix for a template URL button (Meta's supported way to send a
+   * per-recipient link, e.g. a schedule token). The template's button URL
+   * must end in {{1}}.
+   */
+  urlButtonParam?: string;
 }): Promise<WhatsAppSendResult> {
+  const components: Record<string, unknown>[] = [
+    {
+      type: "body",
+      parameters: input.bodyParams.map((text) => ({ type: "text", text })),
+    },
+  ];
+  if (input.urlButtonParam) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: 0,
+      parameters: [{ type: "text", text: input.urlButtonParam }],
+    });
+  }
   return postWhatsAppMessage({
     to: input.to,
     type: "template",
     template: {
       name: input.templateName,
       language: { code: whatsAppTemplateLanguage() },
-      components: [
-        {
-          type: "body",
-          parameters: input.bodyParams.map((text) => ({ type: "text", text })),
-        },
-      ],
+      components,
     },
   });
 }
