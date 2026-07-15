@@ -28,6 +28,10 @@ create table if not exists public.lesson_purchase_items (
 create index if not exists idx_lesson_purchase_items_purchase
   on public.lesson_purchase_items(purchase_id);
 
+create index if not exists idx_lesson_purchase_items_service
+  on public.lesson_purchase_items(service_id)
+  where service_id is not null;
+
 alter table public.lesson_purchase_items enable row level security;
 revoke all on public.lesson_purchase_items from anon, authenticated;
 grant select, insert, update, delete on public.lesson_purchase_items to service_role;
