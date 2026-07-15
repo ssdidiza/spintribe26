@@ -237,6 +237,12 @@ export async function createXeroInvoiceForLessonPurchase(input: {
   discountPercent: number;
   currency?: string;
   description?: string;
+  lineItems?: Array<{
+    description: string;
+    quantity: number;
+    unitPriceCents: number;
+    discountPercent?: number;
+  }>;
 }) {
   if (!isXeroConfigured()) return null;
 
@@ -245,14 +251,25 @@ export async function createXeroInvoiceForLessonPurchase(input: {
 
   const taxType = process.env.XERO_LESSON_TAX_TYPE?.trim();
   const invoiceStatus = process.env.XERO_INVOICE_STATUS?.trim() || "AUTHORISED";
-  const lineItem: Record<string, unknown> = {
-    Description: input.description || "Cycling lesson",
-    Quantity: input.lessonCount,
-    UnitAmount: input.unitPriceCents / 100,
-    DiscountRate: input.discountPercent,
-    AccountCode: accountCode,
-  };
-  if (taxType) lineItem.TaxType = taxType;
+  const requestedLineItems = input.lineItems?.length
+    ? input.lineItems
+    : [{
+        description: input.description || "Cycling lesson",
+        quantity: input.lessonCount,
+        unitPriceCents: input.unitPriceCents,
+        discountPercent: input.discountPercent,
+      }];
+  const lineItems = requestedLineItems.map((item) => {
+    const lineItem: Record<string, unknown> = {
+      Description: item.description,
+      Quantity: item.quantity,
+      UnitAmount: item.unitPriceCents / 100,
+      DiscountRate: item.discountPercent ?? 0,
+      AccountCode: accountCode,
+    };
+    if (taxType) lineItem.TaxType = taxType;
+    return lineItem;
+  });
 
   const payload = {
     Invoices: [
@@ -268,7 +285,7 @@ export async function createXeroInvoiceForLessonPurchase(input: {
         CurrencyCode: input.currency ?? LESSON_CURRENCY,
         Reference: `SpinTribe lessons ${input.purchaseId}`,
         Status: invoiceStatus,
-        LineItems: [lineItem],
+        LineItems: lineItems,
       },
     ],
   };

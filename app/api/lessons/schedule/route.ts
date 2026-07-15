@@ -34,6 +34,35 @@ async function loadPurchaseByToken(db: ReturnType<typeof supabaseAdmin>, token: 
   return (data as LessonPurchaseRow | null) ?? null;
 }
 
+async function schedulingServiceForItem(
+  db: ReturnType<typeof supabaseAdmin>,
+  purchase: LessonPurchaseRow,
+  item: LessonPurchaseItemRow
+) {
+  const { data: serviceData, error: serviceError } = item.service_id
+    ? await db.from("lesson_services").select("*").eq("id", item.service_id).maybeSingle()
+    : { data: null, error: null };
+  if (serviceError) throw serviceError;
+
+  // A paid item remains bookable from its purchase-time snapshot even if the
+  // catalog service is later deactivated or deleted.
+  return {
+    ...((serviceData as LessonServiceRow | null) ?? {
+      id: item.service_id ?? item.id,
+      slug: "package-item",
+      name: item.item_name,
+      description: "",
+      price_cents: item.unit_price_cents,
+      currency: purchase.currency,
+      active: false,
+      sort_order: 0,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }),
+    duration_minutes: item.duration_minutes,
+  } as LessonServiceRow;
+}
+
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token")?.trim() ?? "";
   if (!isToken(token)) return NextResponse.json({ error: "Invalid schedule link" }, { status: 400 });
@@ -46,6 +75,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load" }, { status: 500 });
   }
   if (!purchase) return NextResponse.json({ error: "Schedule link not found" }, { status: 404 });
+
+  const availabilityItemId = req.nextUrl.searchParams.get("itemId")?.trim();
+  if (availabilityItemId) {
+    if (purchase.status !== "paid") {
+      return NextResponse.json({ error: "This purchase hasn't been paid yet" }, { status: 409 });
+    }
+    try {
+      const { data: itemData, error: itemError } = await db
+        .from("lesson_purchase_items")
+        .select("*")
+        .eq("id", availabilityItemId)
+        .eq("purchase_id", purchase.id)
+        .maybeSingle();
+      if (itemError) throw itemError;
+      if (!itemData) {
+        return NextResponse.json({ error: "That session type isn't on this purchase" }, { status: 404 });
+      }
+      const item = itemData as LessonPurchaseItemRow;
+      if (Number(item.quantity_remaining) <= 0) {
+        return NextResponse.json({ error: "No sessions left on this item" }, { status: 409 });
+      }
+      const service = await schedulingServiceForItem(db, purchase, item);
+      const availability = await getLessonAvailability(db, service);
+      return NextResponse.json({ availability });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Unable to load available times" },
+        { status: 500 }
+      );
+    }
+  }
 
   const [itemsResult, sessionsResult] = await Promise.all([
     db
@@ -129,24 +189,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Same slot validation as /book: the item's snapshotted duration wins.
-  const { data: serviceData } = item.service_id
-    ? await db.from("lesson_services").select("*").eq("id", item.service_id).maybeSingle()
-    : { data: null };
-  const schedulingService = {
-    ...((serviceData as LessonServiceRow | null) ?? {
-      id: item.service_id ?? item.id,
-      slug: "package-item",
-      name: item.item_name,
-      description: "",
-      price_cents: item.unit_price_cents,
-      currency: purchase.currency,
-      active: true,
-      sort_order: 0,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-    }),
-    duration_minutes: item.duration_minutes,
-  } as LessonServiceRow;
+  let schedulingService: LessonServiceRow;
+  try {
+    schedulingService = await schedulingServiceForItem(db, purchase, item);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to load session type" },
+      { status: 500 }
+    );
+  }
 
   const requestedDate = johannesburgDateKey(startsAt);
   const [day] = await getLessonAvailability(db, schedulingService, { fromDate: requestedDate, days: 1 });

@@ -12,6 +12,7 @@ import { createPayFastCheckoutUrl, isPayFastConfigured } from "@/lib/payfast";
 import { getEffectiveUserId, getSession } from "@/lib/session";
 import { coachingPackagePricing, findCoachingPackageTier } from "@/lib/coaching-packages";
 import { normalizeWhatsAppNumber } from "@/lib/whatsapp";
+import { createXeroInvoiceForLessonPurchase, isXeroConfigured } from "@/lib/xero";
 
 export const runtime = "nodejs";
 
@@ -92,6 +93,10 @@ export async function POST(req: NextRequest) {
   if (services.size !== serviceIds.length) {
     return NextResponse.json({ error: "One of those services is no longer available" }, { status: 404 });
   }
+  const currencies = new Set(Array.from(services.values()).map((service) => service.currency ?? LESSON_CURRENCY));
+  if (currencies.size > 1) {
+    return NextResponse.json({ error: "Services with different currencies cannot share one checkout" }, { status: 400 });
+  }
 
   const customer = {
     customerName,
@@ -149,7 +154,9 @@ export async function POST(req: NextRequest) {
   }
 
   const purchaseId = crypto.randomUUID();
-  const reference = `STD-${Date.now()}-${purchaseId.slice(0, 8)}`;
+  // This reference gates the public confirmation/status endpoints, so retain
+  // the full UUID entropy rather than truncating it to eight hex characters.
+  const reference = `STD-${purchaseId}`;
   const authorizationUrl = createPayFastCheckoutUrl({
     origin: getRequestOrigin(req),
     purchaseId,
@@ -282,7 +289,9 @@ async function createCartCheckout(
   if (customer.notes) payfastMetadata.clientNotes = customer.notes;
 
   const purchaseId = crypto.randomUUID();
-  const reference = `STD-${Date.now()}-${purchaseId.slice(0, 8)}`;
+  // This reference gates the public confirmation/status endpoints, so retain
+  // the full UUID entropy rather than truncating it to eight hex characters.
+  const reference = `STD-${purchaseId}`;
   const authorizationUrl = createPayFastCheckoutUrl({
     origin: getRequestOrigin(req),
     purchaseId,
@@ -338,6 +347,59 @@ async function createCartCheckout(
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", purchase.id);
     return NextResponse.json({ error: itemsError.message }, { status: 500 });
+  }
+
+  // One cart purchase produces one Xero invoice with one line per service.
+  // Xero remains best-effort: record the failure for admin follow-up without
+  // blocking the rider from reaching PayFast.
+  if (isXeroConfigured()) {
+    const { error: pendingXeroError } = await db
+      .from("lesson_purchases")
+      .update({ xero_sync_status: "pending", updated_at: new Date().toISOString() })
+      .eq("id", purchase.id);
+    if (pendingXeroError) {
+      return NextResponse.json({ error: pendingXeroError.message }, { status: 500 });
+    }
+    try {
+      const invoice = await createXeroInvoiceForLessonPurchase({
+        purchaseId: purchase.id,
+        contactName: customer.customerName,
+        contactEmail: customer.customerEmail,
+        lessonCount: totalQuantity,
+        unitPriceCents: Math.round(grossAmountCents / totalQuantity),
+        discountPercent: 0,
+        currency,
+        description,
+        lineItems: items.map((item) => ({
+          description: item.service.name,
+          quantity: item.quantity,
+          unitPriceCents: Number(item.service.price_cents ?? 0),
+        })),
+      });
+      if (invoice) {
+        const { error: xeroUpdateError } = await db
+          .from("lesson_purchases")
+          .update({
+            xero_invoice_id: invoice.invoiceId,
+            xero_invoice_number: invoice.invoiceNumber,
+            xero_invoice_url: invoice.invoiceUrl,
+            xero_sync_status: "synced",
+            xero_error: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", purchase.id);
+        if (xeroUpdateError) throw xeroUpdateError;
+      }
+    } catch (error) {
+      await db
+        .from("lesson_purchases")
+        .update({
+          xero_sync_status: "error",
+          xero_error: (error instanceof Error ? error.message : "Xero invoice sync failed").slice(0, 1000),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", purchase.id);
+    }
   }
 
   return NextResponse.json({ authorizationUrl, reference });

@@ -1,6 +1,6 @@
 # SpinTribe Booking Flow Redesign — Cart & Package Model
 
-**Status:** Implemented (July 2026) — as an extension of the existing `lesson_*` tables, not the greenfield schema below
+**Status:** In PR #24 (July 2026); migration and production deployment pending — implemented as an extension of the existing `lesson_*` tables, not the greenfield schema below
 **Owner:** Spera Didiza
 **Context:** Replacing Brevo Meetings as the booking system for SpinTribe
 
@@ -26,7 +26,7 @@ to the live one — exactly what AGENTS.md forbids. So the implementation
 - `schedule_token` on `lesson_purchases` — unguessable link for guest scheduling
 - `book_package_session()` — atomic drawdown (decrement + insert in one txn)
 - a trigger restoring the balance when a drawdown session is cancelled
-- a backfill giving existing direct/Performance Block purchases their item rows
+- a backfill giving existing multi-session Performance Blocks their item rows
   (this also fixed already-sold Performance Blocks, whose remaining sessions
   previously existed only inside `payfast_metadata` with no way to book them)
 
@@ -129,12 +129,13 @@ create table invoices (
 Client adds one or more session types + quantities to a cart (e.g. 5x Progress
 Ride + 1x Comprehensive Coaching). One PayFast checkout for the combined total.
 
-### 2. PayFast ITN webhook (single fire per purchase)
+### 2. Purchase creation + PayFast ITN webhook
+Before redirecting to PayFast, create one `lesson_purchases` row, its
+`lesson_purchase_items` rows, and one Xero invoice with a line per cart item.
 On payment confirmation:
-- Insert one `client_packages` row (status → `paid`)
-- Insert one `client_package_items` row per session type in the cart, with
-  `quantity_remaining = quantity_purchased`
-- Insert one `invoices` row for the full cart total, email via Resend
+- Mark the purchase paid (the item balances already exist)
+- Record the PayFast payment against the Xero invoice when Xero is configured
+- Send one receipt email via Resend
 - Send one WhatsApp confirmation via Meta Cloud API summarizing the purchase and
   a link to `/schedule`
 

@@ -114,15 +114,15 @@ function ScheduleContent() {
   );
 
   useEffect(() => {
-    if (!selectedItem?.serviceId) return;
+    if (!selectedItem) return;
     const controller = new AbortController();
     (async () => {
       try {
         const params = new URLSearchParams({
-          serviceId: selectedItem.serviceId as string,
-          durationMinutes: String(selectedItem.durationMinutes),
+          token,
+          itemId: selectedItem.id,
         });
-        const response = await fetch(`/api/lessons/availability?${params}`, {
+        const response = await fetch(`/api/lessons/schedule?${params}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -140,7 +140,7 @@ function ScheduleContent() {
       }
     })();
     return () => controller.abort();
-  }, [selectedItem?.serviceId, selectedItem?.durationMinutes, availabilityRun]);
+  }, [selectedItem, token, availabilityRun]);
 
   async function book() {
     if (!selectedItem || !startsAt) return;

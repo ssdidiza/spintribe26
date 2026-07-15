@@ -47,6 +47,8 @@ where schedule_token is null;
 alter table public.lesson_purchases alter column schedule_token
   set default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 
+alter table public.lesson_purchases alter column schedule_token set not null;
+
 create unique index if not exists idx_lesson_purchases_schedule_token
   on public.lesson_purchases(schedule_token);
 
@@ -81,7 +83,7 @@ create or replace function public.book_package_session(
 ) returns public.lesson_sessions
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_item public.lesson_purchase_items%rowtype;
@@ -143,11 +145,14 @@ create or replace function public.restore_package_balance_on_cancel()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 begin
   if new.purchase_item_id is not null
-     and old.status in ('pending_payment', 'booked')
+     -- Pending-payment holds have not consumed a paid entitlement yet. If one
+     -- expires and PayFast confirms late, activation rebooks that same session;
+     -- restoring here would grant an extra session.
+     and old.status = 'booked'
      and new.status in ('cancelled', 'coach_cancelled') then
     update public.lesson_purchase_items
     set quantity_remaining = least(quantity, quantity_remaining + 1),
@@ -158,18 +163,19 @@ begin
 end;
 $$;
 
+revoke execute on function public.restore_package_balance_on_cancel() from anon, authenticated, public;
+grant execute on function public.restore_package_balance_on_cancel() to service_role;
+
 drop trigger if exists trg_restore_package_balance on public.lesson_sessions;
 create trigger trg_restore_package_balance
   after update of status on public.lesson_sessions
   for each row execute function public.restore_package_balance_on_cancel();
 
 -- ------------------------------------------------------------
--- 6. Backfill: give every existing purchase its line items so
---    already-sold Performance Blocks become schedulable.
---    - Block purchases (payfast_metadata.packageSessions) get an
---      item for the full block, minus sessions already booked.
---    - Plain direct purchases get a 1x item, consumed by their
---      existing session.
+-- 6. Backfill: give existing multi-session Performance Blocks
+--    an item for the full block, minus sessions already booked.
+--    Plain single-session purchases intentionally remain on the
+--    slot-first flow and do not gain a drawdown balance.
 --    Idempotent: only fills purchases that have no items yet.
 -- ------------------------------------------------------------
 insert into public.lesson_purchase_items
@@ -192,6 +198,7 @@ select
 from public.lesson_purchases p
 where p.kind = 'direct'
   and p.status in ('paid', 'pending_payment')
+  and greatest(1, coalesce((p.payfast_metadata ->> 'packageSessions')::int, round(p.lesson_count)::int, 1)) > 1
   and not exists (
     select 1 from public.lesson_purchase_items i where i.purchase_id = p.id
   );
