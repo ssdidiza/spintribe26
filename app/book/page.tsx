@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
   Bike,
   CalendarCheck,
   CheckCircle2,
@@ -75,6 +77,7 @@ export default function BookPage() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +100,9 @@ export default function BookPage() {
           setPackageTierId(requestedPackage.id);
           setAvailabilityLoading(Boolean(findPerformanceService(list)));
         } else if (list[0]) {
-          setCart({ [list[0].id]: 1 });
+          const requestedSession = params.get("session");
+          const requestedService = requestedSession === "performance" ? findPerformanceService(list) : list[0];
+          setCart({ [(requestedService ?? list[0]).id]: 1 });
           setAvailabilityLoading(true);
         }
 
@@ -191,6 +196,7 @@ export default function BookPage() {
     setAvailability([]);
     setAvailabilityLoading(true);
     setError("");
+    setStep(1);
   }
 
   function choosePackage(tier: CoachingPackageTier) {
@@ -201,6 +207,7 @@ export default function BookPage() {
     setAvailability([]);
     setAvailabilityLoading(true);
     setError("");
+    setStep(1);
   }
 
   const selectedOffer = selectedPackage
@@ -257,6 +264,24 @@ export default function BookPage() {
   }
 
   const canSubmit = selectedPackage ? Boolean(startsAt) : totalQuantity > 0 && (!singleService || Boolean(startsAt));
+  const detailsComplete = Boolean(
+    name.trim() && /\S+@\S+\.\S+/.test(email.trim()) && phone.replace(/\D/g, "").length >= 9
+  );
+  const stepLabels = ["Choose", "Pick time", "Your details", "Review"];
+
+  function continueFromOffer() {
+    if (!selectedOffer) return;
+    setStep(needsSlot ? 2 : 3);
+    setError("");
+  }
+
+  function goBack() {
+    setError("");
+    setStep((current) => {
+      if (current === 3 && !needsSlot) return 1;
+      return Math.max(1, current - 1);
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,21 +300,26 @@ export default function BookPage() {
       <main className="mx-auto w-full max-w-lg space-y-5 px-5 py-6 md:max-w-3xl">
         <section className="space-y-3">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            One-on-one cycling coaching in Johannesburg: book a single session, mix multiple session types in one
-            checkout, or commit to a structured Performance Block with a better per-session rate.
+            Build the right coaching session in four quick steps.
           </p>
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-muted-foreground md:grid-cols-4">
-            {["Choose", "Pick time", "Add details", "PayFast"].map((step, index) => (
-              <div key={step} className="rounded-lg border border-foreground/10 bg-foreground/[0.03] px-3 py-2">
+          <div className="grid grid-cols-4 gap-2 text-[10px] font-bold text-muted-foreground">
+            {stepLabels.map((label, index) => (
+              <div
+                key={label}
+                aria-current={step === index + 1 ? "step" : undefined}
+                className={`rounded-lg border px-2 py-2 text-center transition-colors md:px-3 ${
+                  step === index + 1
+                    ? "border-[#ff4b35]/50 bg-[#ff4b35]/10 text-foreground"
+                    : step > index + 1
+                      ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-600"
+                      : "border-foreground/10 bg-foreground/[0.03]"
+                }`}
+              >
                 <span className="mr-1 text-accent-foreground">{index + 1}.</span>
-                {step}
+                <span className="hidden sm:inline">{label}</span>
               </div>
             ))}
           </div>
-          <p className="rounded-lg border border-foreground/10 bg-foreground/[0.035] px-4 py-3 text-[11px] text-muted-foreground">
-            Strava sign-in is optional and only links the lesson to your own SpinTribe history. Booking, payment,
-            calendar invites, and reminders use the details you enter here.
-          </p>
         </section>
 
         {error && (
@@ -313,7 +343,7 @@ export default function BookPage() {
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5">
-            <section className="space-y-3">
+            {step === 1 && <section className="space-y-3">
               <div>
                 <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                   1. Choose your sessions
@@ -435,9 +465,17 @@ export default function BookPage() {
                   personal scheduling link (email + WhatsApp) to pick a time for each session.
                 </p>
               )}
-            </section>
+              <button
+                type="button"
+                onClick={continueFromOffer}
+                disabled={!selectedOffer}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50"
+              >
+                Continue <ArrowRight size={16} />
+              </button>
+            </section>}
 
-            {needsSlot && (
+            {step === 2 && needsSlot && (
               <section className="space-y-2">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                   2. Choose an available time
@@ -448,10 +486,23 @@ export default function BookPage() {
                   onSelect={setStartsAt}
                   loading={availabilityLoading}
                 />
+                <div className="flex items-center gap-3 pt-2">
+                  <button type="button" onClick={goBack} className="inline-flex items-center gap-1 px-2 py-3 text-xs font-bold text-muted-foreground">
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    disabled={!startsAt}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50"
+                  >
+                    Continue <ArrowRight size={16} />
+                  </button>
+                </div>
               </section>
             )}
 
-            <section className="glass-card space-y-3 p-5">
+            {step === 3 && <section className="glass-card space-y-4 p-5">
               <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                 {needsSlot ? "3." : "2."} Rider details
               </h2>
@@ -482,18 +533,70 @@ export default function BookPage() {
                     className="mt-1 w-full resize-none rounded-lg border border-foreground/10 bg-card px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60" />
                 </label>
               </div>
-            </section>
+              <div className="flex items-center gap-3 pt-1">
+                <button type="button" onClick={goBack} className="inline-flex items-center gap-1 px-2 py-3 text-xs font-bold text-muted-foreground">
+                  <ArrowLeft size={14} /> Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(4)}
+                  disabled={!detailsComplete}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50"
+                >
+                  Review booking <ArrowRight size={16} />
+                </button>
+              </div>
+            </section>}
 
-            <button type="submit" disabled={working || !canSubmit}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50">
-              {working ? <Loader2 size={16} className="animate-spin" /> : <CalendarCheck size={16} />}
-              {selectedOffer ? `Pay ${formatMoneyCents(selectedOffer.priceCents, selectedOffer.currency)} with PayFast` : "Book"}
-            </button>
-            <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground">
-              <ShieldCheck size={12} /> Secure payment via PayFast.
-              <MapPin size={12} /> Johannesburg area.
-              <CheckCircle2 size={12} /> Calendar invite after checkout.
-            </p>
+            {step === 4 && selectedOffer && (
+              <section className="space-y-4">
+                <div className="glass-card space-y-4 p-5">
+                  <div>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">4. Review your booking</h2>
+                    <p className="mt-1 text-lg font-black text-foreground">{selectedOffer.name}</p>
+                  </div>
+                  <div className="grid gap-3 border-y border-foreground/10 py-4 text-xs sm:grid-cols-2">
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Rider</p>
+                      <p className="mt-1 font-bold text-foreground">{name}</p>
+                      <p className="text-muted-foreground">{email}</p>
+                      <p className="text-muted-foreground">{phone}</p>
+                    </div>
+                    {startsAt && (
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">First session</p>
+                        <p className="mt-1 font-bold text-foreground">
+                          {new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt))}
+                        </p>
+                        {location && <p className="text-muted-foreground">{location}</p>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-end justify-between gap-4">
+                    <span className="text-xs text-muted-foreground">Total</span>
+                    <span className="text-2xl font-black text-accent-foreground">
+                      {formatMoneyCents(selectedOffer.priceCents, selectedOffer.currency)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={goBack} className="inline-flex items-center gap-1 px-2 py-3 text-xs font-bold text-muted-foreground">
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                  <button type="submit" disabled={working || !canSubmit || !detailsComplete}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50">
+                    {working ? <Loader2 size={16} className="animate-spin" /> : <CalendarCheck size={16} />}
+                    Pay {formatMoneyCents(selectedOffer.priceCents, selectedOffer.currency)} securely
+                  </button>
+                </div>
+                <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground">
+                  <ShieldCheck size={12} /> Secure online checkout.
+                  <MapPin size={12} /> Johannesburg area.
+                  <CheckCircle2 size={12} /> Calendar invite after checkout.
+                </p>
+              </section>
+            )}
           </form>
         )}
       </main>
