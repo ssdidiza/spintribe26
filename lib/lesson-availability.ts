@@ -110,7 +110,7 @@ export async function expirePendingLessonHolds(db: SupabaseClient, now = new Dat
 export async function getLessonAvailability(
   db: SupabaseClient,
   service: LessonServiceRow,
-  options: { fromDate?: string; days?: number; now?: Date } = {}
+  options: { fromDate?: string; days?: number; now?: Date; expireHolds?: boolean } = {}
 ): Promise<LessonAvailabilityDay[]> {
   const now = options.now ?? new Date();
   const today = johannesburgDateKey(now);
@@ -121,7 +121,12 @@ export async function getLessonAvailability(
   const rangeStartIso = new Date(`${fromDate}T00:00:00${LESSON_TIME_ZONE_OFFSET}`).toISOString();
   const rangeEndIso = new Date(`${rangeEndDate}T00:00:00${LESSON_TIME_ZONE_OFFSET}`).toISOString();
 
-  await expirePendingLessonHolds(db, now);
+  // Booking writes keep this enabled so expired rows cannot trip the overlap
+  // constraint. Read-only calendars can skip the cleanup mutation because the
+  // busy-session filter below already ignores expired holds.
+  if (options.expireHolds !== false) {
+    await expirePendingLessonHolds(db, now);
+  }
 
   const [rulesResult, sessionsResult, blackoutsResult] = await Promise.all([
     db.from("lesson_availability_rules").select("id,weekday,start_time,end_time,active").eq("active", true),

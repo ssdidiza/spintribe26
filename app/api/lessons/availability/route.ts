@@ -37,25 +37,48 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = supabaseAdmin();
-    const { data, error } = await db
+    const serviceLookupStartedAt = Date.now();
+    const servicePromise = db
       .from("lesson_services")
       .select("*")
       .eq("id", serviceId)
       .eq("active", true)
-      .maybeSingle();
+      .maybeSingle()
+      .then((result) => ({ ...result, durationMs: Date.now() - serviceLookupStartedAt }));
+
+    // The booking client always supplies its selected duration, so the global
+    // calendar queries do not need to wait for the service validation query.
+    const availabilityStartedAt = Date.now();
+    const availabilityPromise = durationMinutes
+      ? getLessonAvailability(
+          db,
+          { duration_minutes: durationMinutes } as LessonServiceRow,
+          {
+            fromDate: fromDate || undefined,
+            days: Math.trunc(daysValue),
+            expireHolds: false,
+          }
+        ).then((availability) => ({ availability, durationMs: Date.now() - availabilityStartedAt }))
+      : null;
+
+    const serviceResult = await servicePromise;
+    const { data, error } = serviceResult;
 
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "That service is no longer available" }, { status: 404 });
 
     const service = data as LessonServiceRow;
-    const availability = await getLessonAvailability(
-      db,
-      durationMinutes ? { ...service, duration_minutes: durationMinutes } : service,
-      {
-        fromDate: fromDate || undefined,
-        days: Math.trunc(daysValue),
-      }
-    );
+    const availabilityResult = availabilityPromise
+      ? await availabilityPromise
+      : {
+          availability: await getLessonAvailability(db, service, {
+            fromDate: fromDate || undefined,
+            days: Math.trunc(daysValue),
+            expireHolds: false,
+          }),
+          durationMs: Date.now() - availabilityStartedAt,
+        };
+    const availability = availabilityResult.availability;
 
     console.log(JSON.stringify({
       level: "info",
@@ -64,12 +87,20 @@ export async function GET(req: NextRequest) {
       requestId,
       serviceId,
       days: availability.length,
+      serviceLookupMs: serviceResult.durationMs,
+      availabilityQueryMs: availabilityResult.durationMs,
       durationMs: Date.now() - startedAt,
     }));
 
     return NextResponse.json(
       { availability },
-      { headers: { "Cache-Control": "no-store, max-age=0" } }
+      {
+        headers: {
+          // Slot selection is revalidated during booking. A tiny shared cache
+          // removes repeat database work while keeping the calendar fresh.
+          "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=45",
+        },
+      }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load lesson availability";
