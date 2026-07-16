@@ -4,582 +4,320 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  BarChart3,
-  Bike,
-  CalendarCheck,
-  CreditCard,
-  Clock3,
-  MapPin,
-  Route,
-  Target,
-  Trophy,
-  TrendingUp,
-  Users,
-  WalletCards,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
-import LegalFooter from "@/components/LegalFooter";
+import { CalendarDays, Check, CreditCard, Loader2, X } from "lucide-react";
 import { BrandMark } from "@/components/SperaLogo";
 import { supabase } from "@/lib/supabase";
 import { getPostLoginRoute } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 
-type Mode = "signin" | "signup";
-
-type FeatureItem = {
-  title: string;
-  body: string;
-  Icon: LucideIcon;
-};
-
-const LEADERBOARD_FEATURES: FeatureItem[] = [
-  { title: "Monthly Distance Rankings", body: "See opted-in riders by current month kilometres.", Icon: Route },
-  { title: "Consistency Rankings", body: "Reward the cyclists who keep showing up on more ride days.", Icon: CalendarCheck },
-  { title: "Region Filters", body: "Compare your tier nationally or inside your riding region.", Icon: MapPin },
-  { title: "Consent-First Sharing", body: "Leaderboard rows appear only after riders opt in.", Icon: Users },
-];
-
-const PROGRESS_FEATURES: FeatureItem[] = [
-  { title: "Connect Strava", body: "Sync rides automatically in seconds.", Icon: Zap },
-  { title: "Earn Your Position", body: "Every synced kilometre contributes to your distance rank.", Icon: Trophy },
-  { title: "Track Your Growth", body: "See your ride days, average ride, longest ride, and pace.", Icon: TrendingUp },
-  { title: "Stay Consistent", body: "Monthly ride-day stats help ordinary training feel visible.", Icon: CalendarCheck },
-];
-
-const INSIGHT_FEATURES: FeatureItem[] = [
-  { title: "Ride Days This Month", body: "See how many days you have actually ridden.", Icon: CalendarCheck },
-  { title: "Personal Insights", body: "Track average ride, longest ride, moving time, and last sync.", Icon: BarChart3 },
-  { title: "Projected Month-End Km", body: "Understand where your current pace is likely to land.", Icon: TrendingUp },
-  { title: "Monthly Challenges", body: "Keep your target visible without overselling future analytics.", Icon: Target },
-];
-
-const RIDER_TYPES: FeatureItem[] = [
-  { title: "New Riders", body: "Stay motivated and build consistency.", Icon: Bike },
-  { title: "Weekend Warriors", body: "Turn training into friendly competition.", Icon: Zap },
-  { title: "Club Cyclists", body: "See how you stack up against your peers.", Icon: Users },
-  { title: "Serious Racers", body: "Track performance and dominate the rankings.", Icon: Trophy },
-];
-
-const EVENTS = [
-  "Ride Joburg",
-  "Cape Town Cycle Tour",
-  "Amashova",
-  "99er Cycle Tour",
-  "Fast One",
-  "Local club races",
-];
-
-const LEADERBOARD_ROWS = [
-  { rank: 1, name: "Mandla", club: "Gauteng", km: "812 km", days: "18 days" },
-  { rank: 2, name: "Anele", club: "Western Cape", km: "786 km", days: "16 days" },
-  { rank: 3, name: "Sipho", club: "KwaZulu-Natal", km: "744 km", days: "15 days" },
-  { rank: 4, name: "Leah", club: "Eastern Cape", km: "691 km", days: "14 days" },
-];
+const SESSION_OPTIONS = [
+  {
+    id: "confidence",
+    name: "Beginner confidence ride",
+    description: "Build skills and confidence on the road.",
+    duration: "60 min",
+    price: "R399",
+  },
+  {
+    id: "performance",
+    name: "Performance ride",
+    description: "Focused coaching for stronger, smarter riding.",
+    duration: "90 min",
+    price: "R549",
+  },
+  {
+    id: "block",
+    name: "Performance block",
+    description: "Four coached rides with a clear progression.",
+    duration: "4 × 90 min",
+    price: "R1,899",
+  },
+] as const;
 
 export default function LandingPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, login, completeOnboarding } = useStore();
-
-  const [mode, setMode] = useState<Mode>("signin");
+  const [selectedSession, setSelectedSession] = useState("confidence");
+  const [showSignIn, setShowSignIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
 
   useEffect(() => {
     if (!hydrated) return;
-    if (currentUser && isOnboarded) router.replace(getPostLoginRoute(currentUser));
-    else if (currentUser && !isOnboarded) router.replace("/onboarding");
+    if (currentUser?.isConnected && isOnboarded) router.replace(getPostLoginRoute(currentUser));
+    else if (currentUser?.isConnected && !isOnboarded) router.replace("/onboarding");
+    else if (currentUser && !currentUser.isConnected) router.replace("/lessons");
   }, [hydrated, currentUser, isOnboarded, router]);
 
-  async function handleEmailAuth(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    if (!showSignIn) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowSignIn(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showSignIn]);
+
+  async function handleSignIn(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
-    setInfo("");
     setLoading(true);
 
     try {
-      if (mode === "signup") {
-        const { data, error: err } = await supabase.auth.signUp({ email, password });
-        if (err) throw err;
-        if (data.user) {
-          if (!data.session) {
-            setInfo("Check your email for a confirmation link, then sign in.");
-            setLoading(false);
-            return;
-          }
-          const displayName = name.trim() || email.split("@")[0];
-          await fetch("/api/auth/email-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accessToken: data.session.access_token }),
-          });
-          const { data: row } = await supabase
-            .from("users")
-            .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
-            .eq("strava_id", data.user.id)
-            .maybeSingle();
-          if (row?.onboarded) {
-            login(data.user.id, row.name || displayName, "", {
-              role: row.role,
-              tier: row.tier,
-              teamId: row.team_id ?? undefined,
-              currentLeagueId: row.current_league_id ?? undefined,
-              currentLeagueName: row.current_league_name ?? undefined,
-              currentLeagueThreshold: row.current_league_threshold ?? undefined,
-              zone: row.zone,
-              region: row.zone,
-              onboarded: row.onboarded,
-              leaderboardConsent: row.leaderboard_consent !== false,
-              rewardsExportConsent: row.rewards_export_consent !== false,
-              ftp: row.ftp ?? undefined,
-              country: row.country ?? undefined,
-            });
-            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
-            router.push(getPostLoginRoute({ role: row.role }));
-          } else {
-            login(data.user.id, displayName);
-            router.push("/onboarding");
-          }
-        }
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      if (!data.user || !data.session) throw new Error("Sign in could not be completed.");
+
+      const sessionResponse = await fetch("/api/auth/email-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: data.session.access_token }),
+      });
+      const sessionData = await sessionResponse.json() as { athleteId?: string | null; error?: string };
+      if (!sessionResponse.ok) throw new Error(sessionData.error || "Account session could not be created.");
+
+      const displayName = email.split("@")[0];
+      const profileId = sessionData.athleteId ?? data.user.id;
+      const isStravaConnected = Boolean(sessionData.athleteId);
+      const { data: row } = await supabase
+        .from("users")
+        .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
+        .eq("strava_id", profileId)
+        .maybeSingle();
+
+      if (!isStravaConnected) {
+        login(data.user.id, row?.name || displayName, "", {
+          role: "member",
+          tier: row?.tier ?? 200,
+          onboarded: true,
+          isConnected: false,
+          leaderboardConsent: false,
+          rewardsExportConsent: false,
+        });
+        completeOnboarding("member", row?.tier ?? 200, row?.zone ?? undefined, false, false);
+        router.push("/lessons");
+      } else if (row?.onboarded) {
+        login(profileId, row.name || displayName, "", {
+          role: row.role,
+          tier: row.tier,
+          teamId: row.team_id ?? undefined,
+          currentLeagueId: row.current_league_id ?? undefined,
+          currentLeagueName: row.current_league_name ?? undefined,
+          currentLeagueThreshold: row.current_league_threshold ?? undefined,
+          zone: row.zone,
+          region: row.zone,
+          onboarded: row.onboarded,
+          leaderboardConsent: row.leaderboard_consent !== false,
+          rewardsExportConsent: row.rewards_export_consent !== false,
+          ftp: row.ftp ?? undefined,
+          country: row.country ?? undefined,
+          isConnected: true,
+        });
+        completeOnboarding(
+          row.role,
+          row.tier,
+          row.zone,
+          row.leaderboard_consent !== false,
+          row.rewards_export_consent !== false,
+        );
+        router.push(getPostLoginRoute({ role: row.role }));
       } else {
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
-        if (data.user) {
-          const displayName = name.trim() || email.split("@")[0];
-          await fetch("/api/auth/email-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accessToken: data.session.access_token }),
-          });
-          const { data: row } = await supabase
-            .from("users")
-            .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
-            .eq("strava_id", data.user.id)
-            .maybeSingle();
-          if (row?.onboarded) {
-            login(data.user.id, row.name || displayName, "", {
-              role: row.role,
-              tier: row.tier,
-              teamId: row.team_id ?? undefined,
-              currentLeagueId: row.current_league_id ?? undefined,
-              currentLeagueName: row.current_league_name ?? undefined,
-              currentLeagueThreshold: row.current_league_threshold ?? undefined,
-              zone: row.zone,
-              region: row.zone,
-              onboarded: row.onboarded,
-              leaderboardConsent: row.leaderboard_consent !== false,
-              rewardsExportConsent: row.rewards_export_consent !== false,
-              ftp: row.ftp ?? undefined,
-              country: row.country ?? undefined,
-            });
-            completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
-            router.push(getPostLoginRoute({ role: row.role }));
-          } else {
-            login(data.user.id, row?.name || displayName);
-            router.push("/onboarding");
-          }
-        }
+        login(profileId, row?.name || displayName, "", { isConnected: true });
+        router.push("/onboarding");
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Authentication failed";
-      setError(msg);
+    } catch (signInError: unknown) {
+      setError(signInError instanceof Error ? signInError.message : "Sign in failed.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
-
-  function handleStrava() {
-    window.location.href = "/api/auth/strava";
-  }
-
-  function handleLessonSignup() {
-    setMode("signup");
-    setError("");
-    setInfo("");
-    window.setTimeout(() => {
-      const details = document.getElementById("email-auth") as HTMLDetailsElement | null;
-      if (!details) return;
-      details.open = true;
-      details.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 0);
   }
 
   if (!hydrated) return null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main>
-        <section className="relative overflow-hidden px-5 pb-12 pt-8 sm:px-8 lg:px-12">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
-            style={{
-              background:
-                "radial-gradient(circle at 20% 20%, rgba(255,75,53,0.18), transparent 25rem), radial-gradient(circle at 86% 12%, rgba(224,0,122,0.16), transparent 24rem)",
-            }}
+    <main className="min-h-screen overflow-hidden bg-[#030303] text-white">
+      <section className="mx-auto flex min-h-[calc(100vh-132px)] w-full max-w-[1536px] flex-col px-6 pb-0 pt-7 sm:px-10 lg:px-16">
+        <header className="flex items-center justify-between py-2">
+          <BrandMark
+            iconClassName="h-9 w-9"
+            showWordmark
+            wordmarkClassName="text-xl font-black tracking-[-0.04em] text-white sm:text-2xl"
           />
-          <div className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-            <BrandMark iconClassName="h-10 w-10" showWordmark />
-            <button
-              onClick={handleStrava}
-              className="hidden rounded-full border border-[#ff4b35]/45 px-4 py-2 text-xs font-black uppercase tracking-wide text-accent-foreground transition-colors hover:border-[#ff4b35] hover:text-foreground sm:inline-flex"
+          <button
+            type="button"
+            onClick={() => setShowSignIn(true)}
+            className="border-b border-[#ff4b35] pb-1 text-sm font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base"
+          >
+            Sign in
+          </button>
+        </header>
+
+        <div className="grid min-w-0 flex-1 items-center gap-12 pb-8 pt-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16 lg:pt-10">
+          <div className="min-w-0 max-w-[650px] pb-2">
+            <h1 className="text-[clamp(2.75rem,13vw,5.45rem)] font-black leading-[0.98] tracking-[-0.065em]">
+              Coaching built around your <span className="gradient-text">next ride.</span>
+            </h1>
+            <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">
+              Book a single session or a focused coaching block. Pay once with PayFast. Get calendar invites and WhatsApp reminders.
+            </p>
+
+            <div className="mt-10">
+              <p className="text-sm text-white/55">Sessions from</p>
+              <p className="mt-1 flex items-end gap-3">
+                <span className="gradient-text text-5xl font-black tracking-[-0.05em] sm:text-6xl">R399</span>
+                <span className="pb-2 text-sm text-white/55">/ 60 min</span>
+              </p>
+            </div>
+
+            <Link
+              href={`/book?session=${selectedSession}`}
+              className="mt-8 inline-flex min-h-14 w-full max-w-[410px] items-center justify-center rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-7 text-base font-black text-white shadow-[0_16px_50px_rgba(238,0,117,0.18)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-black active:translate-y-0"
             >
-              Connect Strava
-            </button>
+              Choose your session
+            </Link>
           </div>
 
-          <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:pt-16">
-            <div>
-              <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">
-                South Africa&apos;s Competitive Cycling Leaderboard
-              </p>
-              <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                Connect Strava. Ride. <span className="gradient-text">Rise through the rankings.</span>
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                SpinTribe turns every synced ride into a challenge by ranking opted-in cyclists across distance, ride-day consistency, and monthly progress.
-              </p>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground/45">
-                Launching with selected Team Vitality riders while built for cyclists across South Africa.
-              </p>
-
-              <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <button
-                  onClick={handleStrava}
-                  className="flex items-center justify-center transition-all hover:opacity-90 active:scale-[0.98]"
-                  aria-label="Connect with Strava"
-                >
-                  <Image
-                    src="/strava/btn_connect_with_strava_orange.svg"
-                    alt="Connect with Strava"
-                    width={193}
-                    height={48}
-                    className="h-12 w-auto"
-                    unoptimized
-                    priority
-                  />
-                </button>
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground/35">
-                  No manual uploads. No spreadsheets. Just ride.
-                </span>
-              </div>
-
-              <details id="email-auth" className="mt-6 max-w-sm rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
-                <summary className="cursor-pointer text-sm font-bold text-foreground/70 transition-colors hover:text-foreground">
-                  Use email instead
-                </summary>
-                <div className="pt-4">
-                  <div className="mb-5 flex rounded-2xl p-1" style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}>
-                    {(["signin", "signup"] as Mode[]).map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => {
-                          setMode(m);
-                          setError("");
-                          setInfo("");
-                        }}
-                        className="flex-1 rounded-xl py-2 text-sm font-bold transition-all"
-                        style={mode === m
-                          ? { background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", color: "#fff" }
-                          : { color: "var(--muted-foreground)" }}
-                      >
-                        {m === "signin" ? "Sign In" : "Sign Up"}
-                      </button>
-                    ))}
-                  </div>
-
-                  <form onSubmit={handleEmailAuth} className="space-y-4">
-                    {mode === "signup" && (
-                      <Field label="Name">
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Your name"
-                          className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground/70 outline-none transition-all focus:ring-2 focus:ring-[#ff4b35]/60"
-                          style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
-                        />
-                      </Field>
-                    )}
-
-                    <Field label="Email">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        required
-                        className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground/70 outline-none transition-all focus:ring-2 focus:ring-[#ff4b35]/60"
-                        style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
-                      />
-                    </Field>
-
-                    <Field label="Password">
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        required
-                        minLength={6}
-                        className="w-full rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground/70 outline-none transition-all focus:ring-2 focus:ring-[#ff4b35]/60"
-                        style={{ background: "var(--fill-soft)", border: "1px solid var(--border)" }}
-                      />
-                    </Field>
-
-                    {error && (
-                      <p className="rounded-xl px-4 py-2 text-xs text-destructive" style={{ background: "rgba(255,100,100,0.1)", border: "1px solid rgba(255,100,100,0.2)" }}>
-                        {error}
-                      </p>
-                    )}
-                    {info && (
-                      <p className="rounded-xl px-4 py-2 text-xs text-foreground" style={{ background: "rgba(255,75,53,0.1)", border: "1px solid rgba(255,75,53,0.22)" }}>
-                        {info}
-                      </p>
-                    )}
-
+          <div className="min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-[#111] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+            <div className="p-5 sm:p-7 lg:p-8">
+              <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5a45]">Choose your session</p>
+              <div className="space-y-3" role="radiogroup" aria-label="Coaching session">
+                {SESSION_OPTIONS.map((session) => {
+                  const active = selectedSession === session.id;
+                  return (
                     <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full rounded-2xl py-3.5 text-sm font-black tracking-wide text-white transition-all active:scale-[0.98] disabled:opacity-50"
-                      style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", boxShadow: "0 0 22px rgba(255,75,53,0.34)" }}
+                      key={session.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setSelectedSession(session.id)}
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 text-left transition-colors sm:gap-5 sm:p-5 ${
+                        active
+                          ? "border-[#ff4b35] bg-white/[0.07] shadow-[inset_0_0_0_1px_rgba(238,0,117,0.7)]"
+                          : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.045]"
+                      }`}
                     >
-                      {loading ? "..." : mode === "signin" ? "Sign In" : "Create Account"}
+                      <span
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                          active ? "border-[#ff5b1f]" : "border-white/30"
+                        }`}
+                        aria-hidden
+                      >
+                        {active && <span className="h-3.5 w-3.5 rounded-full bg-gradient-to-br from-[#ff5b1f] to-[#ee0075]" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold text-white sm:text-base">{session.name}</span>
+                        <span className="mt-1 block text-xs leading-5 text-white/50 sm:text-sm">{session.description}</span>
+                      </span>
+                      <span className="border-l border-white/15 pl-4 text-right sm:min-w-28 sm:pl-6">
+                        <span className="block text-xs text-white/55 sm:text-sm">{session.duration}</span>
+                        <span className="mt-1 block text-base font-black text-white sm:text-lg">{session.price}</span>
+                      </span>
                     </button>
-                  </form>
-                </div>
-              </details>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="glass-card p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent-foreground">Live Monthly Board</p>
-                  <p className="mt-1 text-sm text-foreground/45">Distance, consistency, and region filters</p>
-                </div>
-                <div className="rounded-full border border-foreground/10 px-3 py-1 text-[10px] font-bold text-foreground/45">
-                  SA
-                </div>
-              </div>
-              <div className="space-y-3">
-                {LEADERBOARD_ROWS.map((r) => (
-                  <div key={r.rank} className="grid grid-cols-[2.4rem_1fr_auto] items-center gap-3 rounded-2xl border border-foreground/8 bg-foreground/[0.035] p-3">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black ${r.rank === 1 ? "text-white" : "text-foreground"}`}
-                      style={{ background: r.rank === 1 ? "linear-gradient(135deg,#ff7a2f,#ff3b30)" : "var(--fill-mid)" }}
-                    >
-                      #{r.rank}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">{r.name}</p>
-                      <p className="truncate text-[10px] text-foreground/35">{r.club}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-black text-accent-foreground">{r.km}</p>
-                      <p className="text-[10px] text-foreground/35">{r.days}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {["Distance", "Consistency", "Regions"].map((label) => (
-                  <div key={label} className="rounded-xl border border-foreground/8 bg-foreground/[0.035] p-3 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-foreground/40">{label}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="relative aspect-[16/6.2] min-h-[220px] overflow-hidden border-t border-white/10">
+              <Image
+                src="/coaching-hero.png"
+                alt="A SpinTribe cycling coach riding alongside a client in Johannesburg"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 58vw"
+                className="object-cover object-[50%_48%]"
+              />
+              <div aria-hidden className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#111] to-transparent" />
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="border-y border-foreground/10 bg-foreground/[0.025] px-5 py-10 sm:px-8 lg:px-12">
-          <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">One-to-one cycling lessons</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-foreground sm:text-4xl">Learn to ride or build confidence on the bike.</h2>
-              <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                Book beginner instruction or coached riding sessions at R399 per hour.
-              </p>
-              <button
-                type="button"
-                onClick={handleLessonSignup}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#ff4b35] px-5 py-3 text-sm font-black text-white transition-opacity hover:opacity-90"
-              >
-                Create account to book <ArrowRight size={15} />
+      <section aria-label="How booking works" className="border-t border-white/10 bg-black/95">
+        <div className="mx-auto max-w-[1536px] px-6 py-7 sm:px-10 lg:px-16">
+          <div className="grid gap-0 md:grid-cols-3">
+            <ProofItem Icon={CalendarDays} title="Pick a session" body="Choose what suits your goals." />
+            <ProofItem Icon={CreditCard} title="Pay once" body="Secure checkout with PayFast." />
+            <ProofItem Icon={Check} title="Get reminded" body="Calendar and WhatsApp reminders included." />
+          </div>
+          <p className="mx-auto mt-6 max-w-2xl border-t border-white/10 pt-5 text-center text-xs leading-5 text-white/40 sm:text-sm">
+            Coaching gets you stronger. Activate the Strava-powered SpinTribe League only when you want verified rides to count.
+          </p>
+        </div>
+      </section>
+
+      {showSignIn && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowSignIn(false);
+          }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="sign-in-title" className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111] p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5a45]">Welcome back</p>
+                <h2 id="sign-in-title" className="mt-2 text-2xl font-black tracking-tight">Sign in to SpinTribe</h2>
+              </div>
+              <button type="button" onClick={() => setShowSignIn(false)} aria-label="Close sign in" className="flex h-10 w-10 items-center justify-center rounded-full text-white/60 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35]">
+                <X size={20} />
               </button>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-foreground/10 border-y border-foreground/10 py-5">
-              {[
-                { label: "Price", value: "R399/hr", Icon: CreditCard },
-                { label: "Credits", value: "Track online", Icon: WalletCards },
-                { label: "Booking", value: "Choose a time", Icon: Clock3 },
-              ].map(({ label, value, Icon }) => (
-                <div key={label} className="px-3 text-center">
-                  <Icon size={17} className="mx-auto text-accent-foreground" />
-                  <p className="mt-2 text-sm font-black text-foreground">{value}</p>
-                  <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        <Section title="The Leaderboard Never Sleeps" eyebrow="Every ride counts" body="Whether you're chasing 100km weekends or building consistency during the week, SpinTribe tracks synced rides and updates the rankings riders have consented to join.">
-          <FeatureGrid items={LEADERBOARD_FEATURES} />
-        </Section>
-
-        <Section title="Built For Cyclists Who Love Progress">
-          <FeatureGrid items={PROGRESS_FEATURES} />
-        </Section>
-
-        <Section title="More Than A Leaderboard" body="SpinTribe helps cyclists understand the month they are actually riding now.">
-          <FeatureGrid items={INSIGHT_FEATURES} />
-        </Section>
-
-        <Section title="Designed For South African Cyclists" body="Whether you're training for Ride Joburg, Cape Town Cycle Tour, Amashova, the 99er, Fast One, or local club races, SpinTribe helps you stay motivated and measure progress against riders just like you.">
-          <div className="flex flex-wrap gap-2">
-            {EVENTS.map((event) => (
-              <span key={event} className="rounded-full border border-foreground/10 bg-foreground/[0.04] px-4 py-2 text-sm font-bold text-foreground/70">
-                {event}
-              </span>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Why Riders Join SpinTribe">
-          <div className="grid gap-4 lg:grid-cols-3">
-            {["Most cyclists already record their rides.", "Few know how they compare.", "SpinTribe turns training into competition, motivation into consistency, and data into progress."].map((line) => (
-              <div key={line} className="glass-card p-5">
-                <p className="text-lg font-black leading-snug text-foreground">{line}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 rounded-2xl border border-[#ff4b35]/25 bg-[#ff4b35]/10 p-5">
-            <p className="text-xl font-black text-foreground">See your ranking. Set bigger goals. Become a stronger cyclist.</p>
-          </div>
-        </Section>
-
-        <Section title="How It Works">
-          <div className="grid gap-3 md:grid-cols-4">
-            {[
-              ["1", "Create Your Account", "Get started in under a minute."],
-              ["2", "Connect Strava", "Automatically import your cycling activities."],
-              ["3", "Join The Leaderboards", "Compare distance and consistency with opted-in riders in your tier."],
-              ["4", "Keep Riding", "Watch your rankings improve with every ride."],
-            ].map(([step, title, body]) => (
-              <div key={step} className="glass-card p-5">
-                <p className="mb-5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#ff4b35] text-sm font-black text-white">{step}</p>
-                <h3 className="text-base font-black text-foreground">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="For Every Type Of Cyclist">
-          <FeatureGrid items={RIDER_TYPES} />
-        </Section>
-
-        <section className="px-5 py-12 sm:px-8 lg:px-12">
-          <div className="mx-auto max-w-6xl rounded-3xl border border-foreground/10 bg-foreground/[0.04] p-6 sm:p-8 lg:p-10">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">The Goal</p>
-            <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-foreground sm:text-5xl">
-              To become the home of cycling leaderboards in South Africa.
-            </h2>
-            <div className="mt-6 grid gap-3 text-sm font-bold text-foreground/60 sm:grid-cols-4">
-              {["One platform.", "One community.", "Thousands of cyclists.", "Millions of kilometres."].map((item) => (
-                <p key={item} className="rounded-2xl border border-foreground/8 bg-foreground/[0.05] p-4">{item}</p>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="px-5 pb-12 sm:px-8 lg:px-12">
-          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 border-t border-foreground/10 pt-10 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">Ready To See Where You Rank?</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-foreground">Join South African cyclists already building the leaderboard.</h2>
-            </div>
-            <button
-              onClick={handleStrava}
-              className="rounded-2xl px-6 py-4 text-sm font-black uppercase tracking-wide text-white transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg,#ff7a2f,#ff3b30,#e0007a)", boxShadow: "0 0 22px rgba(255,75,53,0.34)" }}
-            >
-              Connect Strava & Start Competing
-            </button>
-          </div>
-        </section>
-      </main>
-
-      <p className="mx-auto max-w-6xl px-5 pb-5 text-center text-[10px] leading-relaxed text-foreground/40 sm:px-8 lg:px-12">
-        By continuing you agree to our{" "}
-        <Link href="/legal/terms" className="underline underline-offset-2 transition-colors hover:text-foreground/70">
-          Terms &amp; Conditions
-        </Link>
-        {" "}and{" "}
-        <Link href="/legal/privacy" className="underline underline-offset-2 transition-colors hover:text-foreground/70">
-          Privacy Policy
-        </Link>
-        . Strava data is used for leaderboard progress, challenge tracking, and ride verification.
-      </p>
-      <LegalFooter />
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Section({
-  eyebrow,
-  title,
-  body,
-  children,
-}: {
-  eyebrow?: string;
-  title: string;
-  body?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="px-5 py-10 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 max-w-3xl">
-          {eyebrow && <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-accent-foreground">{eyebrow}</p>}
-          <h2 className="text-3xl font-black tracking-tight text-foreground sm:text-4xl">{title}</h2>
-          {body && <p className="mt-3 text-base leading-relaxed text-muted-foreground">{body}</p>}
+            <form onSubmit={handleSignIn} className="mt-7 space-y-5">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-white/50">Email</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[#ff4b35] focus:ring-2 focus:ring-[#ff4b35]/30"
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-white/50">Password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[#ff4b35] focus:ring-2 focus:ring-[#ff4b35]/30"
+                  placeholder="Your password"
+                />
+              </label>
+              {error && <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
+              <button type="submit" disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-5 text-sm font-black text-white disabled:opacity-50">
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+          </section>
         </div>
-        {children}
-      </div>
-    </section>
+      )}
+    </main>
   );
 }
 
-function FeatureGrid({ items }: { items: FeatureItem[] }) {
+function ProofItem({ Icon, title, body }: { Icon: typeof CalendarDays; title: string; body: string }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {items.map(({ title, body, Icon }) => (
-        <div key={title} className="glass-card p-5">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#ff4b35]/15 text-accent-foreground">
-            <Icon size={18} />
-          </div>
-          <h3 className="text-base font-black text-foreground">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-        </div>
-      ))}
+    <div className="flex items-center gap-4 border-b border-white/10 py-5 last:border-b-0 md:border-b-0 md:border-r md:px-8 md:py-1 md:first:pl-0 md:last:border-r-0 md:last:pr-0">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center text-[#ff4b35]" aria-hidden>
+        <Icon size={30} strokeWidth={1.8} />
+      </span>
+      <span>
+        <span className="block text-sm font-black text-white sm:text-base">{title}</span>
+        <span className="mt-1 block text-xs leading-5 text-white/50 sm:text-sm">{body}</span>
+      </span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
 import LeagueStatus from "@/components/LeagueStatus";
@@ -17,7 +18,7 @@ import {
   type LeaderboardMetric,
 } from "@/lib/leagues";
 import { cn } from "@/lib/utils";
-import { BarChart3, CalendarDays, Mountain, Route, Trophy, User } from "lucide-react";
+import { BarChart3, CalendarDays, Mountain, Route, ShieldCheck, Trophy, User } from "lucide-react";
 
 type LeagueApiResponse = {
   current: {
@@ -68,15 +69,23 @@ export default function LeaguesPage() {
   const [metric, setMetric] = useState<LeaderboardMetric>("distance");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const activationError = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return "";
+    if (code === "strava_linked_elsewhere") return "That Strava profile is already active on another account.";
+    if (code === "strava_denied") return "Strava activation was cancelled. Your booking account is unchanged.";
+    return "Strava could not be activated. Please try again.";
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUser) router.replace("/");
-    else if (!isOnboarded) router.replace("/onboarding");
+    else if (currentUser.isConnected && !isOnboarded) router.replace("/onboarding");
   }, [hydrated, currentUser, isOnboarded, router]);
 
   useEffect(() => {
-    if (!hydrated || !currentUser || !isOnboarded) return;
+    if (!hydrated || !currentUser?.isConnected || !isOnboarded) return;
     const controller = new AbortController();
     async function load() {
       setLoading(true);
@@ -117,6 +126,69 @@ export default function LeaguesPage() {
   const activeDefinition = LEAGUES.find((league) => league.tier === activeLeague) ?? LEAGUES[1];
 
   if (!hydrated || !currentUser) return null;
+
+  if (!currentUser.isConnected) {
+    return (
+      <div className="min-h-screen bg-background mb-nav">
+        <header className="sticky top-0 z-40 glass-header px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground">
+              Optional rider experience
+            </p>
+            <h1 className="font-bold text-foreground text-xl">SpinTribe League</h1>
+          </div>
+          <SperaIcon className="h-7 w-7" />
+        </header>
+
+        <main className="mx-auto flex min-h-[calc(100vh-150px)] w-full max-w-lg items-center px-5 py-8">
+          <section className="glass-card w-full overflow-hidden p-6 sm:p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fc4c02]/10 text-[#fc4c02]">
+              <Trophy size={24} />
+            </div>
+            <p className="mt-6 text-[10px] font-black uppercase tracking-[0.18em] text-[#fc4c02]">Your rides. Your league.</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-foreground">
+              Activate the league with Strava.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              Your coaching account is ready. Connect Strava only when you want verified rides to count toward monthly league progress.
+            </p>
+
+            <div className="mt-6 rounded-2xl border border-foreground/[0.07] bg-foreground/[0.025] p-4">
+              <div className="flex gap-3">
+                <ShieldCheck size={18} className="mt-0.5 shrink-0 text-accent-foreground" />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Booking, payment, and reminders stay on your normal account. Strava is used only for ride verification and league progress.
+                </p>
+              </div>
+            </div>
+
+            {activationError && (
+              <p role="alert" className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs leading-5 text-red-600 dark:text-red-300">
+                {activationError}
+              </p>
+            )}
+
+            <a
+              href="/api/auth/strava?link=1"
+              className="mt-7 flex min-h-14 w-full items-center justify-center rounded-xl bg-[#fc4c02] px-6 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fc4c02] focus-visible:ring-offset-4 focus-visible:ring-offset-background active:translate-y-0"
+            >
+              <Image
+                src="/strava/btn_connect_with_strava_white.svg"
+                alt="Connect with Strava"
+                width={193}
+                height={48}
+                className="h-10 w-auto"
+              />
+            </a>
+            <p className="mt-4 text-center text-[10px] leading-4 text-muted-foreground/70">
+              You can keep booking coaching without activating the league.
+            </p>
+          </section>
+        </main>
+        <NavBar />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background mb-nav">

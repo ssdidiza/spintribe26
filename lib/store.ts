@@ -32,7 +32,7 @@ interface AppState {
     stravaId?: string,
     name?: string,
     avatar?: string,
-    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "teamId" | "teamName" | "teamSlug" | "currentLeagueId" | "currentLeagueName" | "currentLeagueThreshold" | "zone" | "region" | "onboarded" | "leaderboardConsent" | "rewardsExportConsent">
+    profile?: Pick<Partial<User>, "ftp" | "ftpCachedAt" | "country" | "role" | "tier" | "teamId" | "teamName" | "teamSlug" | "currentLeagueId" | "currentLeagueName" | "currentLeagueThreshold" | "zone" | "region" | "onboarded" | "leaderboardConsent" | "rewardsExportConsent" | "isConnected">
   ) => void;
   logout: () => void;
   completeOnboarding: (role: UserRole, tier: Tier, zone?: string, leaderboardConsent?: boolean, rewardsExportConsent?: boolean) => void;
@@ -83,7 +83,7 @@ export const useStore = create<AppState>()(
             `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name ?? "rider")}`,
           role: "member",
           tier: 400,
-          isConnected: true,
+          isConnected: profile?.isConnected ?? /^\d+$/.test(id),
           region: "Gauteng",
           onboarded: false,
           ...profile,

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEffectiveUserId, getSession } from "@/lib/session";
+import { getSession, getStravaUserId } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function PATCH(req: NextRequest) {
   const session = await getSession();
-  const userId = getEffectiveUserId(session);
+  const userId = getStravaUserId(session);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));

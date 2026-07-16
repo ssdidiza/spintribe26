@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CHALLENGE_TIERS, getMonthKey } from "@/lib/challenge";
 import { getLeagueByTier, getLeagueProgress } from "@/lib/leagues";
 import { anonymizeTiersForViewer, buildLeaderboardResponse, getLeaderboardMonthRange } from "@/lib/leaderboard";
-import { getEffectiveUserId, getSession } from "@/lib/session";
+import { getSession, getStravaUserId } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { LeaderboardApiResponse, LeaderboardEntry, Tier, User, UserRole } from "@/lib/types";
 
@@ -111,7 +111,7 @@ function buildHistoricalResponse(rows: HistoricalStandingRow[], monthKey: string
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  const userId = getEffectiveUserId(session);
+  const userId = getStravaUserId(session);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

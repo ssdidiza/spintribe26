@@ -7,14 +7,14 @@ import { hasAdminRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
-  { href: "/lessons",   icon: WalletCards,     label: "Lessons",   adminOnly: false },
-  { href: "/leagues",   icon: Trophy,          label: "Leagues",   adminOnly: false },
-  { href: "/races",     icon: Flag,            label: "Races",     adminOnly: false },
-  { href: "/teams",     icon: Users,           label: "Teams",     adminOnly: false },
-  { href: "/zones",     icon: MapPin,          label: "Zones",     adminOnly: false },
-  { href: "/profile",   icon: User,            label: "Profile",   adminOnly: false },
-  { href: "/admin",     icon: ShieldCheck,     label: "Admin",     adminOnly: true  },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", adminOnly: false, requiresStrava: true  },
+  { href: "/lessons",   icon: WalletCards,     label: "Lessons",   adminOnly: false, requiresStrava: false },
+  { href: "/leagues",   icon: Trophy,          label: "Leagues",   adminOnly: false, requiresStrava: false },
+  { href: "/races",     icon: Flag,            label: "Races",     adminOnly: false, requiresStrava: true  },
+  { href: "/teams",     icon: Users,           label: "Teams",     adminOnly: false, requiresStrava: true  },
+  { href: "/zones",     icon: MapPin,          label: "Zones",     adminOnly: false, requiresStrava: true  },
+  { href: "/profile",   icon: User,            label: "Profile",   adminOnly: false, requiresStrava: false },
+  { href: "/admin",     icon: ShieldCheck,     label: "Admin",     adminOnly: true,  requiresStrava: false },
 ];
 
 export default function NavBar() {
@@ -23,6 +23,7 @@ export default function NavBar() {
 
   const links = NAV.filter((n) => {
     if (n.adminOnly) return hasAdminRole(user);
+    if (n.requiresStrava && !user?.isConnected) return false;
     return true;
   });
 
