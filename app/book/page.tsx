@@ -88,7 +88,7 @@ export default function BookPage() {
       }
 
       try {
-        const response = await fetch("/api/lessons/services", { cache: "no-store" });
+        const response = await fetch("/api/lessons/services");
         const data = (await response.json().catch(() => ({}))) as { services?: LessonService[]; error?: string };
         if (!response.ok) throw new Error(data.error || "Unable to load services");
         if (cancelled) return;
