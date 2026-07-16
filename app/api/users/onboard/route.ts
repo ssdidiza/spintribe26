@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getSession, getEffectiveUserId } from "@/lib/session";
+import { getSession, getStravaUserId } from "@/lib/session";
 import { UserRole } from "@/lib/types";
 import { founderDefaults, founderRepairTier, isFounderUserId } from "@/lib/founder";
 import { getLeagueByTier, getNextLeague } from "@/lib/leagues";
@@ -9,7 +9,7 @@ const VALID_ROLES = ["champion", "member"];
 
 export async function PATCH(req: NextRequest) {
   const session = await getSession();
-  const userId = getEffectiveUserId(session);
+  const userId = getStravaUserId(session);
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

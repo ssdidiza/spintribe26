@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getEffectiveUserId, getSession } from "@/lib/session";
+import { getSession, getStravaUserId } from "@/lib/session";
 
 /** GET /api/activities - return current user's persisted activities from Supabase */
 export async function GET() {
   const session = await getSession();
-  const userId = getEffectiveUserId(session);
+  const userId = getStravaUserId(session);
   if (!userId) {
     return NextResponse.json({ activities: [] });
   }

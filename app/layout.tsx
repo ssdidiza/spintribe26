@@ -16,9 +16,9 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "SpinTribe - South Africa's Competitive Cycling Leaderboard",
+  title: "SpinTribe Cycling Coaching | Johannesburg",
   description:
-    "Connect Strava, track cycling progress, and compare opted-in South African riders by monthly distance, ride-day consistency, and region.",
+    "Book one-to-one cycling coaching in Johannesburg, pay securely with PayFast, and receive calendar and WhatsApp reminders.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],

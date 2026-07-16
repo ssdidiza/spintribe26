@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { getMonthKey } from "@/lib/challenge";
 import { LEAGUES, getLeagueByTier, getLeagueForDistanceKm, getLeagueProgress } from "@/lib/leagues";
 import { buildLeaderboardResponse, findLeaderboardEntry, getLeaderboardMonthRange } from "@/lib/leaderboard";
-import { getEffectiveUserId, getSession } from "@/lib/session";
+import { getSession, getStravaUserId } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   const session = await getSession();
-  const userId = getEffectiveUserId(session);
+  const userId = getStravaUserId(session);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const now = new Date();

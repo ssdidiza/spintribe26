@@ -5,7 +5,9 @@ import { randomBytes } from "crypto";
 /** GET /api/auth/strava — redirect user to Strava OAuth with CSRF state
  *  ?reauth=1  →  returning user updating scope; callback skips onboarding */
 export function GET(req: NextRequest) {
-  const reauth = new URL(req.url).searchParams.get("reauth") === "1";
+  const params = new URL(req.url).searchParams;
+  const reauth = params.get("reauth") === "1";
+  const link = params.get("link") === "1";
   const state = randomBytes(16).toString("hex");
   const url = getStravaAuthUrl(state, reauth);
   const res = NextResponse.redirect(url);
@@ -20,6 +22,7 @@ export function GET(req: NextRequest) {
 
   res.cookies.set("oauth_state", state, cookieOpts);
   if (reauth) res.cookies.set("oauth_reauth", "1", cookieOpts);
+  if (link) res.cookies.set("oauth_link", "1", cookieOpts);
 
   return res;
 }

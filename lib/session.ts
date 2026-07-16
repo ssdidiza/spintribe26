@@ -36,3 +36,8 @@ export function getEffectiveUserId(session: SessionData): string | null {
   if (session.athleteId) return String(session.athleteId);
   return null;
 }
+
+/** League and activity routes must never fall back to the booking account ID. */
+export function getStravaUserId(session: SessionData): string | null {
+  return session.athleteId ? String(session.athleteId) : null;
+}

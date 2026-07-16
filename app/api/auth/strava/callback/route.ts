@@ -10,15 +10,27 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const returnedState = searchParams.get("state");
+  const linkMode = req.cookies.get("oauth_link")?.value === "1";
+
+  const fail = (code: string) => {
+    const response = NextResponse.redirect(new URL(
+      linkMode ? `/leagues?error=${code}` : `/?error=${code}`,
+      req.url,
+    ));
+    response.cookies.delete("oauth_state");
+    response.cookies.delete("oauth_reauth");
+    response.cookies.delete("oauth_link");
+    return response;
+  };
 
   if (error || !code) {
-    return NextResponse.redirect(new URL("/?error=strava_denied", req.url));
+    return fail("strava_denied");
   }
 
   // CSRF: verify state matches the cookie set in /api/auth/strava.
   const expectedState = req.cookies.get("oauth_state")?.value;
   if (!returnedState || !expectedState || returnedState !== expectedState) {
-    return NextResponse.redirect(new URL("/?error=strava_error", req.url));
+    return fail("strava_error");
   }
 
   try {
@@ -29,6 +41,24 @@ export async function GET(req: NextRequest) {
       .join(" ") || "Athlete";
 
     const db = supabaseAdmin();
+    const session = await getSession();
+    const linkingAuthUserId = linkMode ? session.userId : undefined;
+    if (linkMode && !linkingAuthUserId) return fail("sign_in_required");
+
+    const { data: existingLink, error: existingLinkError } = await db
+      .from("users")
+      .select("auth_user_id")
+      .eq("strava_id", String(tokens.athleteId))
+      .maybeSingle();
+    if (existingLinkError) throw existingLinkError;
+    if (
+      linkMode &&
+      existingLink?.auth_user_id &&
+      existingLink.auth_user_id !== linkingAuthUserId
+    ) {
+      return fail("strava_linked_elsewhere");
+    }
+
     const { error: dbError } = await db.from("users").upsert(
       {
         strava_id: String(tokens.athleteId),
@@ -37,6 +67,7 @@ export async function GET(req: NextRequest) {
         strava_access_token: tokens.accessToken,
         strava_refresh_token: tokens.refreshToken,
         strava_token_expires_at: tokens.expiresAt,
+        ...(linkingAuthUserId ? { auth_user_id: linkingAuthUserId } : {}),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "strava_id" }
@@ -133,9 +164,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const session = await getSession();
     session.athleteId = tokens.athleteId;
-    session.userId = undefined;
+    if (!linkMode) session.userId = undefined;
     await session.save();
 
     let redirectUrl: URL;
@@ -167,10 +197,11 @@ export async function GET(req: NextRequest) {
     const res = NextResponse.redirect(redirectUrl);
     res.cookies.delete("oauth_state");
     res.cookies.delete("oauth_reauth");
+    res.cookies.delete("oauth_link");
 
     return res;
   } catch (err) {
     console.error("Strava OAuth error:", err);
-    return NextResponse.redirect(new URL("/?error=strava_error", req.url));
+    return fail("strava_error");
   }
 }

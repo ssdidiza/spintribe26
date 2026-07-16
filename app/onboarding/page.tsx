@@ -69,7 +69,7 @@ function OnboardingContent() {
       return;
     }
 
-    if (stravaId && name && !currentUser) {
+    if (stravaId && name && currentUser?.id !== stravaId) {
       login(stravaId, name, avatar ?? "");
     } else if (!stravaId && !currentUser) {
       router.replace("/");
