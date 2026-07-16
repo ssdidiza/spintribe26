@@ -3,6 +3,7 @@ import { LessonServiceRow, serializeLessonService } from "@/lib/lesson-services"
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
+export const preferredRegion = "cpt1";
 
 // Public: lists the services shown on /book. No auth — this is the front door.
 export async function GET() {
