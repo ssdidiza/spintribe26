@@ -1,5 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/lessons/availability/route.ts": {
+      "regions": ["dub1"]
+    },
+    "app/api/lessons/services/route.ts": {
+      "regions": ["dub1"]
+    }
+  },
   "crons": [
     {
       "path": "/api/leagues/assign-monthly",
