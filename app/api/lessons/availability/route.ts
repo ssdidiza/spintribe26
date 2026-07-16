@@ -4,7 +4,6 @@ import { LessonServiceRow } from "@/lib/lesson-services";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
-export const preferredRegion = "cpt1";
 
 export async function GET(req: NextRequest) {
   const startedAt = Date.now();
