@@ -149,6 +149,8 @@ export default function BookPage() {
   useEffect(() => {
     if (!slotServiceId || !needsSlot) return;
     const controller = new AbortController();
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => controller.abort("availability_timeout"), 15_000);
     (async () => {
       try {
         const params = new URLSearchParams({ serviceId: slotServiceId });
@@ -164,13 +166,21 @@ export default function BookPage() {
         if (!response.ok) throw new Error(data.error || "Unable to load available times");
         setAvailability(data.availability ?? []);
       } catch (loadError) {
-        if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : "Unable to load available times");
+        if (controller.signal.aborted) {
+          if (!cancelled) setError("Lesson times are taking longer than expected. Please choose the session again to retry.");
+          return;
+        }
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Unable to load available times");
       } finally {
-        if (!controller.signal.aborted) setAvailabilityLoading(false);
+        window.clearTimeout(timeoutId);
+        if (!cancelled) setAvailabilityLoading(false);
       }
     })();
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [slotServiceId, slotDurationMinutes, needsSlot]);
 
   function setQuantity(serviceId: string, quantity: number) {
