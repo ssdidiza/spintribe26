@@ -13,7 +13,7 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Loader2 } from "lucide-react";
 
 export type LessonAvailabilityDay = {
   date: string;
@@ -73,8 +73,8 @@ export default function LessonSlotCalendar({ availability, selectedSlot, onSelec
 
   if (loading) {
     return (
-      <div className="glass-card flex min-h-64 items-center justify-center text-sm text-muted-foreground">
-        Loading available lesson times...
+      <div className="glass-card flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 size={16} className="animate-spin" /> Finding available times…
       </div>
     );
   }

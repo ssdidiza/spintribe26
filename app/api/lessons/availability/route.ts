@@ -6,6 +6,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  const startedAt = Date.now();
+  const requestId = req.headers.get("x-vercel-id");
   const serviceId = req.nextUrl.searchParams.get("serviceId")?.trim();
   const fromDate = req.nextUrl.searchParams.get("from")?.trim();
   const daysValue = Number(req.nextUrl.searchParams.get("days") ?? lessonBookingWindowDays());
@@ -24,6 +26,14 @@ export async function GET(req: NextRequest) {
   if (!Number.isFinite(daysValue) || daysValue < 1 || daysValue > 60) {
     return NextResponse.json({ error: "days must be between 1 and 60" }, { status: 400 });
   }
+
+  console.log(JSON.stringify({
+    level: "info",
+    message: "Lesson availability started",
+    route: "/api/lessons/availability",
+    requestId,
+    serviceId,
+  }));
 
   try {
     const db = supabaseAdmin();
@@ -47,12 +57,31 @@ export async function GET(req: NextRequest) {
       }
     );
 
+    console.log(JSON.stringify({
+      level: "info",
+      message: "Lesson availability completed",
+      route: "/api/lessons/availability",
+      requestId,
+      serviceId,
+      days: availability.length,
+      durationMs: Date.now() - startedAt,
+    }));
+
     return NextResponse.json(
       { availability },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load lesson availability";
+    console.error(JSON.stringify({
+      level: "error",
+      message: "Lesson availability failed",
+      route: "/api/lessons/availability",
+      requestId,
+      serviceId,
+      error: message,
+      durationMs: Date.now() - startedAt,
+    }));
     return NextResponse.json({ error: message, availability: [] }, { status: 500 });
   }
 }

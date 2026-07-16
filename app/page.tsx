@@ -162,7 +162,7 @@ export default function LandingPage() {
               Coaching built around your <span className="gradient-text">next ride.</span>
             </h1>
             <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">
-              Book a single session or a focused coaching block. Pay once with PayFast. Get calendar invites and WhatsApp reminders.
+              Book a single session or a focused coaching block. Pay once. Get calendar invites and WhatsApp reminders.
             </p>
 
             <div className="mt-10">
@@ -241,7 +241,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1536px] px-6 py-7 sm:px-10 lg:px-16">
           <div className="grid gap-0 md:grid-cols-3">
             <ProofItem Icon={CalendarDays} title="Pick a session" body="Choose what suits your goals." />
-            <ProofItem Icon={CreditCard} title="Pay once" body="Secure checkout with PayFast." />
+            <ProofItem Icon={CreditCard} title="Pay once" body="Secure online checkout." />
             <ProofItem Icon={Check} title="Get reminded" body="Calendar and WhatsApp reminders included." />
           </div>
           <p className="mx-auto mt-6 max-w-2xl border-t border-white/10 pt-5 text-center text-xs leading-5 text-white/40 sm:text-sm">

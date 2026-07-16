@@ -18,7 +18,7 @@ const lexend = Lexend({
 export const metadata: Metadata = {
   title: "SpinTribe Cycling Coaching | Johannesburg",
   description:
-    "Book one-to-one cycling coaching in Johannesburg, pay securely with PayFast, and receive calendar and WhatsApp reminders.",
+    "Book one-to-one cycling coaching in Johannesburg, pay securely, and receive calendar and WhatsApp reminders.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
