@@ -1,20 +1,20 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flag, LayoutDashboard, MapPin, ShieldCheck, Trophy, User, Users, WalletCards } from "lucide-react";
+import { CalendarPlus, LayoutDashboard, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { hasAdminRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+// "Team" is the free community pillar and "Book" is paid coaching — two
+// separate entries on purpose. Team is NOT champ-gated: signing up is what
+// makes you a champ, so gating the link would hide the door behind the key.
 const NAV = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", adminOnly: false, requiresStrava: true  },
-  { href: "/lessons",   icon: WalletCards,     label: "Lessons",   adminOnly: false, requiresStrava: false },
-  { href: "/leagues",   icon: Trophy,          label: "Leagues",   adminOnly: false, requiresStrava: false },
-  { href: "/races",     icon: Flag,            label: "Races",     adminOnly: false, requiresStrava: true  },
-  { href: "/teams",     icon: Users,           label: "Teams",     adminOnly: false, requiresStrava: true  },
-  { href: "/zones",     icon: MapPin,          label: "Zones",     adminOnly: false, requiresStrava: true  },
-  { href: "/profile",   icon: User,            label: "Profile",   adminOnly: false, requiresStrava: false },
-  { href: "/admin",     icon: ShieldCheck,     label: "Admin",     adminOnly: true,  requiresStrava: false },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Home", adminOnly: false },
+  { href: "/rides", icon: Users, label: "Team", adminOnly: false },
+  { href: "/book", icon: CalendarPlus, label: "Book", adminOnly: false },
+  { href: "/progress", icon: TrendingUp, label: "Progress", adminOnly: false },
+  { href: "/admin", icon: ShieldCheck, label: "Admin", adminOnly: true },
 ];
 
 export default function NavBar() {
@@ -23,7 +23,6 @@ export default function NavBar() {
 
   const links = NAV.filter((n) => {
     if (n.adminOnly) return hasAdminRole(user);
-    if (n.requiresStrava && !user?.isConnected) return false;
     return true;
   });
 
@@ -33,7 +32,9 @@ export default function NavBar() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-nav pointer-events-none">
       <div className="mx-auto flex max-w-lg md:max-w-3xl justify-around px-1 pt-2.5 pb-safe pointer-events-auto">
         {links.map(({ href, icon: Icon, label }) => {
-          const active = pathname.startsWith(href);
+          const active =
+            pathname.startsWith(href) ||
+            (href === "/dashboard" && (pathname.startsWith("/lessons") || pathname.startsWith("/schedule")));
           return (
             <Link
               key={href}

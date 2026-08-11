@@ -18,6 +18,7 @@ const SESSION_OPTIONS = [
     description: "Build skills and confidence on the road.",
     duration: "60 min",
     price: "R399",
+    bookingHref: "/book?session=confidence",
   },
   {
     id: "performance",
@@ -25,6 +26,7 @@ const SESSION_OPTIONS = [
     description: "Focused coaching for stronger, smarter riding.",
     duration: "90 min",
     price: "R549",
+    bookingHref: "/book?session=performance",
   },
   {
     id: "block",
@@ -32,6 +34,7 @@ const SESSION_OPTIONS = [
     description: "Four coached rides with a clear progression.",
     duration: "4 × 90 min",
     price: "R1,899",
+    bookingHref: "/book?package=performance-block-4",
   },
 ] as const;
 
@@ -40,7 +43,13 @@ export default function LandingPage() {
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, login, completeOnboarding } = useStore();
   const [selectedSession, setSelectedSession] = useState("confidence");
-  const [showSignIn, setShowSignIn] = useState(false);
+  // /join redirects here with ?signin=1 when the account was created but the
+  // automatic sign-in didn't complete — open straight into the modal.
+  const [showSignIn, setShowSignIn] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("signin") === "1"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,10 +57,22 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!hydrated) return;
+    // A rider sent here to sign in must land on the modal, not get bounced by a
+    // stale persisted session from a previous account on this device.
+    if (showSignIn) return;
     if (currentUser?.isConnected && isOnboarded) router.replace(getPostLoginRoute(currentUser));
     else if (currentUser?.isConnected && !isOnboarded) router.replace("/onboarding");
-    else if (currentUser && !currentUser.isConnected) router.replace("/lessons");
-  }, [hydrated, currentUser, isOnboarded, router]);
+    else if (currentUser && !currentUser.isConnected) router.replace("/dashboard");
+  }, [hydrated, currentUser, isOnboarded, router, showSignIn]);
+
+  // Tidy the URL once the modal has taken the hint. No setState here — the
+  // ?signin=1 case is handled by the useState initializer above, since nothing
+  // paints before `hydrated` anyway.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("signin") === "1") {
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
 
   useEffect(() => {
     if (!showSignIn) return;
@@ -85,7 +106,7 @@ export default function LandingPage() {
       const isStravaConnected = Boolean(sessionData.athleteId);
       const { data: row } = await supabase
         .from("users")
-        .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
+        .select("name, role, tier, zone, onboarded, ftp, country")
         .eq("strava_id", profileId)
         .maybeSingle();
 
@@ -104,15 +125,11 @@ export default function LandingPage() {
         login(profileId, row.name || displayName, "", {
           role: row.role,
           tier: row.tier,
-          teamId: row.team_id ?? undefined,
-          currentLeagueId: row.current_league_id ?? undefined,
-          currentLeagueName: row.current_league_name ?? undefined,
-          currentLeagueThreshold: row.current_league_threshold ?? undefined,
           zone: row.zone,
           region: row.zone,
           onboarded: row.onboarded,
-          leaderboardConsent: row.leaderboard_consent !== false,
-          rewardsExportConsent: row.rewards_export_consent !== false,
+          leaderboardConsent: false,
+          rewardsExportConsent: false,
           ftp: row.ftp ?? undefined,
           country: row.country ?? undefined,
           isConnected: true,
@@ -121,8 +138,8 @@ export default function LandingPage() {
           row.role,
           row.tier,
           row.zone,
-          row.leaderboard_consent !== false,
-          row.rewards_export_consent !== false,
+          false,
+          false,
         );
         router.push(getPostLoginRoute({ role: row.role }));
       } else {
@@ -147,13 +164,21 @@ export default function LandingPage() {
             showWordmark
             wordmarkClassName="text-xl font-black tracking-[-0.04em] text-white sm:text-2xl"
           />
-          <button
-            type="button"
-            onClick={() => setShowSignIn(true)}
-            className="border-b border-[#ff4b35] pb-1 text-sm font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base"
-          >
-            Sign in
-          </button>
+          <div className="flex items-center gap-5 sm:gap-7">
+            <Link
+              href="/rides"
+              className="text-sm font-semibold text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base"
+            >
+              Team Vitality
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowSignIn(true)}
+              className="border-b border-[#ff4b35] pb-1 text-sm font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base"
+            >
+              Sign in
+            </button>
+          </div>
         </header>
 
         <div className="grid min-w-0 flex-1 items-center gap-12 pb-8 pt-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16 lg:pt-10">
@@ -162,7 +187,7 @@ export default function LandingPage() {
               Coaching built around your <span className="gradient-text">next ride.</span>
             </h1>
             <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">
-              Book a single session or a focused coaching block. Pay once. Get calendar invites and WhatsApp reminders.
+              Book a single session or a focused coaching block. Pay once. Get email confirmation and calendar reminders.
             </p>
 
             <div className="mt-10">
@@ -174,11 +199,23 @@ export default function LandingPage() {
             </div>
 
             <Link
-              href={`/book?session=${selectedSession}`}
+              href={SESSION_OPTIONS.find((session) => session.id === selectedSession)?.bookingHref ?? "/book"}
               className="mt-8 inline-flex min-h-14 w-full max-w-[410px] items-center justify-center rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-7 text-base font-black text-white shadow-[0_16px_50px_rgba(238,0,117,0.18)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-4 focus-visible:ring-offset-black active:translate-y-0"
             >
               Choose your session
             </Link>
+
+            {/* Secondary on purpose. Coaching stays the one primary action on
+                this screen (AGENTS.md); the free club is a door, not a rival CTA. */}
+            <p className="mt-5 text-sm text-white/55">
+              Not looking for coaching?{" "}
+              <Link
+                href="/join"
+                className="font-semibold text-white underline decoration-[#ff4b35] underline-offset-4 transition-colors hover:text-[#ff6a50]"
+              >
+                Join Team Vitality — free
+              </Link>
+            </p>
           </div>
 
           <div className="min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-[#111] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
@@ -242,10 +279,10 @@ export default function LandingPage() {
           <div className="grid gap-0 md:grid-cols-3">
             <ProofItem Icon={CalendarDays} title="Pick a session" body="Choose what suits your goals." />
             <ProofItem Icon={CreditCard} title="Pay once" body="Secure online checkout." />
-            <ProofItem Icon={Check} title="Get reminded" body="Calendar and WhatsApp reminders included." />
+            <ProofItem Icon={Check} title="Get reminded" body="Email and calendar reminders included." />
           </div>
           <p className="mx-auto mt-6 max-w-2xl border-t border-white/10 pt-5 text-center text-xs leading-5 text-white/40 sm:text-sm">
-            Coaching gets you stronger. Activate the Strava-powered SpinTribe League only when you want verified rides to count.
+            Already ride with Strava? Connect it only if you want a private view of your monthly progress.
           </p>
         </div>
       </section>
