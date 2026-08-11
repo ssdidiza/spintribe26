@@ -1,85 +1,63 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
 # SpinTribe — agent context
 
-SpinTribe (brand mark "spera") is a Strava-linked monthly cycling challenge for a South African
-community. Riders sync Strava rides, chase a monthly km target, and compete in **leagues**
-(individual), **teams** (group development), and **zones** (geographic). The product is in beta with
-~6 real riders; the immediate goal is Strava API approval to exceed the 10-athlete cap, so the live
-site must work end-to-end with real data — **never mock data on live surfaces**.
+SpinTribe is a South African cycling community with two deliberately separate pillars: **Team Vitality** (free community membership, scheduled rides and participation) and **coaching** (paid lessons). Coaching may be an upsell from the community, but purchasing coaching is never a prerequisite for Team Vitality.
 
 ## Stack & deployment
 
-- Next.js 16 App Router + React 19, client pages under `app/*/page.tsx` ("use client" + Zustand),
-  API route handlers under `app/api/**/route.ts` (Web Request/Response, promised `params`).
-- State: Zustand persisted to localStorage (`lib/store.ts`). It holds only the signed-in rider's
-  own data. **Never present store contents as community data** — that's how the "you look alone in
-  your league" bug happened. Live data or an honest loading/error state.
-- Auth: Strava OAuth → iron-session httpOnly cookie (`lib/session.ts`), keyed by Strava athlete id.
-  API routes resolve the user via `getEffectiveUserId(await getSession())`.
-- DB: Supabase Postgres (project ref `avsghuwixdxbgacfgwld`, eu-west-1). API routes use
-  `supabaseAdmin()` (service role — **bypasses RLS**, so privacy filters must live in query code).
-- Deploy: GitHub `ssdidiza/spintribe26` → Vercel project `spintribe26`. **Production deploys from
-  `master`**; every branch push gets a preview deployment. `vercel.json` defines the monthly league
-  cron (`/api/leagues/assign-monthly`, GET, guarded by `CRON_SECRET`).
-- Env (Vercel; there is no `.env.local` in the repo): `NEXT_PUBLIC_SUPABASE_URL`,
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRAVA_CLIENT_ID`,
-  `STRAVA_CLIENT_SECRET`, `NEXTAUTH_SECRET`/`SESSION_SECRET`, `CRON_SECRET`.
+- Next.js 16 App Router + React 19; client pages under `app/*/page.tsx`; API handlers under `app/api/**/route.ts`.
+- State: Zustand persisted to localStorage. It contains the signed-in user's own data; never use it as a substitute for community data.
+- Auth: Supabase Auth email/password plus an iron-session httpOnly cookie (`lib/session.ts`). Strava is optional for free Team Vitality membership and cycling features. `/api/auth/email-session` establishes the server session after email authentication.
+- DB: Supabase Postgres (project ref `avsghuwixdxbgacfgwld`, eu-west-1). API routes use `supabaseAdmin()` and therefore bypass RLS; privacy checks must live in query code.
+- Payments: PayFast is for paid coaching only. Team Vitality must never depend on PayFast, `lesson_purchases`, `lesson_sessions`, or `lesson_services`.
+- Email: Resend is the existing email/reminder infrastructure. Do not add a new messaging provider for Team Vitality.
+- **Messaging:** WhatsApp and Meta Cloud API are gone. Do not reference, restore, or rebuild them. Outbound messaging is email via existing Resend infrastructure.
+- Deploy: GitHub `ssdidiza/spintribe26` → Vercel project `spintribe26`; production deploys from `master`.
 
-## Data model (public schema)
+## Data model
 
-- `users` — PK `strava_id` (TEXT — always `String()` ids). Profile + `tier` (chosen target),
-  `current_league_id/name/threshold` (live league), `team_id`, `zone` (free text), `onboarded`,
-  `leaderboard_consent`, `rewards_export_consent`, Strava tokens, sync bookkeeping.
-- `activities` — synced Strava rides; `user_strava_id`, `distance` (metres), `elevation_gain`,
-  `type`, `date`, `start_lat/lng`, `detected_zone_id` (GPS bounding-box match, often NULL).
-- `leagues` (5 rows) + `league_memberships` (one row per rider per month, written by the monthly
-  cron) + `monthly_league_standings` (frozen month-end ranks, also cron-written).
-- `teams` — `created_by` → users; members are `users.team_id` → teams.
-- `zones` — custom zones; seed zones live in code (`SEED_ZONES` in `lib/types.ts`).
-- Plus: `champion_sessions`, `notifications`, `tier_upgrade_requests`, `feedback_*`.
+- `users` — existing membership/profile model. `role` is `champion | member | admin`. **Do not create a separate `champs` table.** Team Vitality membership is represented by `users.role = 'champion'`.
+- `users.auth_user_id` links email-auth accounts to `auth.users`; Strava remains optional.
+- `teams` includes the seeded Team Vitality team but supports multiple teams elsewhere in the product.
+- `champion_sessions` records completed/linked champion activity; it is not a scheduled ride model.
+- **Team Vitality scheduled rides:** `team_rides`, `ride_checkins`, and `ride_feedback` are separate community tables. They must have no foreign keys to `lesson_purchases`, `lesson_sessions`, `lesson_services`, PayFast records, or coaching bookings.
+- `team_rides.captain_id` is nullable; captain claim uses an atomic `UPDATE ... WHERE captain_id IS NULL`, so first claim wins and there is one captain per ride.
+- `ride_checkins` is unique per `(ride_id, champ_id)`. `ride_feedback` is unique per `(ride_id, champ_id)` and contains only a private note; no star-rating model exists.
+- The migration `supabase/team-vitality-rides-migration.sql` is **unapplied until explicitly approved**.
 
-## League rules (`lib/leagues.ts`)
+## Free Team Vitality access
 
-Five leagues by monthly km band: 200 Club (0–299), 400 (300–499), 600 (500–799), 800 (800–1199),
-1000 Club (1200+). A rider's competitive league = `current_league_threshold` (fallback `tier`).
-Rankings are computed per league from the current month's activities
-(`lib/leaderboard.ts: buildLeaderboardTiers`); cycling types counted: Ride, VirtualRide, EBikeRide,
-Velomobile. The cron reassigns leagues from last month's km on the 1st.
+- A champ can sign up, join rides, captain a ride, check in, and leave private feedback without buying coaching or connecting Strava.
+- `/join` is the free champion signup entry point. It uses `CHAMP_INVITE_CODE` and Supabase Auth email/password.
+- `/api/auth/validate-invite` must never accept an empty/unconfigured invite code.
+- `CHAMP_INVITE_CODE` belongs in deployment environment configuration only; never hardcode the real value.
+- `/rides` is the Team Vitality hub. Keep it separate from `/lessons` and the coaching purchase funnel.
+- Check-in is available only on the ride day window; reminders, if added, use existing Resend infrastructure.
 
-## Privacy & consent (do not weaken)
+## Privacy & consent
 
-Any surface that lists identifiable riders (leaderboard, league tables, team rosters/member counts,
-zone aggregates) must filter `onboarded = true AND leaderboard_consent = true` in the query.
-Consent copy ("Show my progress in SpinTribe rankings") covers league, team, and zone boards.
-`rewards_export_consent` separately gates admin reward exports. A rider's *own* data (their team,
-their rides) is always visible to themselves regardless of consent.
+Identifiable riders on competitive/community surfaces must respect the existing consent model. Private ride feedback is service-role-only and must never be exposed through a public/client-readable endpoint. Do not introduce public star ratings.
 
 ## Hard-won gotchas
 
-1. **PostgREST ambiguous embeds (caused the June 2026 "one rider in the 200 Club" outage).**
-   `users ↔ teams` has TWO relationships (`users.team_id` and `teams.created_by`), and
-   `league_memberships → leagues` has THREE. Embedded selects must use FK hints:
-   `teams!users_team_id_fkey(...)`, `leagues!league_memberships_league_id_fkey(...)`.
-   Without the hint Supabase REST answers **HTTP 300**, supabase-js yields `error`, the route 500s,
-   and clients silently degraded. Check Supabase API logs (status 300/4xx/5xx) when a list looks
-   inexplicably empty — route handlers return error JSON, they don't `console.error`, so Vercel
-   runtime logs stay quiet.
-2. **Client fallbacks must be honest.** When a community endpoint fails, show
-   loading/error/empty states — never substitute the local store (it contains one rider: you).
-3. **`users.strava_id` is TEXT** everywhere (sessions, FKs); numeric coercion breaks joins.
-4. **Zone attribution**: GPS `detected_zone_id` is sparse. Zone stats fall back to the rider's
-   profile `zone` matched by exact zone id/name (NOT region — "Gauteng" spans 4 zones). Unmatched
-   rides surface as "zone not detected yet".
-5. **Team creation abuse guards** live in `app/api/teams/route.ts` POST: onboarded only, one
-   created team per rider, must leave current team first, duplicate name/slug → 409.
+1. PostgREST has ambiguous embeds in existing `users ↔ teams` and league relationships; use explicit FK hints where needed.
+2. Client community fallbacks must be honest loading/error/empty states, never local-store substitutions.
+3. `users.strava_id` is TEXT everywhere; do not numerically coerce it in database joins.
+4. Lesson booking overlap is coaching-only. `lesson_sessions_no_active_overlap` applies to `public.lesson_sessions`; Postgres exclusion constraints do not affect the separate `team_rides` table.
+5. Free membership is not a purchase. Do not gate Team Vitality by PayFast or lesson records.
+6. `users.role = 'champion'` is the single source of truth for champion membership. Do not introduce a second membership system.
+
+## Litmus test
+
+The old coaching C1 test — "does it touch booking, payment, or reminding a client?" — is **not a hard failure for Team Vitality** because Team Vitality is deliberately free and outside the coaching funnel. Apply architectural separation instead: no PayFast/lesson dependency, no new external messaging, free-auth access, and measurable community participation.
+
+Team Vitality is justified as a retention/community layer if it produces participation. Initial kill criteria: fewer than 8 distinct active champs checking into at least one ride per month for two consecutive months; captaincy can be removed if the founder still supplies >70% of captains across six rides; feedback can be removed if it produces fewer than one actionable note per four rides.
 
 ## Verification
 
-`npm run lint` and `npm run build` must pass. For live verification, check the Supabase project's
-API logs (REST status codes) and Vercel runtime logs; the preview deployment for a branch runs
-against the production database.
+`npm run lint` and `npm run build` must pass. Before applying the Team Vitality migration, review it and verify there are zero FKs into coaching/payment tables. For live verification, inspect Supabase API logs and Vercel runtime logs.
