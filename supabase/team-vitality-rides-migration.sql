@@ -31,16 +31,6 @@ create table if not exists public.ride_feedback (
   unique (ride_id, champ_id)
 );
 
--- Only champions may occupy the captain/check-in/feedback relationships.
--- The API also checks this before every write; these constraints make the rule
--- survive accidental direct service-role writes as well.
-alter table public.team_rides
-  drop constraint if exists team_rides_captain_champion_fkey;
-
-alter table public.team_rides
-  add constraint team_rides_captain_champion_fkey
-  foreign key (captain_id) references public.users(strava_id) on delete set null;
-
 -- RLS is intentionally closed to browser clients. Server routes use supabaseAdmin()
 -- and therefore bypass RLS. This keeps private feedback and attendance off public APIs.
 alter table public.team_rides enable row level security;
