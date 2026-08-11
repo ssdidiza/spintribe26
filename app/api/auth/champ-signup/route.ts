@@ -20,13 +20,18 @@ export async function POST(req: NextRequest) {
     const { data, error } = await db.auth.signUp({
       email: normalizedEmail,
       password,
-      options: {
-        data: { full_name: normalizedName },
-      },
+      options: { data: { full_name: normalizedName } },
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     if (!data.user) return NextResponse.json({ error: "Account could not be created." }, { status: 500 });
+    if (!data.user.identities?.length) return NextResponse.json({ error: "An account with this email already exists. Please sign in instead." }, { status: 409 });
+
+    const { data: existingProfile } = await db.from("users").select("strava_id,role").eq("auth_user_id", data.user.id).maybeSingle();
+    if (existingProfile) {
+      if (existingProfile.role === "champion") return NextResponse.json({ error: "This account is already a champ. Please sign in." }, { status: 409 });
+      return NextResponse.json({ error: "This email is already linked to an existing SpinTribe account." }, { status: 409 });
+    }
 
     const { error: profileError } = await db.from("users").upsert(
       {
@@ -48,9 +53,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       userId: data.user.id,
       requiresEmailConfirmation: !data.session,
-      session: data.session
-        ? { accessToken: data.session.access_token, refreshToken: data.session.refresh_token }
-        : null,
+      session: data.session ? { accessToken: data.session.access_token, refreshToken: data.session.refresh_token } : null,
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Unable to create champion account." }, { status: 500 });
