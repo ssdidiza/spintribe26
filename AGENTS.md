@@ -38,6 +38,9 @@ SpinTribe is a South African cycling community with two deliberately separate pi
 - `CHAMP_INVITE_CODE` belongs in deployment environment configuration only; never hardcode the real value.
 - `/rides` is the Team Vitality hub. Keep it separate from `/lessons` and the coaching purchase funnel.
 - Check-in is available only on the ride day window; reminders, if added, use existing Resend infrastructure.
+- Rides are scheduled from the founder console: `/admin` → Rides, backed by `/api/admin/rides` and guarded by `getAdminContext()`. Creating rides is admin-only; claiming captaincy and checking in stay open to any champion.
+- `/api/admin/rides` returns participation as counts only. Private feedback notes stay service-role-only and must not be added to that response.
+- Client code must not read the clock during render to decide whether a ride is today, has started, or is past. `/rides` is prerendered, so build-time and browser clocks disagree. Use `useClientNow()` (`lib/useClientNow.ts`) or let the server send the verdict, as `/api/admin/rides` does with `isPast`.
 
 ## Privacy & consent
 

@@ -205,6 +205,16 @@ export interface TeamRide {
   captain: RideCaptain | null;
 }
 
+/**
+ * A ride as the founder console sees it. Participation is summarised as counts
+ * only — private feedback notes never leave the service role.
+ */
+export interface AdminRide extends TeamRide {
+  checkinCount: number;
+  feedbackCount: number;
+  isPast: boolean;
+}
+
 /** Response shape of GET /api/rides/[id]. */
 export interface RideDetailsResponse {
   ride: TeamRide;
