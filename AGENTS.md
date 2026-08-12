@@ -28,7 +28,7 @@ SpinTribe is a South African cycling community with two deliberately separate pi
 - **Team Vitality scheduled rides:** `team_rides`, `ride_checkins`, and `ride_feedback` are separate community tables. They must have no foreign keys to `lesson_purchases`, `lesson_sessions`, `lesson_services`, PayFast records, or coaching bookings.
 - `team_rides.captain_id` is nullable; captain claim uses an atomic `UPDATE ... WHERE captain_id IS NULL`, so first claim wins and there is one captain per ride.
 - `ride_checkins` is unique per `(ride_id, champ_id)`. `ride_feedback` is unique per `(ride_id, champ_id)` and contains only a private note; no star-rating model exists.
-- The migration `supabase/team-vitality-rides-migration.sql` is **unapplied until explicitly approved**.
+- The migration `supabase/team-vitality-rides-migration.sql` is **applied**. `team_rides`, `ride_checkins`, and `ride_feedback` exist in the project; their only foreign keys point at `users` and `team_rides`. Treat the file as a record of what shipped, not as pending work.
 
 ## Free Team Vitality access
 
@@ -60,4 +60,4 @@ Team Vitality is justified as a retention/community layer if it produces partici
 
 ## Verification
 
-`npm run lint` and `npm run build` must pass. Before applying the Team Vitality migration, review it and verify there are zero FKs into coaching/payment tables. For live verification, inspect Supabase API logs and Vercel runtime logs.
+`npm run lint` and `npm run build` must pass. The Team Vitality ride tables were verified on apply to carry zero FKs into coaching/payment tables; re-check that property for any future migration touching `team_rides`, `ride_checkins`, or `ride_feedback`. For live verification, inspect Supabase API logs and Vercel runtime logs.
