@@ -21,17 +21,32 @@ export async function POST(req: NextRequest) {
       data.user.email?.split("@")[0] ||
       "Rider";
 
-    const { error: profileError } = await db.from("users").upsert(
-      {
-        strava_id: data.user.id,
-        name: displayName,
-        leaderboard_consent: false,
-        rewards_export_consent: false,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "strava_id", ignoreDuplicates: true },
-    );
-    if (profileError) throw profileError;
+    // A profile already linked to this auth account wins -- that is how a
+    // Strava-connected rider (or the founder) signs in by email and lands on
+    // their real profile instead of a second, empty one keyed by the auth id.
+    const { data: existingProfile, error: existingError } = await db
+      .from("users")
+      .select("strava_id")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    if (!existingProfile) {
+      const { error: profileError } = await db.from("users").upsert(
+        {
+          strava_id: data.user.id,
+          // Without this the link column stays null and every later lookup by
+          // auth_user_id -- including the Strava link below -- silently misses.
+          auth_user_id: data.user.id,
+          name: displayName,
+          leaderboard_consent: false,
+          rewards_export_consent: false,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "strava_id", ignoreDuplicates: true },
+      );
+      if (profileError) throw profileError;
+    }
 
     const { data: linkedAthlete, error: linkError } = await db
       .from("users")
