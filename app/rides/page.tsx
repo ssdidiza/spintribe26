@@ -2,31 +2,38 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useClientNow } from "@/lib/useClientNow";
+import type { TeamRide } from "@/lib/types";
 
-interface Ride {
-  id: string;
-  starts_at: string;
-  route: string;
-  capacity: number;
-  captain_id: string | null;
-  captain: { strava_id: string; name: string } | null;
+async function fetchRides(): Promise<TeamRide[]> {
+  const response = await fetch("/api/rides", { cache: "no-store" });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not load rides.");
+  return result.rides ?? [];
 }
 
 export default function RidesPage() {
-  const [rides, setRides] = useState<Ride[]>([]);
+  const [rides, setRides] = useState<TeamRide[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
-
-  async function load() {
-    const response = await fetch("/api/rides", { cache: "no-store" });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Could not load rides.");
-    setRides(result.rides ?? []);
-  }
+  const now = useClientNow();
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Could not load rides.")).finally(() => setLoading(false));
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await fetchRides();
+        if (!cancelled) setRides(loaded);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not load rides.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function captain(id: string) {
@@ -36,9 +43,22 @@ export default function RidesPage() {
       const response = await fetch(`/api/rides/${id}/captain`, { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not claim ride.");
-      await load();
+      setRides(await fetchRides());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not claim ride.");
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  async function checkIn(id: string) {
+    setWorking(id);
+    try {
+      const response = await fetch(`/api/rides/${id}/checkin`, { method: "POST" });
+      const result = await response.json();
+      setError(response.ok ? "" : result.error || "Check-in failed.");
+    } catch {
+      setError("Check-in failed.");
     } finally {
       setWorking(null);
     }
@@ -58,7 +78,7 @@ export default function RidesPage() {
         <div className="mt-8 space-y-4">
           {rides.map((ride) => {
             const date = new Date(ride.starts_at);
-            const rideDay = date.toDateString() === new Date().toDateString();
+            const rideDay = now !== null && date.toDateString() === new Date(now).toDateString();
             return (
               <article key={ride.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -73,7 +93,7 @@ export default function RidesPage() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {rideDay && <button onClick={async () => { setWorking(ride.id); const r = await fetch(`/api/rides/${ride.id}/checkin`, { method: "POST" }); const x = await r.json(); if (!r.ok) setError(x.error || "Check-in failed."); else setError(""); setWorking(null); }} disabled={working === ride.id} className="rounded-xl bg-gradient-to-r from-[#ff5b1f] to-[#ee0075] px-4 py-2.5 text-sm font-black text-white">{working === ride.id ? "Checking in…" : "Check in"}</button>}
+                  {rideDay && <button onClick={() => checkIn(ride.id)} disabled={working === ride.id} className="rounded-xl bg-gradient-to-r from-[#ff5b1f] to-[#ee0075] px-4 py-2.5 text-sm font-black text-white">{working === ride.id ? "Checking in…" : "Check in"}</button>}
                   <Link href={`/rides/${ride.id}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white">Ride details</Link>
                 </div>
               </article>
