@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let { data: existingProfile, error: existingError } = await db
+    const existingLookup = await db
       .from("users")
       .select("strava_id,role")
       .eq("auth_user_id", data.user.id)
       .maybeSingle();
-    if (existingError) throw existingError;
+    if (existingLookup.error) throw existingLookup.error;
+    let existingProfile = existingLookup.data;
 
     if (!existingProfile) {
       const { error: profileError } = await db.from("users").upsert(
