@@ -42,13 +42,12 @@ export default function AdminRidesPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
       const res = await fetch("/api/admin/rides", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Unable to load rides");
       const nextTeams = (data.teams ?? []) as TeamOption[];
+      setError("");
       setTeams(nextTeams);
       setRides((data.rides ?? []) as AdminRide[]);
       setTeamId((current) => current || nextTeams[0]?.id || "");
