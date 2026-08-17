@@ -55,13 +55,12 @@ export default function RidesPage() {
   const now = useClientNow();
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
       const response = await fetch("/api/rides", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load rides.");
       const nextMemberships = (result.memberships ?? []) as Membership[];
+      setError("");
       setRides((result.rides ?? []) as Ride[]);
       setMemberships(nextMemberships);
       setTeamId((current) => current || nextMemberships[0]?.team_id || "");
