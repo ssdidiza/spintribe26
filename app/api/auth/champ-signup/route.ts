@@ -17,6 +17,14 @@ export async function POST(req: NextRequest) {
     }
 
     const db = supabaseAdmin();
+    const { data: vitality, error: vitalityError } = await db
+      .from("teams")
+      .select("id")
+      .eq("slug", "team-vitality")
+      .maybeSingle();
+    if (vitalityError) return NextResponse.json({ error: vitalityError.message }, { status: 500 });
+    if (!vitality) return NextResponse.json({ error: "Team Vitality club setup is missing." }, { status: 500 });
+
     const { data, error } = await db.auth.signUp({
       email: normalizedEmail,
       password,
@@ -25,20 +33,37 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     if (!data.user) return NextResponse.json({ error: "Account could not be created." }, { status: 500 });
-    if (!data.user.identities?.length) return NextResponse.json({ error: "An account with this email already exists. Please sign in instead." }, { status: 409 });
+    if (!data.user.identities?.length) {
+      return NextResponse.json({ error: "An account with this email already exists. Please sign in instead." }, { status: 409 });
+    }
 
-    const { data: existingProfile } = await db.from("users").select("strava_id,role").eq("auth_user_id", data.user.id).maybeSingle();
+    const { data: existingProfile, error: existingProfileError } = await db
+      .from("users")
+      .select("strava_id")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+    if (existingProfileError) return NextResponse.json({ error: existingProfileError.message }, { status: 500 });
     if (existingProfile) {
-      if (existingProfile.role === "champion") return NextResponse.json({ error: "This account is already a champ. Please sign in." }, { status: 409 });
+      const { data: existingMembership } = await db
+        .from("team_memberships")
+        .select("role")
+        .eq("user_strava_id", existingProfile.strava_id)
+        .eq("team_id", vitality.id)
+        .eq("role", "champion")
+        .maybeSingle();
+      if (existingMembership) return NextResponse.json({ error: "This account is already a Team Vitality champ. Please sign in." }, { status: 409 });
       return NextResponse.json({ error: "This email is already linked to an existing SpinTribe account." }, { status: 409 });
     }
 
+    // Platform role remains member. Club authority lives only in
+    // team_memberships, so this account can later champion another club without
+    // another schema or another global role.
     const { error: profileError } = await db.from("users").upsert(
       {
         strava_id: data.user.id,
         auth_user_id: data.user.id,
         name: normalizedName,
-        role: "champion",
+        role: "member",
         onboarded: true,
         leaderboard_consent: false,
         rewards_export_consent: false,
@@ -46,8 +71,19 @@ export async function POST(req: NextRequest) {
       },
       { onConflict: "strava_id" },
     );
+    if (profileError) return NextResponse.json({ error: "Account created, but profile setup failed." }, { status: 500 });
 
-    if (profileError) return NextResponse.json({ error: "Account created, but champion profile setup failed." }, { status: 500 });
+    const { error: membershipError } = await db.from("team_memberships").upsert(
+      {
+        user_strava_id: data.user.id,
+        team_id: vitality.id,
+        role: "champion",
+        is_primary: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_strava_id,team_id" },
+    );
+    if (membershipError) return NextResponse.json({ error: "Account created, but club champion setup failed." }, { status: 500 });
 
     return NextResponse.json({
       ok: true,
