@@ -72,8 +72,33 @@ export default function RidesPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+
+    void fetch("/api/rides", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not load rides.");
+        return result;
+      })
+      .then((result) => {
+        if (cancelled) return;
+        const nextMemberships = (result.memberships ?? []) as Membership[];
+        setError("");
+        setRides((result.rides ?? []) as Ride[]);
+        setMemberships(nextMemberships);
+        setTeamId(nextMemberships[0]?.team_id || "");
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load rides.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const includesTeamVitality = useMemo(
     () => memberships.some((membership) => membership.team?.slug === "team-vitality"),
