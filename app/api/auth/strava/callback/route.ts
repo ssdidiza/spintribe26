@@ -13,32 +13,21 @@ export async function GET(req: NextRequest) {
   const linkMode = req.cookies.get("oauth_link")?.value === "1";
 
   const fail = (code: string) => {
-    const response = NextResponse.redirect(new URL(
-      linkMode ? `/leagues?error=${code}` : `/?error=${code}`,
-      req.url,
-    ));
+    const response = NextResponse.redirect(new URL(linkMode ? `/leagues?error=${code}` : `/?error=${code}`, req.url));
     response.cookies.delete("oauth_state");
     response.cookies.delete("oauth_reauth");
     response.cookies.delete("oauth_link");
     return response;
   };
 
-  if (error || !code) {
-    return fail("strava_denied");
-  }
+  if (error || !code) return fail("strava_denied");
 
-  // CSRF: verify state matches the cookie set in /api/auth/strava.
   const expectedState = req.cookies.get("oauth_state")?.value;
-  if (!returnedState || !expectedState || returnedState !== expectedState) {
-    return fail("strava_error");
-  }
+  if (!returnedState || !expectedState || returnedState !== expectedState) return fail("strava_error");
 
   try {
-    // Athlete name/avatar are embedded in the token response.
     const tokens = await exchangeStravaCode(code);
-    const displayName = [tokens.athleteFirstname, tokens.athleteLastname]
-      .filter(Boolean)
-      .join(" ") || "Athlete";
+    const displayName = [tokens.athleteFirstname, tokens.athleteLastname].filter(Boolean).join(" ") || "Athlete";
 
     const db = supabaseAdmin();
     const session = await getSession();
@@ -51,11 +40,7 @@ export async function GET(req: NextRequest) {
       .eq("strava_id", String(tokens.athleteId))
       .maybeSingle();
     if (existingLinkError) throw existingLinkError;
-    if (
-      linkMode &&
-      existingLink?.auth_user_id &&
-      existingLink.auth_user_id !== linkingAuthUserId
-    ) {
+    if (linkMode && existingLink?.auth_user_id && existingLink.auth_user_id !== linkingAuthUserId) {
       return fail("strava_linked_elsewhere");
     }
 
@@ -70,38 +55,25 @@ export async function GET(req: NextRequest) {
         ...(linkingAuthUserId ? { auth_user_id: linkingAuthUserId } : {}),
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "strava_id" }
+      { onConflict: "strava_id" },
     );
+    if (dbError) console.error("Supabase upsert error:", dbError);
 
-    if (dbError) {
-      console.error("Supabase upsert error:", dbError);
-    }
-
-    // FTP is optional Strava profile data. Read it once during OAuth/re-auth,
-    // then serve it from our cache unless the athlete explicitly refreshes it.
     try {
       const athlete = await getStravaAthlete(tokens.accessToken);
-      await db
-        .from("users")
-        .update({
-          ftp: athlete.ftp ?? null,
-          country: athlete.country ?? null,
-          ftp_cached_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("strava_id", String(tokens.athleteId));
+      await db.from("users").update({
+        ftp: athlete.ftp ?? null,
+        country: athlete.country ?? null,
+        ftp_cached_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("strava_id", String(tokens.athleteId));
     } catch (profileErr) {
       console.error("Athlete profile sync failed (non-fatal):", profileErr);
     }
 
-    // Initial activity sync uses the fresh token so the dashboard opens with data.
     try {
       const now = new Date();
-      const stravaActivities = await getStravaActivitiesForMonth(
-        tokens.accessToken,
-        now.getFullYear(),
-        now.getMonth() + 1
-      );
+      const stravaActivities = await getStravaActivitiesForMonth(tokens.accessToken, now.getFullYear(), now.getMonth() + 1);
       if (stravaActivities.length > 0) {
         const rows = stravaActivities.map((a) => {
           const lat = a.start_latlng?.[0];
@@ -121,15 +93,12 @@ export async function GET(req: NextRequest) {
         });
         await db.from("activities").upsert(rows, { onConflict: "strava_id" });
       }
-      await db
-        .from("users")
-        .update({
-          last_strava_sync_at: new Date().toISOString(),
-          last_strava_sync_year: now.getFullYear(),
-          last_strava_sync_month: now.getMonth() + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("strava_id", String(tokens.athleteId));
+      await db.from("users").update({
+        last_strava_sync_at: new Date().toISOString(),
+        last_strava_sync_year: now.getFullYear(),
+        last_strava_sync_month: now.getMonth() + 1,
+        updated_at: new Date().toISOString(),
+      }).eq("strava_id", String(tokens.athleteId));
     } catch (syncErr) {
       console.error("Initial activity sync failed (non-fatal):", syncErr);
     }
@@ -157,11 +126,19 @@ export async function GET(req: NextRequest) {
         .select("onboarded, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, leaderboard_consent, rewards_export_consent")
         .maybeSingle();
 
-      if (repairError) {
-        console.error("Founder profile repair failed:", repairError);
-      } else {
-        existingUser = repairedUser ?? { ...existingUser, ...repair };
-      }
+      if (repairError) console.error("Founder profile repair failed:", repairError);
+      else existingUser = repairedUser ?? { ...existingUser, ...repair };
+    }
+
+    let derivedRole = existingUser?.role ?? "member";
+    if (existingUser?.role !== "admin") {
+      const { count: championClubCount, error: membershipError } = await db
+        .from("team_memberships")
+        .select("id", { count: "exact", head: true })
+        .eq("user_strava_id", String(tokens.athleteId))
+        .eq("role", "champion");
+      if (membershipError) throw membershipError;
+      derivedRole = (championClubCount ?? 0) > 0 ? "champion" : "member";
     }
 
     session.athleteId = tokens.athleteId;
@@ -170,15 +147,12 @@ export async function GET(req: NextRequest) {
 
     let redirectUrl: URL;
     if (existingUser?.onboarded) {
-      // Returning user: route through /onboarding?returning=1 so the client
-      // can restore Zustand state (which was cleared on logout) before entering
-      // the dashboard. The dashboard redirects to / when currentUser is null.
       redirectUrl = new URL("/onboarding", req.url);
       redirectUrl.searchParams.set("returning", "1");
       redirectUrl.searchParams.set("strava_id", String(tokens.athleteId));
       redirectUrl.searchParams.set("name", displayName);
       redirectUrl.searchParams.set("avatar", tokens.athleteProfile);
-      if (existingUser.role) redirectUrl.searchParams.set("role", existingUser.role);
+      redirectUrl.searchParams.set("role", derivedRole);
       if (existingUser.tier) redirectUrl.searchParams.set("tier", String(existingUser.tier));
       if (existingUser.team_id) redirectUrl.searchParams.set("team_id", String(existingUser.team_id));
       if (existingUser.current_league_id) redirectUrl.searchParams.set("current_league_id", String(existingUser.current_league_id));
@@ -198,7 +172,6 @@ export async function GET(req: NextRequest) {
     res.cookies.delete("oauth_state");
     res.cookies.delete("oauth_reauth");
     res.cookies.delete("oauth_link");
-
     return res;
   } catch (err) {
     console.error("Strava OAuth error:", err);
