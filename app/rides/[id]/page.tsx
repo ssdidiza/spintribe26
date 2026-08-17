@@ -42,11 +42,11 @@ export default function RideDetailsPage() {
   const [working, setWorking] = useState(false);
 
   const load = useCallback(async () => {
-    setError("");
     try {
       const response = await fetch(`/api/rides/${params.id}`, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not load ride.");
+      setError("");
       setDetails(result as RideDetails);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load ride.");
