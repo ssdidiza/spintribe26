@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Check, CreditCard, Loader2, X } from "lucide-react";
 import { BrandMark } from "@/components/SperaLogo";
 import { supabase } from "@/lib/supabase";
-import { getPostLoginRoute } from "@/lib/types";
+import { getPostLoginRoute, type UserRole } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 
@@ -50,24 +50,69 @@ export default function LandingPage() {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
       if (!data.user || !data.session) throw new Error("Sign in could not be completed.");
-      const sessionResponse = await fetch("/api/auth/email-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accessToken: data.session.access_token }) });
-      const sessionData = await sessionResponse.json() as { athleteId?: string | null; error?: string };
+
+      const sessionResponse = await fetch("/api/auth/email-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: data.session.access_token }),
+      });
+      const sessionData = await sessionResponse.json() as {
+        athleteId?: string | null;
+        profileId?: string | null;
+        platformRole?: string;
+        clubChampion?: boolean;
+        error?: string;
+      };
       if (!sessionResponse.ok) throw new Error(sessionData.error || "Account session could not be created.");
 
       const displayName = email.split("@")[0];
-      const profileId = sessionData.athleteId ?? data.user.id;
+      const profileId = sessionData.profileId ?? sessionData.athleteId ?? data.user.id;
       const isStravaConnected = Boolean(sessionData.athleteId);
-      const { data: row } = await supabase.from("users").select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent").eq("strava_id", profileId).maybeSingle();
+      const { data: row } = await supabase
+        .from("users")
+        .select("name, role, tier, team_id, current_league_id, current_league_name, current_league_threshold, zone, onboarded, ftp, country, leaderboard_consent, rewards_export_consent")
+        .eq("strava_id", profileId)
+        .maybeSingle();
+
+      // users.role is platform-wide only. The client keeps the historical
+      // "champion" UI role as a derived capability so existing champ screens
+      // remain compatible while team_memberships is the server authority.
+      const derivedRole: UserRole = row?.role === "admin"
+        ? "admin"
+        : sessionData.clubChampion
+          ? "champion"
+          : "member";
 
       if (!isStravaConnected) {
-        const role = row?.role ?? "member";
-        login(data.user.id, row?.name || displayName, "", { role, tier: row?.tier ?? 200, onboarded: true, isConnected: false, leaderboardConsent: row?.leaderboard_consent ?? false, rewardsExportConsent: row?.rewards_export_consent ?? false });
-        completeOnboarding(role, row?.tier ?? 200, row?.zone ?? undefined, row?.leaderboard_consent ?? false, row?.rewards_export_consent ?? false);
-        router.push(role === "champion" ? "/rides" : "/lessons");
+        login(profileId, row?.name || displayName, "", {
+          role: derivedRole,
+          tier: row?.tier ?? 200,
+          onboarded: true,
+          isConnected: false,
+          leaderboardConsent: row?.leaderboard_consent ?? false,
+          rewardsExportConsent: row?.rewards_export_consent ?? false,
+        });
+        completeOnboarding(derivedRole, row?.tier ?? 200, row?.zone ?? undefined, row?.leaderboard_consent ?? false, row?.rewards_export_consent ?? false);
+        router.push(derivedRole === "champion" ? "/rides" : derivedRole === "admin" ? "/admin" : "/lessons");
       } else if (row?.onboarded) {
-        login(profileId, row.name || displayName, "", { role: row.role, tier: row.tier, teamId: row.team_id ?? undefined, currentLeagueId: row.current_league_id ?? undefined, currentLeagueName: row.current_league_name ?? undefined, currentLeagueThreshold: row.current_league_threshold ?? undefined, zone: row.zone, region: row.zone, onboarded: row.onboarded, leaderboardConsent: row.leaderboard_consent !== false, rewardsExportConsent: row.rewards_export_consent !== false, ftp: row.ftp ?? undefined, country: row.country ?? undefined, isConnected: true });
-        completeOnboarding(row.role, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
-        router.push(getPostLoginRoute({ role: row.role }));
+        login(profileId, row.name || displayName, "", {
+          role: derivedRole,
+          tier: row.tier,
+          teamId: row.team_id ?? undefined,
+          currentLeagueId: row.current_league_id ?? undefined,
+          currentLeagueName: row.current_league_name ?? undefined,
+          currentLeagueThreshold: row.current_league_threshold ?? undefined,
+          zone: row.zone,
+          region: row.zone,
+          onboarded: row.onboarded,
+          leaderboardConsent: row.leaderboard_consent !== false,
+          rewardsExportConsent: row.rewards_export_consent !== false,
+          ftp: row.ftp ?? undefined,
+          country: row.country ?? undefined,
+          isConnected: true,
+        });
+        completeOnboarding(derivedRole, row.tier, row.zone, row.leaderboard_consent !== false, row.rewards_export_consent !== false);
+        router.push(getPostLoginRoute({ role: derivedRole }));
       } else {
         login(profileId, row?.name || displayName, "", { isConnected: true });
         router.push("/onboarding");
@@ -87,7 +132,7 @@ export default function LandingPage() {
         <header className="flex items-center justify-between py-2">
           <BrandMark iconClassName="h-9 w-9" showWordmark wordmarkClassName="text-xl font-black tracking-[-0.04em] text-white sm:text-2xl" />
           <div className="flex items-center gap-5">
-            <Link href="/join" className="text-sm font-bold text-white/75 hover:text-white sm:text-base">Join Team Vitality</Link>
+            <Link href="/join" className="text-sm font-bold text-white/75 hover:text-white sm:text-base">Team Vitality community</Link>
             <button type="button" onClick={() => setShowSignIn(true)} className="border-b border-[#ff4b35] pb-1 text-sm font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base">Sign in</button>
           </div>
         </header>
@@ -98,7 +143,7 @@ export default function LandingPage() {
             <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">Book a single session or a focused coaching block. Pay once. Get calendar invites and email reminders.</p>
             <div className="mt-10"><p className="text-sm text-white/55">Sessions from</p><p className="mt-1 flex items-end gap-3"><span className="gradient-text text-5xl font-black tracking-[-0.05em] sm:text-6xl">R399</span><span className="pb-2 text-sm text-white/55">/ 60 min</span></p></div>
             <Link href={`/book?session=${selectedSession}`} className="mt-8 inline-flex min-h-14 w-full max-w-[410px] items-center justify-center rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-7 text-base font-black text-white shadow-[0_16px_50px_rgba(238,0,117,0.18)] transition-transform hover:-translate-y-0.5">Choose your session</Link>
-            <Link href="/join" className="mt-4 inline-flex text-sm font-bold text-white/60 underline underline-offset-4 hover:text-white">Or join Team Vitality free →</Link>
+            <Link href="/join" className="mt-4 inline-flex text-sm font-bold text-white/60 underline underline-offset-4 hover:text-white">Or join the Team Vitality community free →</Link>
           </div>
 
           <div className="min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-[#111] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
@@ -108,7 +153,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section aria-label="How booking works" className="border-t border-white/10 bg-black/95"><div className="mx-auto max-w-[1536px] px-6 py-7 sm:px-10 lg:px-16"><div className="grid gap-0 md:grid-cols-3"><ProofItem Icon={CalendarDays} title="Pick a session" body="Choose what suits your goals." /><ProofItem Icon={CreditCard} title="Pay once" body="Secure online checkout." /><ProofItem Icon={Check} title="Get reminded" body="Calendar and email reminders included." /></div><p className="mx-auto mt-6 max-w-2xl border-t border-white/10 pt-5 text-center text-xs leading-5 text-white/40 sm:text-sm">Coaching gets you stronger. Team Vitality is free — join the champs and ride with the community.</p></div></section>
+      <section aria-label="How booking works" className="border-t border-white/10 bg-black/95"><div className="mx-auto max-w-[1536px] px-6 py-7 sm:px-10 lg:px-16"><div className="grid gap-0 md:grid-cols-3"><ProofItem Icon={CalendarDays} title="Pick a session" body="Choose what suits your goals." /><ProofItem Icon={CreditCard} title="Pay once" body="Secure online checkout." /><ProofItem Icon={Check} title="Get reminded" body="Calendar and email reminders included." /></div><p className="mx-auto mt-6 max-w-2xl border-t border-white/10 pt-5 text-center text-xs leading-5 text-white/40 sm:text-sm">Coaching is a paid SpinTribe service. Community club rides stay free. Official Team Vitality membership, rewards and eligibility remain governed by Discovery.</p></div></section>
 
       {showSignIn && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowSignIn(false); }}><section role="dialog" aria-modal="true" aria-labelledby="sign-in-title" className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111] p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff5a45]">Welcome back</p><h2 id="sign-in-title" className="mt-2 text-2xl font-black tracking-tight">Sign in to SpinTribe</h2></div><button type="button" onClick={() => setShowSignIn(false)} aria-label="Close sign in" className="flex h-10 w-10 items-center justify-center rounded-full text-white/60 hover:bg-white/5 hover:text-white"><X size={20} /></button></div><form onSubmit={handleSignIn} className="mt-7 space-y-5"><label className="block"><span className="text-xs font-bold uppercase tracking-wider text-white/50">Email</span><input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white outline-none focus:border-[#ff4b35]" /></label><label className="block"><span className="text-xs font-bold uppercase tracking-wider text-white/50">Password</span><input type="password" autoComplete="current-password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white outline-none focus:border-[#ff4b35]" /></label>{error && <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}<button type="submit" disabled={loading} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-5 text-sm font-black text-white disabled:opacity-50">{loading && <Loader2 size={16} className="animate-spin" />}{loading ? "Signing in…" : "Sign in"}</button></form></section></div>}
     </main>
