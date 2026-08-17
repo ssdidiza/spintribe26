@@ -62,7 +62,26 @@ export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
 
-  const input = parseRideCreationInput(await req.json().catch(() => ({})));
+  const rawBody = await req.json().catch(() => ({}));
+  const body = rawBody && typeof rawBody === "object" ? { ...(rawBody as Record<string, unknown>) } : {};
+
+  // PR #40's original /admin -> Rides tab predates club_id and meeting_point.
+  // Keep that verified-good shell working for Team Vitality while /admin/rides
+  // exposes the full club-aware form. This compatibility path can be removed
+  // once the shell is rewritten, but it never creates an unscoped ride.
+  if (!body.teamId) {
+    const { data: vitality, error: vitalityError } = await ctx.db
+      .from("teams")
+      .select("id")
+      .eq("slug", "team-vitality")
+      .maybeSingle();
+    if (vitalityError) return NextResponse.json({ error: vitalityError.message }, { status: 500 });
+    if (!vitality) return NextResponse.json({ error: "Team Vitality club row is missing." }, { status: 500 });
+    body.teamId = vitality.id;
+  }
+  if (!body.meetingPoint) body.meetingPoint = "See route description";
+
+  const input = parseRideCreationInput(body);
   if (isRideCreationError(input)) return NextResponse.json({ error: input.error }, { status: 400 });
 
   const { data: team, error: teamError } = await ctx.db
@@ -99,7 +118,6 @@ export async function DELETE(req: NextRequest) {
 
   // Founder/admin is the moderation escape hatch. Unlike a champ cancelling
   // their own empty ride, admin removal is permitted regardless of attendance.
-  // Existing cascade rules remove dependent check-ins/feedback with the ride.
   const { error } = await ctx.db.from("team_rides").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
