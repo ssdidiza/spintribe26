@@ -54,8 +54,27 @@ export default function RideDetailsPage() {
   }, [params.id]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+
+    void fetch(`/api/rides/${params.id}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not load ride.");
+        return result;
+      })
+      .then((result) => {
+        if (cancelled) return;
+        setError("");
+        setDetails(result as RideDetails);
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load ride.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
 
   async function rideAction(action: "captain" | "checkin" | "cancel") {
     setWorking(true);
