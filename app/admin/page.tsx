@@ -10,7 +10,7 @@ import AdminLessonAvailability from "@/components/AdminLessonAvailability";
 import AdminLessonRideAttribution from "@/components/AdminLessonRideAttribution";
 import { CHALLENGE_TIERS, OFFICIAL_REWARD_TIERS } from "@/lib/challenge";
 import { formatCredits, formatMoneyCents } from "@/lib/lessons";
-import { Tier, UserRole } from "@/lib/types";
+import { AdminRide, Tier, UserRole } from "@/lib/types";
 import {
   Bell,
   Bike,
@@ -21,8 +21,10 @@ import {
   CreditCard,
   Download,
   MessageSquare,
+  Route,
   ShieldCheck,
   Star,
+  Trash2,
   Trophy,
   UserX,
   Users,
@@ -30,7 +32,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-type AdminTab = "riders" | "lessons" | "rewards" | "champing" | "notifications" | "feedback";
+type AdminTab = "riders" | "lessons" | "rides" | "rewards" | "champing" | "notifications" | "feedback";
 
 type AdminUser = {
   id: string;
@@ -214,6 +216,7 @@ const ROLES: UserRole[] = ["member", "champion", "admin"];
 const TAB_META: Record<AdminTab, { label: string; Icon: typeof Users }> = {
   riders: { label: "Riders", Icon: Users },
   lessons: { label: "Lessons", Icon: Bike },
+  rides: { label: "Rides", Icon: Route },
   rewards: { label: "Rewards", Icon: Trophy },
   champing: { label: "Champing", Icon: Star },
   notifications: { label: "Comms", Icon: Bell },
@@ -273,6 +276,8 @@ export default function AdminPage() {
   const [lessonPaymentLink, setLessonPaymentLink] = useState("");
   const [lessonServices, setLessonServices] = useState<AdminService[]>([]);
   const [newService, setNewService] = useState({ name: "", durationMinutes: 60, priceRands: 399 });
+  const [rides, setRides] = useState<AdminRide[]>([]);
+  const [newRide, setNewRide] = useState({ startsAt: "", route: "", capacity: 20 });
   const [commTitle, setCommTitle] = useState("");
   const [commBody, setCommBody] = useState("");
   const hasRenderedAdminData = useRef(false);
@@ -375,6 +380,16 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadRides = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/rides", { cache: "no-store" });
+      const data = await res.json().catch(() => ({})) as { rides?: AdminRide[] };
+      if (res.ok) setRides(data.rides ?? []);
+    } catch {
+      // Ride scheduling is non-critical; the rest of the console still loads.
+    }
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!currentUserId) { router.replace("/"); return; }
@@ -382,9 +397,10 @@ export default function AdminPage() {
     const timer = window.setTimeout(() => {
       void loadAdminData();
       void loadLessonServices();
+      void loadRides();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [hydrated, currentUserId, isOnboarded, router, loadAdminData, loadLessonServices]);
+  }, [hydrated, currentUserId, isOnboarded, router, loadAdminData, loadLessonServices, loadRides]);
 
   const founder = useMemo(
     () => users.find((user) => user.isCurrentUser),
@@ -598,6 +614,60 @@ export default function AdminPage() {
       setAdminNotice(`Removed "${name}".`);
     } catch (error) {
       setAdminNotice(error instanceof Error ? error.message : "Unable to remove service");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function createRide() {
+    if (newRide.route.trim().length < 2) {
+      setAdminNotice("Describe the route.");
+      return;
+    }
+    // datetime-local hands back a zoneless string. Convert it here, in the
+    // browser, so the instant is the founder's wall clock rather than the
+    // server's UTC reading of the same digits.
+    const startsAt = new Date(newRide.startsAt);
+    if (Number.isNaN(startsAt.getTime())) {
+      setAdminNotice("Pick a date and time.");
+      return;
+    }
+
+    setSaving("ride-new");
+    setAdminNotice("");
+    try {
+      const response = await fetch("/api/admin/rides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startsAt: startsAt.toISOString(),
+          route: newRide.route,
+          capacity: newRide.capacity,
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to schedule ride");
+      setNewRide({ startsAt: "", route: "", capacity: 20 });
+      await loadRides();
+      setAdminNotice("Ride scheduled. Champs can claim the captaincy now.");
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to schedule ride");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function deleteRide(id: string) {
+    setSaving(`ride-${id}`);
+    setAdminNotice("");
+    try {
+      const response = await fetch(`/api/admin/rides?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to remove ride");
+      await loadRides();
+      setAdminNotice("Ride removed.");
+    } catch (error) {
+      setAdminNotice(error instanceof Error ? error.message : "Unable to remove ride");
     } finally {
       setSaving(null);
     }
@@ -1174,6 +1244,75 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </section>
+            )}
+
+            {activeTab === "rides" && (
+              <section className="space-y-3">
+                <div className="glass-card p-4 space-y-2">
+                  <p className="text-sm font-bold text-foreground">Schedule a Team Vitality ride</p>
+                  <p className="text-[10px] text-muted-foreground">Free for champs. No coaching purchase, no Strava required.</p>
+                  <input
+                    type="datetime-local"
+                    value={newRide.startsAt}
+                    onChange={(e) => setNewRide({ ...newRide, startsAt: e.target.value })}
+                    className="w-full rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm text-foreground outline-none"
+                  />
+                  <textarea
+                    value={newRide.route}
+                    onChange={(e) => setNewRide({ ...newRide, route: e.target.value })}
+                    placeholder="Route — meeting point, distance, pace"
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                  />
+                  <label className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    Capacity
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={newRide.capacity}
+                      onChange={(e) => setNewRide({ ...newRide, capacity: Number(e.target.value) })}
+                      className="w-20 rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm text-foreground outline-none"
+                    />
+                  </label>
+                  <button onClick={createRide} disabled={saving === "ride-new"} className="w-full rounded-xl bg-[#ff4b35] py-2 text-xs font-bold text-white disabled:opacity-50">
+                    {saving === "ride-new" ? "Scheduling…" : "Schedule ride"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <MiniMetric label="Upcoming" value={rides.filter((ride) => !ride.isPast).length} />
+                  <MiniMetric label="Check-ins 90d" value={rides.reduce((total, ride) => total + ride.checkinCount, 0)} />
+                  <MiniMetric label="Notes 90d" value={rides.reduce((total, ride) => total + ride.feedbackCount, 0)} />
+                </div>
+
+                {rides.length === 0 ? <EmptyState text="No rides in the last 90 days. Schedule one above." /> : rides.map((ride) => (
+                  <div key={ride.id} className={`glass-card p-4 ${ride.isPast ? "opacity-60" : ""}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {new Date(ride.starts_at).toLocaleString("en-ZA", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" })} SAST
+                          {ride.isPast && " · done"}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-foreground">{ride.route}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Captain: {ride.captain?.name ?? "unclaimed"} · {ride.checkinCount}/{ride.capacity} checked in · {ride.feedbackCount} note{ride.feedbackCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      {ride.checkinCount === 0 && (
+                        <button
+                          onClick={() => deleteRide(ride.id)}
+                          disabled={saving === `ride-${ride.id}`}
+                          aria-label="Remove ride"
+                          className="rounded-lg border border-foreground/10 p-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </section>
             )}
 

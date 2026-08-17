@@ -1,5 +1,6 @@
 -- Team Vitality scheduled rides and participation.
--- UNAPPLIED: review in Supabase SQL Editor before running.
+-- APPLIED: these tables exist in the project. Statements are idempotent
+-- (create table if not exists), so re-running is safe but unnecessary.
 -- Membership remains users.role = 'champion'; there is intentionally no champs table.
 -- No FK in this migration points to lesson_purchases, lesson_sessions,
 -- lesson_services, or any PayFast/payment record.

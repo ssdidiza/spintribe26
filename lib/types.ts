@@ -188,6 +188,41 @@ export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined): 
   return "/dashboard";
 }
 
+// ─── Team Vitality rides ──────────────────────────────────────────────────────
+
+export interface RideCaptain {
+  strava_id: string;
+  name: string;
+}
+
+/** A scheduled community ride as returned by /api/rides and /api/rides/[id]. */
+export interface TeamRide {
+  id: string;
+  starts_at: string;
+  route: string;
+  capacity: number;
+  captain_id: string | null;
+  captain: RideCaptain | null;
+}
+
+/**
+ * A ride as the founder console sees it. Participation is summarised as counts
+ * only — private feedback notes never leave the service role.
+ */
+export interface AdminRide extends TeamRide {
+  checkinCount: number;
+  feedbackCount: number;
+  isPast: boolean;
+}
+
+/** Response shape of GET /api/rides/[id]. */
+export interface RideDetailsResponse {
+  ride: TeamRide;
+  checkinCount: number;
+  myCheckin: { id: string; checked_in_at: string } | null;
+  isCaptain: boolean;
+}
+
 // ─── Tier metadata ────────────────────────────────────────────────────────────
 
 export const TIER_COLORS: Record<Tier, string> = {

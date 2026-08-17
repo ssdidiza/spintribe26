@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSignedInClubUser } from "@/lib/club-auth";
 import { getLeaderboardMonthRange } from "@/lib/leaderboard";
-import { getEffectiveUserId, getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase";
 
 type TeamRow = {
@@ -16,9 +16,15 @@ type UserRow = {
   strava_id: string;
   name: string | null;
   avatar: string | null;
-  team_id: string | null;
   tier: number | null;
   current_league_threshold: number | null;
+};
+
+type MembershipRow = {
+  user_strava_id: string;
+  team_id: string;
+  role: "member" | "champion";
+  is_primary: boolean;
 };
 
 type ActivityRow = {
@@ -41,21 +47,28 @@ function isCycling(type: string | null) {
   return type === "Ride" || type === "VirtualRide" || type === "EBikeRide" || type === "Velomobile";
 }
 
+async function syncPrimaryTeamMirror(userId: string, teamId: string | null) {
+  const { error } = await supabaseAdmin()
+    .from("users")
+    .update({ team_id: teamId, updated_at: new Date().toISOString() })
+    .eq("strava_id", userId);
+  if (error) throw error;
+}
+
 async function buildTeamsResponse(userId: string) {
   const db = supabaseAdmin();
   const now = new Date();
   const { rangeStart, rangeEnd } = getLeaderboardMonthRange(now);
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const [teamsResult, usersResult, activitiesResult, promotionsResult] = await Promise.all([
+  const [teamsResult, usersResult, membershipsResult, activitiesResult, promotionsResult] = await Promise.all([
     db.from("teams").select("id,name,slug,logo_url,banner_url,description").order("name", { ascending: true }),
-    // Team rankings surface rider names/avatars, so the same consent rule as
-    // the leaderboard applies: onboarded riders who opted in to rankings.
     db
       .from("users")
-      .select("strava_id,name,avatar,team_id,tier,current_league_threshold")
+      .select("strava_id,name,avatar,tier,current_league_threshold")
       .eq("onboarded", true)
       .eq("leaderboard_consent", true),
+    db.from("team_memberships").select("user_strava_id,team_id,role,is_primary"),
     db
       .from("activities")
       .select("user_strava_id,distance,elevation_gain,type")
@@ -70,13 +83,26 @@ async function buildTeamsResponse(userId: string) {
 
   if (teamsResult.error) throw teamsResult.error;
   if (usersResult.error) throw usersResult.error;
+  if (membershipsResult.error) throw membershipsResult.error;
   if (activitiesResult.error) throw activitiesResult.error;
   if (promotionsResult.error) throw promotionsResult.error;
 
   const users = (usersResult.data ?? []) as UserRow[];
   const teams = (teamsResult.data ?? []) as TeamRow[];
+  const memberships = (membershipsResult.data ?? []) as MembershipRow[];
   const teamById = new Map(teams.map((team) => [team.id, team]));
   const userById = new Map(users.map((user) => [String(user.strava_id), user]));
+
+  // One membership may be marked primary for leaderboard attribution. A user
+  // may still belong to and champion several clubs; authorization never reads
+  // users.team_id or assumes that only the primary membership exists.
+  const primaryTeamByUser = new Map<string, string>();
+  for (const membership of memberships) {
+    if (membership.is_primary && teamById.has(membership.team_id)) {
+      primaryTeamByUser.set(String(membership.user_strava_id), membership.team_id);
+    }
+  }
+
   const statsByTeam = new Map<string, {
     totalMetres: number;
     totalElevation: number;
@@ -90,17 +116,19 @@ async function buildTeamsResponse(userId: string) {
     const riderId = String(activity.user_strava_id);
     const user = userById.get(riderId);
     if (!user) continue;
+
     const distance = Number(activity.distance ?? 0);
     metresByUser.set(riderId, (metresByUser.get(riderId) ?? 0) + distance);
+    const primaryTeamId = primaryTeamByUser.get(riderId);
 
-    if (!user.team_id || !teamById.has(user.team_id)) {
+    if (!primaryTeamId) {
       unassignedStats.totalMetres += distance;
       unassignedStats.totalElevation += Number(activity.elevation_gain ?? 0);
       unassignedStats.activeRiders.add(riderId);
       continue;
     }
 
-    const current = statsByTeam.get(user.team_id) ?? {
+    const current = statsByTeam.get(primaryTeamId) ?? {
       totalMetres: 0,
       totalElevation: 0,
       activeRiders: new Set<string>(),
@@ -108,30 +136,28 @@ async function buildTeamsResponse(userId: string) {
     current.totalMetres += distance;
     current.totalElevation += Number(activity.elevation_gain ?? 0);
     current.activeRiders.add(riderId);
-    statsByTeam.set(user.team_id, current);
+    statsByTeam.set(primaryTeamId, current);
   }
 
   const promotionsByTeam = new Map<string, number>();
   for (const promotion of promotionsResult.data ?? []) {
-    const user = userById.get(String(promotion.user_strava_id));
-    if (!user?.team_id) continue;
-    promotionsByTeam.set(user.team_id, (promotionsByTeam.get(user.team_id) ?? 0) + 1);
+    const riderId = String(promotion.user_strava_id);
+    const primaryTeamId = primaryTeamByUser.get(riderId);
+    if (!primaryTeamId) continue;
+    promotionsByTeam.set(primaryTeamId, (promotionsByTeam.get(primaryTeamId) ?? 0) + 1);
   }
 
-  // The viewer's own team comes from their own row, not the consent-filtered
-  // list — a rider who opted out of rankings still has a team of their own.
-  const { data: viewer, error: viewerError } = await db
-    .from("users")
-    .select("team_id")
-    .eq("strava_id", userId)
-    .maybeSingle();
-  if (viewerError) throw viewerError;
-  const currentUserTeamId = viewer?.team_id ?? null;
+  const currentUserTeamId = primaryTeamByUser.get(userId) ?? null;
 
   const decorated = teams.map((team) => {
-    const members = users.filter((user) => user.team_id === team.id);
+    const members = users.filter((user) => primaryTeamByUser.get(String(user.strava_id)) === team.id);
     const averageLeagueLevel = members.length
-      ? Math.round(members.reduce((sum, user) => sum + Number(user.current_league_threshold ?? user.tier ?? 200), 0) / members.length)
+      ? Math.round(
+          members.reduce(
+            (sum, user) => sum + Number(user.current_league_threshold ?? user.tier ?? 200),
+            0,
+          ) / members.length,
+        )
       : 0;
     const stats = statsByTeam.get(team.id);
 
@@ -144,19 +170,18 @@ async function buildTeamsResponse(userId: string) {
       totalElevation: Math.round(stats?.totalElevation ?? 0),
       activeRiders: stats?.activeRiders.size ?? 0,
       isCurrentUserTeam: currentUserTeamId === team.id,
+      currentUserMembership: memberships.find(
+        (membership) => membership.user_strava_id === userId && membership.team_id === team.id,
+      ) ?? null,
     };
   });
 
-  // Riders without a team are surfaced as their own group so the rankings
-  // never pretend they don't exist.
-  const unassignedUsers = users.filter((user) => !user.team_id || !teamById.has(user.team_id));
+  const unassignedUsers = users.filter((user) => !primaryTeamByUser.has(String(user.strava_id)));
   const unassigned = {
     count: unassignedUsers.length,
     totalDistanceKm: Math.round(unassignedStats.totalMetres / 1000),
     totalElevation: Math.round(unassignedStats.totalElevation),
     activeRiders: unassignedStats.activeRiders.size,
-    // Privacy-first: only the viewer's own row is identifiable. Other riders
-    // keep their competitive position (league + monthly km) but no name/avatar.
     riders: unassignedUsers
       .map((user) => {
         const isViewer = String(user.strava_id) === userId;
@@ -187,19 +212,17 @@ async function buildTeamsResponse(userId: string) {
       b.averageLeagueLevel - a.averageLeagueLevel ||
       b.ridersPromoted - a.ridersPromoted ||
       b.totalDistanceKm - a.totalDistanceKm ||
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     ),
     unassigned,
   };
 }
 
 export async function GET() {
-  const session = await getSession();
-  const userId = getEffectiveUserId(session);
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
-    return NextResponse.json(await buildTeamsResponse(userId));
+    const user = await getSignedInClubUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(await buildTeamsResponse(user.stravaId));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load teams";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -207,10 +230,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  const userId = getEffectiveUserId(session);
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSignedInClubUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const userId = user.stravaId;
   const body = await req.json().catch(() => ({}));
   const action = body.action;
   const db = supabaseAdmin();
@@ -223,25 +246,20 @@ export async function POST(req: NextRequest) {
     const slug = slugify(body.slug ? String(body.slug) : name);
     if (!slug) return NextResponse.json({ error: "Invalid team slug" }, { status: 400 });
 
-    // Abuse guards: only onboarded riders create teams, one created team per
-    // rider, and you must leave your current team before founding another.
-    const [{ data: creator, error: creatorError }, { count: createdCount, error: createdCountError }] = await Promise.all([
-      db.from("users").select("strava_id,onboarded,team_id").eq("strava_id", userId).maybeSingle(),
+    const [{ data: creator, error: creatorError }, { count: createdCount, error: createdCountError }, { count: primaryCount, error: primaryCountError }] = await Promise.all([
+      db.from("users").select("strava_id,onboarded").eq("strava_id", userId).maybeSingle(),
       db.from("teams").select("id", { count: "exact", head: true }).eq("created_by", userId),
+      db.from("team_memberships").select("id", { count: "exact", head: true }).eq("user_strava_id", userId).eq("is_primary", true),
     ]);
+
     if (creatorError) return NextResponse.json({ error: creatorError.message }, { status: 500 });
     if (createdCountError) return NextResponse.json({ error: createdCountError.message }, { status: 500 });
-    if (!creator?.onboarded) {
-      return NextResponse.json({ error: "Finish onboarding before creating a team" }, { status: 403 });
-    }
-    if ((createdCount ?? 0) >= 1) {
-      return NextResponse.json({ error: "You already created a team. Each rider can create one team." }, { status: 409 });
-    }
-    if (creator.team_id) {
-      return NextResponse.json({ error: "Leave your current team before creating a new one" }, { status: 409 });
-    }
+    if (primaryCountError) return NextResponse.json({ error: primaryCountError.message }, { status: 500 });
+    if (!creator?.onboarded) return NextResponse.json({ error: "Finish onboarding before creating a team" }, { status: 403 });
+    if ((createdCount ?? 0) >= 1) return NextResponse.json({ error: "You already created a team. Each rider can create one team." }, { status: 409 });
+    if ((primaryCount ?? 0) > 0) return NextResponse.json({ error: "Leave your primary team before creating a new one" }, { status: 409 });
 
-    const { data, error } = await db
+    const { data: team, error: createError } = await db
       .from("teams")
       .insert({
         name,
@@ -251,14 +269,26 @@ export async function POST(req: NextRequest) {
       })
       .select("id")
       .single();
-    if (error) {
-      if (error.code === "23505") {
+
+    if (createError) {
+      if (createError.code === "23505") {
         return NextResponse.json({ error: "A team with that name already exists. Join it instead." }, { status: 409 });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    await db.from("users").update({ team_id: data.id, updated_at: new Date().toISOString() }).eq("strava_id", userId);
+    const { error: membershipError } = await db.from("team_memberships").insert({
+      user_strava_id: userId,
+      team_id: team.id,
+      role: "champion",
+      is_primary: true,
+    });
+    if (membershipError) {
+      await db.from("teams").delete().eq("id", team.id).eq("created_by", userId);
+      return NextResponse.json({ error: membershipError.message }, { status: 500 });
+    }
+
+    await syncPrimaryTeamMirror(userId, team.id);
     return NextResponse.json(await buildTeamsResponse(userId));
   }
 
@@ -266,28 +296,57 @@ export async function POST(req: NextRequest) {
     const teamId = String(body.teamId ?? "");
     if (!teamId) return NextResponse.json({ error: "teamId is required" }, { status: 400 });
 
-    const { data: team, error: teamLookupError } = await db
-      .from("teams")
-      .select("id")
-      .eq("id", teamId)
-      .maybeSingle();
+    const [{ data: team, error: teamLookupError }, { data: existingMembership, error: membershipLookupError }] = await Promise.all([
+      db.from("teams").select("id").eq("id", teamId).maybeSingle(),
+      db.from("team_memberships").select("role").eq("user_strava_id", userId).eq("team_id", teamId).maybeSingle(),
+    ]);
+
     if (teamLookupError) return NextResponse.json({ error: "Invalid team" }, { status: 400 });
+    if (membershipLookupError) return NextResponse.json({ error: membershipLookupError.message }, { status: 500 });
     if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
-    const { error } = await db
-      .from("users")
-      .update({ team_id: team.id, updated_at: new Date().toISOString() })
-      .eq("strava_id", userId);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { error: clearPrimaryError } = await db
+      .from("team_memberships")
+      .update({ is_primary: false, updated_at: new Date().toISOString() })
+      .eq("user_strava_id", userId)
+      .eq("is_primary", true);
+    if (clearPrimaryError) return NextResponse.json({ error: clearPrimaryError.message }, { status: 500 });
+
+    const { error: joinError } = await db.from("team_memberships").upsert(
+      {
+        user_strava_id: userId,
+        team_id: team.id,
+        role: existingMembership?.role ?? "member",
+        is_primary: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_strava_id,team_id" },
+    );
+    if (joinError) return NextResponse.json({ error: joinError.message }, { status: 500 });
+
+    await syncPrimaryTeamMirror(userId, team.id);
     return NextResponse.json(await buildTeamsResponse(userId));
   }
 
   if (action === "leave") {
-    const { error } = await db
-      .from("users")
-      .update({ team_id: null, updated_at: new Date().toISOString() })
-      .eq("strava_id", userId);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { data: primaryMembership, error: primaryLookupError } = await db
+      .from("team_memberships")
+      .select("team_id")
+      .eq("user_strava_id", userId)
+      .eq("is_primary", true)
+      .maybeSingle();
+    if (primaryLookupError) return NextResponse.json({ error: primaryLookupError.message }, { status: 500 });
+
+    if (primaryMembership) {
+      const { error: leaveError } = await db
+        .from("team_memberships")
+        .delete()
+        .eq("user_strava_id", userId)
+        .eq("team_id", primaryMembership.team_id);
+      if (leaveError) return NextResponse.json({ error: leaveError.message }, { status: 500 });
+    }
+
+    await syncPrimaryTeamMirror(userId, null);
     return NextResponse.json(await buildTeamsResponse(userId));
   }
 

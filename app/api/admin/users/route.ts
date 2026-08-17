@@ -4,33 +4,31 @@ import { getMonthKey } from "@/lib/challenge";
 
 export async function GET() {
   const ctx = await getAdminContext();
-  if ("error" in ctx) {
-    return NextResponse.json({ error: ctx.error }, { status: ctx.status });
-  }
+  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
 
   const now = new Date();
   const rangeStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
   const rangeEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1)).toISOString();
 
-  const { data: users, error: usersError } = await ctx.db
-    .from("users")
-    .select("strava_id,name,avatar,role,tier,onboarded,zone,country,last_strava_sync_at,leaderboard_consent,rewards_export_consent,created_at,updated_at")
-    .order("created_at", { ascending: false });
+  const [{ data: users, error: usersError }, { data: championMemberships, error: membershipError }] = await Promise.all([
+    ctx.db
+      .from("users")
+      .select("strava_id,name,avatar,role,tier,onboarded,zone,country,last_strava_sync_at,leaderboard_consent,rewards_export_consent,created_at,updated_at")
+      .order("created_at", { ascending: false }),
+    ctx.db.from("team_memberships").select("user_strava_id").eq("role", "champion"),
+  ]);
 
-  if (usersError) {
-    return NextResponse.json({ error: usersError.message }, { status: 500 });
-  }
+  if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 });
+  if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
 
   const { data: activities, error: activitiesError } = await ctx.db
     .from("activities")
     .select("user_strava_id,distance,type,date")
     .gte("date", rangeStart)
     .lt("date", rangeEnd);
+  if (activitiesError) return NextResponse.json({ error: activitiesError.message }, { status: 500 });
 
-  if (activitiesError) {
-    return NextResponse.json({ error: activitiesError.message }, { status: 500 });
-  }
-
+  const championIds = new Set((championMemberships ?? []).map((membership) => String(membership.user_strava_id)));
   const statsByUser = new Map<string, { monthlyKm: number; activityCount: number; indoorKm: number; outdoorKm: number }>();
   for (const activity of activities ?? []) {
     const stravaId = String(activity.user_strava_id);
@@ -44,13 +42,16 @@ export async function GET() {
   }
 
   const rows = (users ?? []).map((user) => {
-    const stats = statsByUser.get(String(user.strava_id)) ?? { monthlyKm: 0, activityCount: 0, indoorKm: 0, outdoorKm: 0 };
+    const id = String(user.strava_id);
+    const stats = statsByUser.get(id) ?? { monthlyKm: 0, activityCount: 0, indoorKm: 0, outdoorKm: 0 };
     return {
-      id: String(user.strava_id),
-      stravaId: String(user.strava_id),
+      id,
+      stravaId: id,
       name: user.name,
       avatar: user.avatar,
-      role: user.role,
+      // Legacy admin UI still presents a single Champion label. It is derived
+      // from membership and is never persisted back to users.role.
+      role: user.role === "admin" ? "admin" : championIds.has(id) ? "champion" : "member",
       tier: Number(user.tier),
       onboarded: user.onboarded,
       zone: user.zone,
@@ -60,7 +61,7 @@ export async function GET() {
       lastStravaSyncAt: user.last_strava_sync_at,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
-      isCurrentUser: String(user.strava_id) === ctx.userId,
+      isCurrentUser: id === ctx.userId,
       monthlyKm: Math.round(stats.monthlyKm),
       indoorKm: Math.round(stats.indoorKm),
       outdoorKm: Math.round(stats.outdoorKm),
@@ -68,9 +69,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({
-    monthKey: getMonthKey(now),
-    caller: ctx.caller,
-    users: rows,
-  });
+  return NextResponse.json({ monthKey: getMonthKey(now), caller: ctx.caller, users: rows });
 }
