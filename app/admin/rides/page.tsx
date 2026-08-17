@@ -59,8 +59,33 @@ export default function AdminRidesPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+
+    void fetch("/api/admin/rides", { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Unable to load rides");
+        return data;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const nextTeams = (data.teams ?? []) as TeamOption[];
+        setError("");
+        setTeams(nextTeams);
+        setRides((data.rides ?? []) as AdminRide[]);
+        setTeamId(nextTeams[0]?.id || "");
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load rides");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function createRide(event: FormEvent) {
     event.preventDefault();
