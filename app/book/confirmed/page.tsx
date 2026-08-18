@@ -170,8 +170,8 @@ function BookingConfirmedContent() {
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 {remainingSessions > 0
-                  ? "Your scheduling link is also in your email and WhatsApp — keep it, it works for every session in this package."
-                  : "The confirmation email includes the calendar invite. WhatsApp reminders use the number you entered and do not depend on your calendar app."}
+                  ? "Your scheduling link is also in your email — keep it, it works for every session in this package."
+                  : "The confirmation email includes a calendar invite with reminders for the day before and two hours before."}
               </p>
             </div>
 

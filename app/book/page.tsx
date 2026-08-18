@@ -264,7 +264,7 @@ export default function BookPage() {
 
   const canSubmit = selectedPackage ? Boolean(startsAt) : totalQuantity > 0 && (!singleService || Boolean(startsAt));
   const detailsComplete = Boolean(
-    name.trim() && /\S+@\S+\.\S+/.test(email.trim()) && phone.replace(/\D/g, "").length >= 9
+    name.trim() && /\S+@\S+\.\S+/.test(email.trim())
   );
   const stepLabels = ["Choose", "Pick time", "Your details", "Review"];
 
@@ -461,7 +461,7 @@ export default function BookPage() {
               {!selectedPackage && totalQuantity > 1 && (
                 <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300">
                   You&apos;re booking {totalQuantity} sessions in one payment. After PayFast confirms, you&apos;ll get a
-                  personal scheduling link (email + WhatsApp) to pick a time for each session.
+                  personal scheduling link by email to pick a time for each session.
                 </p>
               )}
               <button
@@ -517,8 +517,8 @@ export default function BookPage() {
                     className="mt-1 w-full rounded-lg border border-foreground/10 bg-card px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60" />
                 </label>
                 <label className="block">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">WhatsApp</span>
-                  <input required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="071 234 5678"
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Phone <span className="normal-case tracking-normal">(optional)</span></span>
+                  <input type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="For urgent booking changes"
                     className="mt-1 w-full rounded-lg border border-foreground/10 bg-card px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60" />
                 </label>
                 <label className="block md:col-span-2">
@@ -559,7 +559,7 @@ export default function BookPage() {
                       <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Rider</p>
                       <p className="mt-1 font-bold text-foreground">{name}</p>
                       <p className="text-muted-foreground">{email}</p>
-                      <p className="text-muted-foreground">{phone}</p>
+                      {phone && <p className="text-muted-foreground">{phone}</p>}
                     </div>
                     {startsAt && (
                       <div>

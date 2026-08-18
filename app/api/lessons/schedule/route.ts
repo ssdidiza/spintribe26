@@ -17,7 +17,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 export const runtime = "nodejs";
 
 // Public, token-gated: the schedule_token on a paid purchase is the only
-// credential — it's unguessable, delivered by email/WhatsApp after payment,
+// credential — it's unguessable and delivered by email after payment,
 // and scoped to that purchase's session balances. No account needed.
 
 function isToken(value: unknown): value is string {
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
   const session = sessionData as LessonSessionRow;
 
   // Same confirmations as a paid direct booking: coach notification, .ics
-  // emails, instant WhatsApp. Best-effort — the session is already booked.
+  // confirmation email + calendar invite. Best-effort — the session is already booked.
   await dispatchLessonBookingNotifications(db, {
     sessionId: session.id,
     serviceName: item.item_name,

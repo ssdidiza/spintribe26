@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Lexend } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ThemeInit from "@/components/ThemeInit";
 import "./globals.css";
@@ -8,17 +7,10 @@ import "./globals.css";
 // override) so there's no flash of the wrong theme. Mirrors lib/theme.ts.
 const THEME_BOOTSTRAP = `(function(){try{var k="spintribe-theme";var c=localStorage.getItem(k);if(c!=="light"&&c!=="dark"&&c!=="system")c="system";var d=c==="dark"||(c==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;if(d){e.classList.add("dark")}else{e.classList.remove("dark")}e.style.colorScheme=d?"dark":"light"}catch(_){}})();`;
 
-const lexend = Lexend({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-});
-
 export const metadata: Metadata = {
   title: "SpinTribe Cycling Coaching | Johannesburg",
   description:
-    "Book one-to-one cycling coaching in Johannesburg, pay securely, and receive calendar and WhatsApp reminders.",
+    "Book one-to-one cycling coaching in Johannesburg, pay securely, and receive email and calendar reminders.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
@@ -50,7 +42,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${lexend.variable} antialiased`}>
+      <body className="antialiased">
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <ThemeInit />
         {/* Carbon texture and the SpinTribe pulse stay fixed behind the app.

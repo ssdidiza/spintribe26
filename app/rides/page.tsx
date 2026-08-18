@@ -18,16 +18,43 @@ export default function RidesPage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
 
-  async function load() {
-    const response = await fetch("/api/rides", { cache: "no-store" });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Could not load rides.");
-    setRides(result.rides ?? []);
-  }
-
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Could not load rides.")).finally(() => setLoading(false));
+    let isMounted = true;
+
+    fetch("/api/rides", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not load rides.");
+        return result;
+      })
+      .then((result) => {
+        if (isMounted) {
+          setRides(result.rides ?? []);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (isMounted) {
+          setError(e instanceof Error ? e.message : "Could not load rides.");
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  async function refreshRides() {
+    try {
+      const response = await fetch("/api/rides", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load rides.");
+      setRides(result.rides ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load rides.");
+    }
+  }
 
   async function captain(id: string) {
     setWorking(id);
@@ -36,7 +63,7 @@ export default function RidesPage() {
       const response = await fetch(`/api/rides/${id}/captain`, { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not claim ride.");
-      await load();
+      await refreshRides();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not claim ride.");
     } finally {
@@ -58,7 +85,6 @@ export default function RidesPage() {
         <div className="mt-8 space-y-4">
           {rides.map((ride) => {
             const date = new Date(ride.starts_at);
-            const rideDay = date.toDateString() === new Date().toDateString();
             return (
               <article key={ride.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -73,7 +99,7 @@ export default function RidesPage() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {rideDay && <button onClick={async () => { setWorking(ride.id); const r = await fetch(`/api/rides/${ride.id}/checkin`, { method: "POST" }); const x = await r.json(); if (!r.ok) setError(x.error || "Check-in failed."); else setError(""); setWorking(null); }} disabled={working === ride.id} className="rounded-xl bg-gradient-to-r from-[#ff5b1f] to-[#ee0075] px-4 py-2.5 text-sm font-black text-white">{working === ride.id ? "Checking in…" : "Check in"}</button>}
+                  <button onClick={async () => { setWorking(ride.id); const r = await fetch(`/api/rides/${ride.id}/checkin`, { method: "POST" }); const x = await r.json(); if (!r.ok) setError(x.error || "Check-in failed."); else setError(""); setWorking(null); }} disabled={working === ride.id} className="rounded-xl bg-gradient-to-r from-[#ff5b1f] to-[#ee0075] px-4 py-2.5 text-sm font-black text-white">{working === ride.id ? "Checking in…" : "Check in"}</button>
                   <Link href={`/rides/${ride.id}`} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/70 hover:text-white">Ride details</Link>
                 </div>
               </article>
