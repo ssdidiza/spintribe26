@@ -182,9 +182,8 @@ export function isAuthenticated(user: User | null | undefined): boolean {
   return !!user;
 }
 
-export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined): "/admin" | "/champion" | "/dashboard" {
+export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined): "/admin" | "/dashboard" {
   if (hasAdminRole(user)) return "/admin";
-  if (canAccessChampionFeatures(user)) return "/champion";
   return "/dashboard";
 }
 

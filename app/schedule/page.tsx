@@ -185,7 +185,7 @@ function ScheduleContent() {
       <main className="mx-auto w-full max-w-lg space-y-5 px-5 py-6 md:max-w-3xl">
         {missingToken && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-600 dark:text-red-300">
-            This schedule link is missing its token. Please use the link from your email or WhatsApp.
+            This schedule link is missing its token. Please use the link from your payment email.
           </div>
         )}
         {error && (
@@ -198,7 +198,7 @@ function ScheduleContent() {
             <span className="inline-flex items-center gap-1.5 font-bold">
               <CheckCircle2 size={14} /> {booked.itemName} booked for {formatWhen(booked.startsAt)}.
             </span>{" "}
-            Calendar invite and WhatsApp confirmation are on their way.
+            Your email confirmation and calendar invite are on their way.
           </div>
         )}
 

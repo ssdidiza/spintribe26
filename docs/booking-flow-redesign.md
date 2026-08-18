@@ -12,7 +12,7 @@ existing system already had most of this model under different names:
 | This doc proposed      | Already existed as                                    |
 | ---------------------- | ----------------------------------------------------- |
 | `session_types`        | `lesson_services`                                     |
-| `clients`              | guest fields on `lesson_purchases` (name/email/phone) |
+| `clients`              | guest fields on `lesson_purchases` (name/email/optional phone) |
 | `client_packages`      | `lesson_purchases` (PayFast reference, Xero fields)   |
 | `client_package_items` | **missing** → added as `lesson_purchase_items`        |
 | `bookings`             | `lesson_sessions` (incl. anti-overlap constraint)     |
@@ -73,7 +73,7 @@ create table clients (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   email text not null unique,
-  phone text,                       -- for WhatsApp
+  phone text,                       -- optional contact number
   created_at timestamptz default now()
 );
 
@@ -106,8 +106,8 @@ create table bookings (
   duration_minutes int not null,
   status text not null default 'confirmed', -- confirmed | cancelled | completed
   calendar_event_id text,
-  whatsapp_confirmation_sent boolean default false,
-  whatsapp_reminder_sent boolean default false,
+  confirmation_email_sent boolean default false,
+  day_of_email_sent boolean default false,
   created_at timestamptz default now()
 );
 
@@ -135,9 +135,7 @@ Before redirecting to PayFast, create one `lesson_purchases` row, its
 On payment confirmation:
 - Mark the purchase paid (the item balances already exist)
 - Record the PayFast payment against the Xero invoice when Xero is configured
-- Send one receipt email via Resend
-- Send one WhatsApp confirmation via Meta Cloud API summarizing the purchase and
-  a link to `/schedule`
+- Send one receipt email via Resend with the personal `/schedule` link
 
 ### 3. Scheduling — `/schedule?package_id=...`
 Client places each purchased session onto an open slot:
@@ -148,8 +146,8 @@ Client places each purchased session onto an open slot:
 - No new payment, no new invoice triggered
 
 ### 4. Daily digest (existing Vercel cron, 4am SAST)
-Unchanged — pulls tomorrow's `bookings` and sends the WhatsApp reminder batch via
-Meta Cloud API.
+Pulls today's `bookings` and sends a short day-of email through the existing
+Resend integration. Calendar invites carry one-day and two-hour alerts.
 
 ## Why this fixes the Tanya case specifically
 
@@ -171,15 +169,11 @@ Meta Cloud API.
 
 - [x] Build `/book` cart UI (session type + quantity picker, running total)
 - [x] PayFast checkout integration for variable/combined cart totals
-- [x] ITN webhook handler → package/invoice creation + Resend + WhatsApp send
+- [x] ITN webhook handler → package/invoice creation + Resend email
 - [x] `/schedule` slot picker UI, wired to `quantity_remaining` balances
 - [x] Calendar event creation on booking (reuse existing `.ics` endpoint logic)
 - [x] Admin view: client packages, remaining balances, upcoming bookings
 - [ ] Run `supabase/cart-package-items-migration.sql` in the Supabase SQL editor
-- [ ] Approve the `package_paid` WhatsApp template in Meta Business Manager
-      (body params: first name, package summary; URL button suffix: schedule
-      token — button URL `https://speradidiza.cc/schedule?token={{1}}`).
-      Until then the schedule link still arrives by email.
 - [ ] Backfill Tanya's existing Brevo bookings: insert one paid
       `lesson_purchases` row + `lesson_purchase_items` rows (5x Progress Ride,
       1x Comprehensive Coaching, `quantity_remaining` = what's still unbooked),

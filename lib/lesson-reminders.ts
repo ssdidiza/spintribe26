@@ -1,42 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  isWhatsAppConfigured,
-  normalizeWhatsAppNumber,
-  sendWhatsAppTemplate,
-  sendWhatsAppText,
-  whatsAppSendMode,
-} from "@/lib/whatsapp";
+import { isEmailConfigured, sendEmail } from "@/lib/email";
 
 /**
- * Lesson WhatsApp messaging, two shapes:
- *
- * 1. Instant booking confirmation — sent the moment PayFast confirms, from
- *    the same dispatch path as the confirmation email. Never waits for a
- *    cron. Logged (and deduped against ITN retries) via a lesson_reminders
- *    row with kind 'confirmation'.
- * 2. Daily digest — /api/lessons/reminders/send runs once a day at 04:00
- *    SAST (Vercel Hobby allows daily crons only) and messages every rider
- *    with a session later that SAST calendar day. Deduped per session via
- *    kind 'daily_digest'.
- *
- * Payloads carry rider-typed booking fields only — never Strava metrics.
+ * A lightweight day-of reminder. Booking confirmation and the reusable
+ * scheduling link are already sent by email; the attached calendar event
+ * carries its own one-day and two-hour alerts.
  */
 
-export type LessonWhatsAppPayload = {
+export type LessonEmailReminderPayload = {
   firstName: string;
   serviceName: string;
-  /** Cloud-API formatted number (E.164 digits, no +). */
-  phone: string;
+  email: string;
   startsAt: string;
-  /** Pre-rendered HH:mm in Africa/Johannesburg. */
   timeSast: string;
-  /** Pre-rendered "Mon, 13 Jul, 06:00" in Africa/Johannesburg. */
   whenSast: string;
   meetingPoint: string;
   coachName: string;
 };
 
-const SAST_OFFSET_MS = 2 * 60 * 60 * 1000; // UTC+2, no DST
+const SAST_OFFSET_MS = 2 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function coachName() {
@@ -68,21 +50,34 @@ function firstNameOf(fullName: string) {
   return fullName.trim().split(/\s+/)[0] || "there";
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function buildPayload(input: {
   serviceName: string;
   startsAt: string;
   location?: string | null;
   customerName: string;
-  customerPhone: string;
-}): LessonWhatsAppPayload | null {
-  const phone = normalizeWhatsAppNumber(input.customerPhone);
-  if (!phone) return null;
+  customerEmail: string;
+}): LessonEmailReminderPayload | null {
+  if (!isValidEmail(input.customerEmail)) return null;
   const starts = new Date(input.startsAt);
   if (Number.isNaN(starts.getTime())) return null;
+
   return {
     firstName: firstNameOf(input.customerName),
     serviceName: input.serviceName,
-    phone,
+    email: input.customerEmail.trim().toLowerCase(),
     startsAt: starts.toISOString(),
     timeSast: formatTimeSast(starts),
     whenSast: formatWhenSast(starts),
@@ -91,162 +86,79 @@ function buildPayload(input: {
   };
 }
 
-/** Template params may not contain newlines or runs of 4+ spaces. */
-function templateParam(value: string) {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function confirmationTemplateName() {
-  return process.env.WHATSAPP_TEMPLATE_CONFIRMATION?.trim() || "lesson_confirmed";
-}
-
-function digestTemplateName() {
-  return process.env.WHATSAPP_TEMPLATE_TODAY?.trim() || "lesson_today";
-}
-
-export function renderConfirmationText(payload: LessonWhatsAppPayload) {
-  return `Hi ${payload.firstName}, your SpinTribe Coaching ${payload.serviceName} is confirmed for ${payload.whenSast}.
-
-Meet: ${payload.meetingPoint}
-Your calendar invite is in your email. Reply here if anything changes.`;
-}
-
-export function renderDigestText(payload: LessonWhatsAppPayload) {
-  return `Hi ${payload.firstName}, you've got a SpinTribe session today at ${payload.timeSast} with ${payload.coachName}.
-
-Meet: ${payload.meetingPoint}
-Reply here if anything changes.`;
-}
-
-async function sendViaWhatsApp(kind: "confirmation" | "daily_digest", payload: LessonWhatsAppPayload) {
-  if (whatsAppSendMode() === "text") {
-    const text = kind === "confirmation" ? renderConfirmationText(payload) : renderDigestText(payload);
-    return sendWhatsAppText({ to: payload.phone, text });
-  }
-  if (kind === "confirmation") {
-    return sendWhatsAppTemplate({
-      to: payload.phone,
-      templateName: confirmationTemplateName(),
-      bodyParams: [payload.firstName, payload.serviceName, payload.whenSast, payload.meetingPoint].map(templateParam),
-    });
-  }
-  return sendWhatsAppTemplate({
-    to: payload.phone,
-    templateName: digestTemplateName(),
-    bodyParams: [payload.firstName, payload.timeSast, payload.coachName, payload.meetingPoint].map(templateParam),
-  });
-}
-
-/**
- * Claim a (session, kind) slot in lesson_reminders. Returns the row id if
- * this caller inserted it (and therefore owns the send), null if another
- * run — or an ITN retry — already did.
- */
-async function claimMessageSlot(
+async function claimReminderSlot(
   db: SupabaseClient,
   sessionId: string,
-  kind: "confirmation" | "daily_digest",
   scheduledFor: string,
-  payload: LessonWhatsAppPayload
+  payload: LessonEmailReminderPayload
 ) {
   const { data, error } = await db
     .from("lesson_reminders")
     .upsert(
-      [{ session_id: sessionId, channel: "whatsapp", kind, scheduled_for: scheduledFor, status: "sending", payload }],
+      [{
+        session_id: sessionId,
+        channel: "email",
+        kind: "daily_digest",
+        scheduled_for: scheduledFor,
+        status: "sending",
+        payload,
+      }],
       { onConflict: "session_id,channel,kind", ignoreDuplicates: true }
     )
     .select("id");
+
   if (error) {
-    console.error(`lesson_reminders: failed to claim ${kind} for session ${sessionId}: ${error.message}`);
+    console.error(`lesson_reminders: failed to claim email reminder for session ${sessionId}: ${error.message}`);
     return null;
   }
   return data?.[0]?.id ?? null;
 }
 
-async function finishMessage(db: SupabaseClient, id: string, patch: Record<string, unknown>) {
+async function finishReminder(db: SupabaseClient, id: string, patch: Record<string, unknown>) {
   const { error } = await db
     .from("lesson_reminders")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id);
+
   if (error) {
     console.error(`lesson_reminders: failed to update ${id}: ${error.message}`);
   }
 }
 
-/**
- * Instant WhatsApp booking confirmation. Best-effort: any failure is
- * recorded on the log row and swallowed — it must never block the ITN ack.
- */
-export async function sendLessonWhatsAppConfirmation(
-  db: SupabaseClient,
-  input: {
-    sessionId: string;
-    serviceName: string;
-    startsAt: string;
-    location?: string | null;
-    customerName: string;
-    customerPhone: string;
-  }
-) {
-  if (!isWhatsAppConfigured()) return { sent: false, reason: "whatsapp_not_configured" };
-  const payload = buildPayload(input);
-  if (!payload) return { sent: false, reason: "invalid_phone_or_date" };
-
-  const now = new Date().toISOString();
-  const claimId = await claimMessageSlot(db, input.sessionId, "confirmation", now, payload);
-  if (!claimId) return { sent: false, reason: "already_sent" };
-
-  try {
-    const result = await sendViaWhatsApp("confirmation", payload);
-    await finishMessage(db, claimId, {
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      provider_message_id: result.messageId || null,
-    });
-    return { sent: true };
-  } catch (sendError) {
-    const message = sendError instanceof Error ? sendError.message : "WhatsApp send failed";
-    await finishMessage(db, claimId, { status: "failed", attempts: 1, error: message.slice(0, 500) });
-    return { sent: false, reason: message };
-  }
-}
-
-type DigestSessionRow = {
+type ReminderSessionRow = {
   id: string;
   starts_at: string;
   location: string | null;
   customer_name: string | null;
-  customer_phone: string | null;
+  customer_email: string | null;
   lesson_services: { name: string } | null;
 };
 
-/**
- * Daily 04:00 SAST digest: one message per rider with a booked session
- * later in the current SAST calendar day.
- */
-export async function sendDailyLessonDigest(db: SupabaseClient, options: { now?: Date } = {}) {
+export async function sendDailyLessonEmailReminders(
+  db: SupabaseClient,
+  options: { now?: Date } = {}
+) {
   const now = options.now ?? new Date();
-  // SAST midnight of "today" expressed in UTC, without DST concerns (UTC+2 fixed).
   const sastNow = new Date(now.getTime() + SAST_OFFSET_MS);
   const dayStartUtc = new Date(
     Date.UTC(sastNow.getUTCFullYear(), sastNow.getUTCMonth(), sastNow.getUTCDate()) - SAST_OFFSET_MS
   );
   const dayEndUtc = new Date(dayStartUtc.getTime() + DAY_MS);
-
   const summary = { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
   const { data, error } = await db
     .from("lesson_sessions")
-    .select("id,starts_at,location,customer_name,customer_phone,lesson_services:service_id(name)")
+    .select("id,starts_at,location,customer_name,customer_email,lesson_services:service_id(name)")
     .eq("status", "booked")
     .gt("starts_at", now.toISOString())
     .lt("starts_at", dayEndUtc.toISOString())
-    .not("customer_phone", "is", null)
+    .not("customer_email", "is", null)
     .order("starts_at", { ascending: true })
     .limit(50);
+
   if (error) throw new Error(`Unable to load today's sessions: ${error.message}`);
 
-  const sessions = (data ?? []) as unknown as DigestSessionRow[];
+  const sessions = (data ?? []) as unknown as ReminderSessionRow[];
   summary.candidates = sessions.length;
 
   for (const session of sessions) {
@@ -255,30 +167,43 @@ export async function sendDailyLessonDigest(db: SupabaseClient, options: { now?:
       startsAt: session.starts_at,
       location: session.location,
       customerName: session.customer_name || "there",
-      customerPhone: session.customer_phone || "",
+      customerEmail: session.customer_email || "",
     });
+
     if (!payload) {
       summary.skipped += 1;
       continue;
     }
 
-    const claimId = await claimMessageSlot(db, session.id, "daily_digest", now.toISOString(), payload);
+    const claimId = await claimReminderSlot(db, session.id, now.toISOString(), payload);
     if (!claimId) {
-      summary.skipped += 1; // already messaged (rerun or duplicate cron)
+      summary.skipped += 1;
       continue;
     }
 
     try {
-      const result = await sendViaWhatsApp("daily_digest", payload);
-      await finishMessage(db, claimId, {
+      const result = await sendEmail({
+        to: payload.email,
+        subject: `Today at ${payload.timeSast}: your SpinTribe session`,
+        html: `<h2>Your ride is today</h2>
+<p>Hi ${escapeHtml(payload.firstName)}, your <strong>${escapeHtml(payload.serviceName)}</strong> is today at <strong>${escapeHtml(payload.timeSast)}</strong>.</p>
+<p><strong>Meet:</strong> ${escapeHtml(payload.meetingPoint)}</p>
+<p>Your calendar invite has the full details. Reply to this email if anything changes.</p>`,
+      });
+
+      await finishReminder(db, claimId, {
         status: "sent",
         sent_at: new Date().toISOString(),
-        provider_message_id: result.messageId || null,
+        provider_message_id: result.sent ? result.messageId : null,
       });
       summary.sent += 1;
     } catch (sendError) {
-      const message = sendError instanceof Error ? sendError.message : "WhatsApp send failed";
-      await finishMessage(db, claimId, { status: "failed", attempts: 1, error: message.slice(0, 500) });
+      const message = sendError instanceof Error ? sendError.message : "Email send failed";
+      await finishReminder(db, claimId, {
+        status: "failed",
+        attempts: 1,
+        error: message.slice(0, 500),
+      });
       summary.failed += 1;
     }
   }
@@ -286,4 +211,4 @@ export async function sendDailyLessonDigest(db: SupabaseClient, options: { now?:
   return summary;
 }
 
-export { isWhatsAppConfigured };
+export { isEmailConfigured };

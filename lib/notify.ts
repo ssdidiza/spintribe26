@@ -1,14 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildLessonIcs } from "@/lib/ics";
 import { COACHING_PACKAGE_TIERS, coachingPackageSavingsCents } from "@/lib/coaching-packages";
-import { sendLessonWhatsAppConfirmation } from "@/lib/lesson-reminders";
-import {
-  isWhatsAppConfigured,
-  normalizeWhatsAppNumber,
-  sendWhatsAppTemplate,
-  sendWhatsAppText,
-  whatsAppSendMode,
-} from "@/lib/whatsapp";
+import { isEmailConfigured, sendEmail } from "@/lib/email";
 
 /**
  * Booking notifications, modelled on PayFast/Xero: best-effort and
@@ -32,16 +25,8 @@ function coachName() {
   return process.env.LESSON_COACH_NAME?.trim() || "SpinTribe Coaching";
 }
 
-function resendFrom() {
-  return process.env.RESEND_FROM?.trim() || "SpinTribe <onboarding@resend.dev>";
-}
-
 function appOrigin() {
   return (process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "").replace(/\/$/, "");
-}
-
-function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY?.trim() && coachEmail());
 }
 
 function formatWhen(startsAt: Date) {
@@ -53,44 +38,6 @@ function formatWhen(startsAt: Date) {
     minute: "2-digit",
     timeZone: "Africa/Johannesburg",
   }).format(startsAt);
-}
-
-async function sendEmail(input: {
-  to: string;
-  subject: string;
-  html: string;
-  ics?: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) return;
-
-  const payload: Record<string, unknown> = {
-    from: resendFrom(),
-    to: [input.to],
-    subject: input.subject,
-    html: input.html,
-  };
-  if (input.ics) {
-    payload.attachments = [
-      {
-        filename: "lesson.ics",
-        content: Buffer.from(input.ics, "utf-8").toString("base64"),
-      },
-    ];
-  }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error(`Resend responded ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  }
 }
 
 export async function dispatchLessonBookingNotifications(
@@ -144,24 +91,6 @@ export async function dispatchLessonBookingNotifications(
     }
   }
 
-  // 2. Instant WhatsApp booking confirmation — fires the moment PayFast
-  // confirms, alongside the email; never waits for a cron. (The daily
-  // 04:00 SAST digest cron handles day-of reminders separately.)
-  if (input.customerPhone) {
-    try {
-      await sendLessonWhatsAppConfirmation(db, {
-        sessionId: input.sessionId,
-        serviceName: input.serviceName,
-        startsAt: input.startsAt,
-        location: input.location,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-      });
-    } catch {
-      // Best-effort like the rest of this path; never block the payment ack.
-    }
-  }
-
   if (!isEmailConfigured()) return;
 
   const ics = buildLessonIcs({
@@ -177,12 +106,13 @@ export async function dispatchLessonBookingNotifications(
     attendeeEmail: input.customerEmail ?? coachEmail(),
   });
 
-  // 3. Email the coach.
-  try {
-    await sendEmail({
-      to: coachEmail(),
-      subject: `New lesson: ${input.customerName} — ${when}`,
-      html: `<h2>New lesson booked</h2>
+  // 2. Email the coach.
+  if (coachEmail()) {
+    try {
+      await sendEmail({
+        to: coachEmail(),
+        subject: `New lesson: ${input.customerName} — ${when}`,
+        html: `<h2>New lesson booked</h2>
 <p><strong>${input.customerName}</strong> booked <strong>${input.serviceName}</strong>.</p>
 <ul>
 <li><strong>When:</strong> ${when} (${input.durationMinutes} min)</li>
@@ -191,13 +121,14 @@ ${contact ? `<li><strong>Contact:</strong> ${contact}</li>` : ""}
 ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
 </ul>
 <p>The calendar invite is attached.</p>`,
-      ics,
-    });
-  } catch {
-    // ignore — coach still has the in-app notification
+        attachments: [{ filename: "lesson.ics", content: Buffer.from(ics, "utf-8").toString("base64") }],
+      });
+    } catch {
+      // ignore — coach still has the in-app notification
+    }
   }
 
-  // 4. Email the rider a confirmation + invite.
+  // 3. Email the rider a confirmation + invite.
   if (input.customerEmail) {
     try {
       await sendEmail({
@@ -209,7 +140,7 @@ ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
 <li><strong>When:</strong> ${when} (${input.durationMinutes} min)</li>
 ${input.location ? `<li><strong>Where:</strong> ${input.location}</li>` : ""}
 </ul>
-<p>The calendar invite is attached. You can also add it from the confirmation screen.</p>
+<p>The calendar invite is attached with reminders for the day before and two hours before. You can also add it from the confirmation screen.</p>
 ${input.scheduleUrl && (input.remainingSessions ?? 0) > 0 ? `<p><strong>You have ${input.remainingSessions} more session${
           (input.remainingSessions ?? 0) === 1 ? "" : "s"
         } to schedule.</strong> <a href="${input.scheduleUrl}">Pick your next time here</a> — keep this link, it's your scheduling page.</p>` : ""}
@@ -217,8 +148,8 @@ ${addBlockUrl ? `<hr />
 <h3>Keep the progression going</h3>
 <p>After one session, the best next step is a structured Performance Block: four FTP-based sessions with continuity, follow-up, and a lower per-session rate.</p>
 <p><a href="${addBlockUrl}">Add the 4-session Performance Block</a> and save R${Math.round(coachingPackageSavingsCents(fourSessionBlock) / 100)} versus booking four Skills &amp; Training Rides one at a time.</p>` : ""}
-<p>Already use SpinTribe? Sign in with Strava from the confirmation screen if you want this lesson linked to your own SpinTribe history. Booking and reminders do not pull Strava metrics.</p>`,
-        ics,
+<p>Already use SpinTribe? Sign in from the confirmation screen if you want this lesson linked to your private progress history.</p>`,
+        attachments: [{ filename: "lesson.ics", content: Buffer.from(ics, "utf-8").toString("base64") }],
       });
     } catch {
       // ignore — booking is already confirmed
@@ -226,15 +157,11 @@ ${addBlockUrl ? `<hr />
   }
 }
 
-function packagePaidTemplateName() {
-  return process.env.WHATSAPP_TEMPLATE_PACKAGE_PAID?.trim() || "package_paid";
-}
-
 /**
- * Cart/package payment confirmed: one invoice-style email and one WhatsApp,
- * both carrying the /schedule link. No session exists yet — per-session
- * confirmations fire from /schedule as each slot is booked. Best-effort,
- * same contract as dispatchLessonBookingNotifications.
+ * Cart/package payment confirmed: one invoice-style email carrying the
+ * /schedule link. No session exists yet — per-session confirmations fire from
+ * /schedule as each slot is booked. Best-effort, same contract as
+ * dispatchLessonBookingNotifications.
  */
 export async function dispatchCartPurchaseNotifications(
   db: SupabaseClient,
@@ -281,31 +208,6 @@ export async function dispatchCartPurchaseNotifications(
     }
   }
 
-  // 2. WhatsApp with the schedule link. Template mode uses a URL button whose
-  // dynamic suffix is the token (template URL: {origin}/schedule?token={{1}}).
-  const phone = normalizeWhatsAppNumber(input.customerPhone ?? "");
-  if (phone && isWhatsAppConfigured() && scheduleUrl) {
-    try {
-      if (whatsAppSendMode() === "text") {
-        await sendWhatsAppText({
-          to: phone,
-          text: `Hi ${firstName}, your SpinTribe Coaching package is paid: ${summary}.
-
-Pick your session times here (keep this link): ${scheduleUrl}`,
-        });
-      } else {
-        await sendWhatsAppTemplate({
-          to: phone,
-          templateName: packagePaidTemplateName(),
-          bodyParams: [firstName, summary].map((value) => value.replace(/\s+/g, " ").trim()),
-          urlButtonParam: input.scheduleToken ?? "",
-        });
-      }
-    } catch {
-      // best-effort — the email below carries the same link
-    }
-  }
-
   const itemRowsHtml = input.items
     .map(
       (item) =>
@@ -315,8 +217,8 @@ Pick your session times here (keep this link): ${scheduleUrl}`,
     )
     .join("");
 
-  // 3. Email the coach.
-  if (isEmailConfigured()) {
+  // 2. Email the coach.
+  if (isEmailConfigured() && coachEmail()) {
     try {
       await sendEmail({
         to: coachEmail(),
@@ -330,7 +232,7 @@ Pick your session times here (keep this link): ${scheduleUrl}`,
     }
   }
 
-  // 4. Email the rider the receipt + schedule link.
+  // 3. Email the rider the receipt + schedule link.
   if (input.customerEmail && process.env.RESEND_API_KEY?.trim()) {
     try {
       await sendEmail({
@@ -343,7 +245,7 @@ Pick your session times here (keep this link): ${scheduleUrl}`,
           input.totalAmountCents
         )}</strong></td></tr></table>
 ${scheduleUrl ? `<p style="margin-top:16px"><a href="${scheduleUrl}" style="display:inline-block;background:#ff4b35;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Schedule your sessions</a></p>
-<p>Keep this link — it's your scheduling page for every session in this package. Each session you book gets its own calendar invite and WhatsApp confirmation.</p>` : ""}
+<p>Keep this link — it's your scheduling page for every session in this package. Each session you book gets its own email confirmation and calendar invite.</p>` : ""}
 ${input.reference ? `<p style="color:#888;font-size:12px">Payment reference: ${input.reference}</p>` : ""}`,
       });
     } catch {

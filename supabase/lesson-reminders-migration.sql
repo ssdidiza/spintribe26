@@ -1,8 +1,8 @@
 -- ============================================================
--- WhatsApp lesson messaging log: one row per (session, kind) —
--- 'confirmation' (instant, sent on PayFast ITN) and 'daily_digest'
--- (04:00 SAST cron, /api/lessons/reminders/send). The unique key
--- doubles as the dedupe guard against ITN retries / cron re-runs.
+-- Email lesson reminder log: one row per (session, kind).
+-- 'daily_digest' is sent by the 04:00 SAST cron at
+-- /api/lessons/reminders/send. The unique key doubles as the
+-- dedupe guard against cron re-runs.
 -- Run AFTER lesson-public-booking-migration.sql in:
 --   Supabase Dashboard -> SQL Editor -> New query
 -- Safe to re-run (idempotent).
@@ -11,7 +11,7 @@
 create table if not exists public.lesson_reminders (
   id                  uuid primary key default gen_random_uuid(),
   session_id          uuid not null references public.lesson_sessions(id) on delete cascade,
-  channel             text not null default 'whatsapp' check (channel in ('whatsapp')),
+  channel             text not null default 'email' check (channel in ('email')),
   kind                text not null check (kind in ('confirmation', 'daily_digest', 'reminder_24h', 'reminder_1h')),
   scheduled_for       timestamptz not null,
   status              text not null default 'pending'

@@ -11,7 +11,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { createPayFastCheckoutUrl, isPayFastConfigured } from "@/lib/payfast";
 import { getEffectiveUserId, getSession } from "@/lib/session";
 import { coachingPackagePricing, findCoachingPackageTier } from "@/lib/coaching-packages";
-import { normalizeWhatsAppNumber } from "@/lib/whatsapp";
 import { createXeroInvoiceForLessonPurchase, isXeroConfigured } from "@/lib/xero";
 
 export const runtime = "nodejs";
@@ -76,9 +75,6 @@ export async function POST(req: NextRequest) {
   }
   if (customerName.length < 2) return NextResponse.json({ error: "Please enter your name" }, { status: 400 });
   if (!isValidEmail(customerEmail)) return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
-  if (!normalizeWhatsAppNumber(customerPhone)) {
-    return NextResponse.json({ error: "Please enter a valid WhatsApp number (e.g. 071 234 5678)" }, { status: 400 });
-  }
 
   const db = supabaseAdmin();
   const serviceIds = lines.map((line) => line.serviceId);
