@@ -34,6 +34,9 @@ function icsValue(ics: string, key: string) {
   return line ? unescapeIcsText(line.slice(key.length + 1)) : "";
 }
 
+// Booking emails already carry the canonical RFC 5545 invite. Derive the
+// Google shortcut from that same attachment so the two calendar paths cannot
+// drift onto different times, locations, or session names.
 function googleCalendarLinkFromAttachments(attachments?: EmailAttachment[]) {
   const invite = attachments?.find((attachment) => attachment.filename.toLowerCase().endsWith(".ics"));
   if (!invite) return "";
