@@ -111,26 +111,30 @@ export default function LessonSlotCalendar({ availability, selectedSlot, onSelec
           {monthDays.map((day) => {
             const dateKey = format(day, "yyyy-MM-dd");
             const slotCount = daysByDate.get(dateKey)?.slots.length ?? 0;
+            const inMonth = isSameMonth(day, visibleMonth);
             const selected = dateKey === activeDate;
+
+            if (!slotCount || !inMonth) {
+              return <span key={dateKey} aria-hidden="true" className="aspect-square" />;
+            }
+
             return (
               <button
                 type="button"
                 key={dateKey}
-                disabled={!slotCount || !isSameMonth(day, visibleMonth)}
-                onClick={() => setChosenDate(dateKey)}
+                onClick={() => {
+                  setChosenDate(dateKey);
+                  if (dateKey !== selectedDateKey) onSelect("");
+                }}
                 aria-label={`${format(day, "d MMMM")}, ${slotCount} available times`}
                 className={`relative flex aspect-square items-center justify-center rounded-xl text-xs font-bold transition-colors ${
                   selected
                     ? "bg-[#ff4b35] text-white"
-                    : slotCount && isSameMonth(day, visibleMonth)
-                      ? "bg-foreground/[0.05] text-foreground hover:bg-[#ff4b35]/15"
-                      : "text-muted-foreground/30"
+                    : "bg-foreground/[0.05] text-foreground hover:bg-[#ff4b35]/15"
                 }`}
               >
                 {format(day, "d")}
-                {slotCount > 0 && isSameMonth(day, visibleMonth) && (
-                  <span className={`absolute bottom-1 h-1 w-1 rounded-full ${selected ? "bg-white" : "bg-[#ff4b35]"}`} />
-                )}
+                <span className={`absolute bottom-1 h-1 w-1 rounded-full ${selected ? "bg-white" : "bg-[#ff4b35]"}`} />
               </button>
             );
           })}
@@ -159,7 +163,7 @@ export default function LessonSlotCalendar({ availability, selectedSlot, onSelec
             </div>
           ) : (
             <p className="rounded-xl bg-foreground/[0.04] px-3 py-4 text-center text-xs text-muted-foreground">
-              No times available on this date.
+              No times available yet.
             </p>
           )}
         </div>

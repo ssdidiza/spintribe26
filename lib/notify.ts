@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildLessonIcs } from "@/lib/ics";
+import { buildGoogleCalendarUrl, buildLessonIcs } from "@/lib/ics";
 import { COACHING_PACKAGE_TIERS, coachingPackageSavingsCents } from "@/lib/coaching-packages";
 import { isEmailConfigured, sendEmail } from "@/lib/email";
 
@@ -27,6 +27,15 @@ function coachName() {
 
 function appOrigin() {
   return (process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.APP_URL?.trim() || "").replace(/\/$/, "");
+}
+
+function escapeHtml(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function formatWhen(startsAt: Date) {
@@ -63,6 +72,11 @@ export async function dispatchLessonBookingNotifications(
   const ends = new Date(input.endsAt);
   const when = formatWhen(starts);
   const contact = [input.customerEmail, input.customerPhone].filter(Boolean).join(" · ");
+  const customerNameHtml = escapeHtml(input.customerName);
+  const serviceNameHtml = escapeHtml(input.serviceName);
+  const locationHtml = input.location ? escapeHtml(input.location) : "";
+  const contactHtml = contact ? escapeHtml(contact) : "";
+  const notesHtml = input.notes ? escapeHtml(input.notes) : "";
   const fourSessionBlock = COACHING_PACKAGE_TIERS[0];
   const origin = appOrigin();
   // Upsell a block only after a single session — not to someone who just bought one.
@@ -105,6 +119,15 @@ export async function dispatchLessonBookingNotifications(
     attendeeName: input.customerName,
     attendeeEmail: input.customerEmail ?? coachEmail(),
   });
+  const googleCalendarUrl = buildGoogleCalendarUrl({
+    startsAt: starts,
+    endsAt: ends,
+    summary: `${input.serviceName} - SpinTribe Coaching`,
+    description: input.notes ?? "",
+    location: input.location ?? "",
+  });
+  const googleCalendarHref = escapeHtml(googleCalendarUrl);
+  const googleCalendarLink = `<p><a href="${googleCalendarHref}" style="display:inline-block;background:#ff4b35;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold">Add to Google Calendar</a></p>`;
 
   // 2. Email the coach.
   if (coachEmail()) {
@@ -113,14 +136,15 @@ export async function dispatchLessonBookingNotifications(
         to: coachEmail(),
         subject: `New lesson: ${input.customerName} — ${when}`,
         html: `<h2>New lesson booked</h2>
-<p><strong>${input.customerName}</strong> booked <strong>${input.serviceName}</strong>.</p>
+<p><strong>${customerNameHtml}</strong> booked <strong>${serviceNameHtml}</strong>.</p>
 <ul>
-<li><strong>When:</strong> ${when} (${input.durationMinutes} min)</li>
-${input.location ? `<li><strong>Where:</strong> ${input.location}</li>` : ""}
-${contact ? `<li><strong>Contact:</strong> ${contact}</li>` : ""}
-${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
+<li><strong>When:</strong> ${escapeHtml(when)} (${escapeHtml(input.durationMinutes)} min)</li>
+${locationHtml ? `<li><strong>Where:</strong> ${locationHtml}</li>` : ""}
+${contactHtml ? `<li><strong>Contact:</strong> ${contactHtml}</li>` : ""}
+${notesHtml ? `<li><strong>Notes:</strong> ${notesHtml}</li>` : ""}
 </ul>
-<p>The calendar invite is attached.</p>`,
+<p>The calendar invite is attached.</p>
+${googleCalendarLink}`,
         attachments: [{ filename: "lesson.ics", content: Buffer.from(ics, "utf-8").toString("base64") }],
       });
     } catch {
@@ -135,19 +159,20 @@ ${input.notes ? `<li><strong>Notes:</strong> ${input.notes}</li>` : ""}
         to: input.customerEmail,
         subject: `Your SpinTribe Coaching session is confirmed - ${when}`,
         html: `<h2>You're booked in</h2>
-<p>Hi ${input.customerName}, your <strong>${input.serviceName}</strong> with <strong>SpinTribe Coaching</strong> is confirmed.</p>
+<p>Hi ${customerNameHtml}, your <strong>${serviceNameHtml}</strong> with <strong>SpinTribe Coaching</strong> is confirmed.</p>
 <ul>
-<li><strong>When:</strong> ${when} (${input.durationMinutes} min)</li>
-${input.location ? `<li><strong>Where:</strong> ${input.location}</li>` : ""}
+<li><strong>When:</strong> ${escapeHtml(when)} (${escapeHtml(input.durationMinutes)} min)</li>
+${locationHtml ? `<li><strong>Where:</strong> ${locationHtml}</li>` : ""}
 </ul>
 <p>The calendar invite is attached with reminders for the day before and two hours before. You can also add it from the confirmation screen.</p>
-${input.scheduleUrl && (input.remainingSessions ?? 0) > 0 ? `<p><strong>You have ${input.remainingSessions} more session${
+${googleCalendarLink}
+${input.scheduleUrl && (input.remainingSessions ?? 0) > 0 ? `<p><strong>You have ${escapeHtml(input.remainingSessions ?? 0)} more session${
           (input.remainingSessions ?? 0) === 1 ? "" : "s"
-        } to schedule.</strong> <a href="${input.scheduleUrl}">Pick your next time here</a> — keep this link, it's your scheduling page.</p>` : ""}
+        } to schedule.</strong> <a href="${escapeHtml(input.scheduleUrl)}">Pick your next time here</a> — keep this link, it's your scheduling page.</p>` : ""}
 ${addBlockUrl ? `<hr />
 <h3>Keep the progression going</h3>
 <p>After one session, the best next step is a structured Performance Block: four FTP-based sessions with continuity, follow-up, and a lower per-session rate.</p>
-<p><a href="${addBlockUrl}">Add the 4-session Performance Block</a> and save R${Math.round(coachingPackageSavingsCents(fourSessionBlock) / 100)} versus booking four Skills &amp; Training Rides one at a time.</p>` : ""}
+<p><a href="${escapeHtml(addBlockUrl)}">Add the 4-session Performance Block</a> and save R${escapeHtml(Math.round(coachingPackageSavingsCents(fourSessionBlock) / 100))} versus booking four Skills &amp; Training Rides one at a time.</p>` : ""}
 <p>Already use SpinTribe? Sign in from the confirmation screen if you want this lesson linked to your private progress history.</p>`,
         attachments: [{ filename: "lesson.ics", content: Buffer.from(ics, "utf-8").toString("base64") }],
       });
@@ -211,9 +236,9 @@ export async function dispatchCartPurchaseNotifications(
   const itemRowsHtml = input.items
     .map(
       (item) =>
-        `<tr><td>${item.quantity}x ${item.name}</td><td style="text-align:right">${money(
+        `<tr><td>${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}</td><td style="text-align:right">${escapeHtml(money(
           item.quantity * item.unitPriceCents
-        )}</td></tr>`
+        ))}</td></tr>`
     )
     .join("");
 
@@ -224,7 +249,7 @@ export async function dispatchCartPurchaseNotifications(
         to: coachEmail(),
         subject: `Package paid: ${input.customerName} — ${totalSessions} sessions to schedule`,
         html: `<h2>Package paid</h2>
-<p><strong>${input.customerName}</strong> paid ${money(input.totalAmountCents)} for: ${summary}.</p>
+<p><strong>${escapeHtml(input.customerName)}</strong> paid ${escapeHtml(money(input.totalAmountCents))} for: ${escapeHtml(summary)}.</p>
 <p>They'll schedule their sessions from their link; each booking sends the usual confirmations.</p>`,
       });
     } catch {
@@ -239,14 +264,14 @@ export async function dispatchCartPurchaseNotifications(
         to: input.customerEmail,
         subject: `Payment received — schedule your ${totalSessions} SpinTribe sessions`,
         html: `<h2>Payment received</h2>
-<p>Hi ${firstName}, thanks — your SpinTribe Coaching package is confirmed.</p>
+<p>Hi ${escapeHtml(firstName)}, thanks — your SpinTribe Coaching package is confirmed.</p>
 <table style="width:100%;max-width:420px">${itemRowsHtml}
-<tr><td style="border-top:1px solid #ccc"><strong>Total paid</strong></td><td style="border-top:1px solid #ccc;text-align:right"><strong>${money(
+<tr><td style="border-top:1px solid #ccc"><strong>Total paid</strong></td><td style="border-top:1px solid #ccc;text-align:right"><strong>${escapeHtml(money(
           input.totalAmountCents
-        )}</strong></td></tr></table>
-${scheduleUrl ? `<p style="margin-top:16px"><a href="${scheduleUrl}" style="display:inline-block;background:#ff4b35;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Schedule your sessions</a></p>
+        ))}</strong></td></tr></table>
+${scheduleUrl ? `<p style="margin-top:16px"><a href="${escapeHtml(scheduleUrl)}" style="display:inline-block;background:#ff4b35;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Schedule your sessions</a></p>
 <p>Keep this link — it's your scheduling page for every session in this package. Each session you book gets its own email confirmation and calendar invite.</p>` : ""}
-${input.reference ? `<p style="color:#888;font-size:12px">Payment reference: ${input.reference}</p>` : ""}`,
+${input.reference ? `<p style="color:#888;font-size:12px">Payment reference: ${escapeHtml(input.reference)}</p>` : ""}`,
       });
     } catch {
       // ignore — payment is already confirmed

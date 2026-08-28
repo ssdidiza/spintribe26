@@ -4,6 +4,11 @@ export const MAX_CHAMP_RIDES_PER_7_DAYS = 5;
 export const RIDE_CREATION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const CHECKIN_WINDOW_MS = 12 * 60 * 60 * 1000;
 
+export function isRideCheckInOpen(startsAt: string | number | Date, nowMs: number) {
+  const startMs = startsAt instanceof Date ? startsAt.getTime() : new Date(startsAt).getTime();
+  return Number.isFinite(startMs) && Number.isFinite(nowMs) && Math.abs(nowMs - startMs) <= CHECKIN_WINDOW_MS;
+}
+
 export type RideCreationInput = {
   teamId: string;
   startsAt: string;

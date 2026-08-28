@@ -1,7 +1,8 @@
 -- Team Vitality scheduled rides and participation.
 -- APPLIED: these tables exist in the project. Statements are idempotent
 -- (create table if not exists), so re-running is safe but unnecessary.
--- Membership remains users.role = 'champion'; there is intentionally no champs table.
+-- Historical single-club migration. Canonical membership now lives in
+-- team_memberships via multi-club-rides-migration.sql; there is no champs table.
 -- No FK in this migration points to lesson_purchases, lesson_sessions,
 -- lesson_services, or any PayFast/payment record.
 

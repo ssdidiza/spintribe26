@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarPlus, CheckCircle2, Clock3, Loader2, MapPin, Sparkles } from "lucide-react";
@@ -106,11 +106,6 @@ function BookingConfirmedContent() {
   const remainingSessions = data?.remainingSessions ?? 0;
   const scheduleUrl = data?.scheduleToken ? `/schedule?token=${encodeURIComponent(data.scheduleToken)}` : "";
   const showUpsell = Boolean(data?.confirmed && data.lessonCount <= 1 && remainingSessions === 0);
-  const addOnAmountCents = useMemo(
-    () => Math.max(0, fourSessionBlock.totalPriceCents - (data?.totalAmountCents ?? 0)),
-    [data?.totalAmountCents, fourSessionBlock.totalPriceCents]
-  );
-
   return (
     <div className="min-h-screen bg-background">
       <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-5 py-10 text-center">
@@ -154,12 +149,22 @@ function BookingConfirmedContent() {
                   </Link>
                 )}
                 {reference && data.startsAt && (
-                  <a
-                    href={`/api/lessons/book/calendar?reference=${encodeURIComponent(reference)}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#ff4b35]/40 px-4 py-3 text-xs font-black text-accent-foreground"
-                  >
-                    <CalendarPlus size={14} /> Add to calendar
-                  </a>
+                  <>
+                    <a
+                      href={`/api/lessons/book/calendar?reference=${encodeURIComponent(reference)}&provider=google`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#ff4b35]/40 px-4 py-3 text-xs font-black text-accent-foreground"
+                    >
+                      <CalendarPlus size={14} /> Add to Google Calendar
+                    </a>
+                    <a
+                      href={`/api/lessons/book/calendar?reference=${encodeURIComponent(reference)}`}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-foreground/10 px-4 py-3 text-xs font-black text-muted-foreground"
+                    >
+                      <CalendarPlus size={14} /> Download calendar file
+                    </a>
+                  </>
                 )}
                 <a
                   href="/api/auth/strava"
@@ -188,8 +193,8 @@ function BookingConfirmedContent() {
                   </div>
                 </div>
                 <div className="rounded-lg bg-foreground/[0.04] p-3 text-xs text-muted-foreground">
-                  Add from{" "}
-                  <span className="font-black text-foreground">{formatMoneyCents(addOnAmountCents, fourSessionBlock.currency)}</span>{" "}
+                  Book the block for{" "}
+                  <span className="font-black text-foreground">{formatMoneyCents(fourSessionBlock.totalPriceCents, fourSessionBlock.currency)}</span>{" "}
                   and save {formatMoneyCents(coachingPackageSavingsCents(fourSessionBlock), fourSessionBlock.currency)} (
                   {coachingPackageDiscountPercent(fourSessionBlock)}%) versus four single Skills &amp; Training Rides.
                 </div>
@@ -198,7 +203,7 @@ function BookingConfirmedContent() {
                     href={`/book?package=${encodeURIComponent(fourSessionBlock.id)}&from=${encodeURIComponent(reference)}`}
                     className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#ff4b35] px-4 py-3 text-xs font-black text-white"
                   >
-                    <Sparkles size={14} /> Add the block
+                    <Sparkles size={14} /> Book the block
                   </Link>
                 )}
               </div>

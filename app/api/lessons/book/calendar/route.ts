@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { buildLessonIcs } from "@/lib/ics";
+import { buildGoogleCalendarUrl, buildLessonIcs } from "@/lib/ics";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -31,12 +31,25 @@ export async function GET(req: NextRequest) {
   const startsAt = new Date(data.booking_starts_at);
   const durationMinutes = Number(data.booking_duration_minutes ?? 60);
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
+  const summary = `${data.description || "Cycling coaching"} - SpinTribe Coaching`;
+  const location = data.booking_location ?? "";
+
+  if (req.nextUrl.searchParams.get("provider") === "google") {
+    return Response.redirect(buildGoogleCalendarUrl({
+      startsAt,
+      endsAt,
+      summary,
+      description: "SpinTribe Coaching session",
+      location,
+    }), 302);
+  }
+
   const ics = buildLessonIcs({
     uid: `lesson-${data.id}@spintribe`,
     startsAt,
     endsAt,
-    summary: `${data.description || "Cycling coaching"} - SpinTribe Coaching`,
-    location: data.booking_location ?? "",
+    summary,
+    location,
     organizerName: coachName(),
     organizerEmail: coachEmail(),
     attendeeName: data.customer_name ?? "SpinTribe rider",

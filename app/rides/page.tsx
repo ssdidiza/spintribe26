@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import NavBar from "@/components/NavBar";
+import { isRideCheckInOpen } from "@/lib/club-rides";
 import { useClientNow } from "@/lib/useClientNow";
-
-const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 type TeamSummary = {
   id: string;
@@ -27,12 +26,13 @@ type Ride = {
   meeting_point: string | null;
   route: string;
   capacity: number;
-  captain_id: string | null;
-  created_by: string | null;
+  captain_id?: string | null;
+  created_by?: string | null;
   checkinCount: number;
-  canCancel: boolean;
+  canCancel?: boolean;
+  isPast?: boolean;
   team: TeamSummary | TeamSummary[] | null;
-  captain: { strava_id: string; name: string | null } | { strava_id: string; name: string | null }[] | null;
+  captain?: { strava_id: string; name: string | null } | { strava_id: string; name: string | null }[] | null;
 };
 
 function firstJoined<T>(value: T | T[] | null): T | null {
@@ -50,6 +50,7 @@ export default function RidesPage() {
   const [capacity, setCapacity] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [working, setWorking] = useState<string | null>(null);
   const now = useClientNow();
@@ -63,6 +64,7 @@ export default function RidesPage() {
       setError("");
       setRides((result.rides ?? []) as Ride[]);
       setMemberships(nextMemberships);
+      setIsPublic(Boolean(result.public));
       setTeamId((current) => current || nextMemberships[0]?.team_id || "");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load rides.");
@@ -86,6 +88,7 @@ export default function RidesPage() {
         setError("");
         setRides((result.rides ?? []) as Ride[]);
         setMemberships(nextMemberships);
+        setIsPublic(Boolean(result.public));
         setTeamId(nextMemberships[0]?.team_id || "");
       })
       .catch((cause) => {
@@ -101,8 +104,9 @@ export default function RidesPage() {
   }, []);
 
   const includesTeamVitality = useMemo(
-    () => memberships.some((membership) => membership.team?.slug === "team-vitality"),
-    [memberships],
+    () => memberships.some((membership) => membership.team?.slug === "team-vitality")
+      || rides.some((ride) => firstJoined(ride.team)?.slug === "team-vitality"),
+    [memberships, rides],
   );
 
   async function createRide(event: FormEvent) {
@@ -162,12 +166,19 @@ export default function RidesPage() {
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Community rides</p>
           <h1 className="text-3xl font-black">Ride with your club</h1>
           <p className="text-sm text-muted-foreground">
-            Club champions can publish group rides directly. SpinTribe coordinates the ride listing; club membership, benefits and official programmes remain with the club operator.
+            {isPublic
+              ? "Discover upcoming and recent Team Vitality community rides before you join. Rider identities and private feedback are never shown here."
+              : "Club champions can publish group rides directly. SpinTribe coordinates the ride listing; club membership, benefits and official programmes remain with the club operator."}
           </p>
           {includesTeamVitality && (
             <p className="text-xs text-muted-foreground">
               Team Vitality rewards and official eligibility are governed by Discovery&apos;s rules and decisions.
             </p>
+          )}
+          {isPublic && (
+            <Link href="/join" className="inline-flex rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background">
+              Join Team Vitality — free
+            </Link>
           )}
         </header>
 
@@ -219,8 +230,10 @@ export default function RidesPage() {
         <section className="space-y-3">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold">Upcoming rides</h2>
-              <p className="text-xs text-muted-foreground">Check-in is server-enforced within 12 hours of ride start.</p>
+              <h2 className="text-lg font-bold">{isPublic ? "Team Vitality rides" : "Upcoming rides"}</h2>
+              <p className="text-xs text-muted-foreground">
+                {isPublic ? "Upcoming rides appear first, followed by recent completed rides." : "Check-in is server-enforced within 12 hours of ride start."}
+              </p>
             </div>
             <button type="button" onClick={() => void load()} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Refresh</button>
           </div>
@@ -228,28 +241,32 @@ export default function RidesPage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading rides…</p>
           ) : rides.length === 0 ? (
-            <p className="rounded-2xl border border-border p-5 text-sm text-muted-foreground">No upcoming rides for your clubs yet.</p>
+            <div className="rounded-2xl border border-border p-5 text-sm text-muted-foreground">
+              <p>{isPublic ? "No Team Vitality rides have been published in the last 90 days." : "No upcoming rides for your clubs yet."}</p>
+              {isPublic && <Link href="/join" className="mt-3 inline-flex font-bold text-foreground underline underline-offset-4">Join the free community</Link>}
+            </div>
           ) : (
             rides.map((ride) => {
               const team = firstJoined(ride.team);
               const captain = firstJoined(ride.captain);
-              const startMs = new Date(ride.starts_at).getTime();
-              const checkinOpen = now !== null && Math.abs(now - startMs) <= TWELVE_HOURS_MS;
+              const checkinOpen = !isPublic && now !== null && isRideCheckInOpen(ride.starts_at, now);
               return (
                 <article key={ride.id} className="rounded-2xl border border-border bg-card p-5">
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{team?.name ?? "Club ride"}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                      {team?.name ?? "Club ride"}{ride.isPast ? " · Completed" : ""}
+                    </p>
                     <h3 className="text-lg font-bold">{new Date(ride.starts_at).toLocaleString()}</h3>
                     <p className="text-sm"><span className="font-semibold">Meet:</span> {ride.meeting_point ?? "See route description"}</p>
                     <p className="text-sm text-muted-foreground">{ride.route}</p>
                     <p className="text-xs text-muted-foreground">
-                      Captain: {captain?.name ?? "Open"} · {ride.checkinCount}/{ride.capacity} checked in
+                      {isPublic ? `${ride.checkinCount}/${ride.capacity} riders checked in` : `Captain: ${captain?.name ?? "Open"} · ${ride.checkinCount}/${ride.capacity} checked in`}
                     </p>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href={`/rides/${ride.id}`} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">Details</Link>
-                    {!ride.captain_id && (
+                    {!isPublic && <Link href={`/rides/${ride.id}`} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">Details</Link>}
+                    {!isPublic && !ride.captain_id && (
                       <button type="button" disabled={working !== null} onClick={() => void act(ride.id, "captain")} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50">
                         {working === `captain:${ride.id}` ? "Claiming…" : "Captain this ride"}
                       </button>
@@ -263,6 +280,9 @@ export default function RidesPage() {
                       <button type="button" disabled={working !== null} onClick={() => void act(ride.id, "cancel")} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50">
                         {working === `cancel:${ride.id}` ? "Cancelling…" : "Cancel my ride"}
                       </button>
+                    )}
+                    {isPublic && !ride.isPast && (
+                      <Link href="/join" className="rounded-lg bg-foreground px-3 py-2 text-xs font-bold text-background">Join to take part</Link>
                     )}
                   </div>
                 </article>

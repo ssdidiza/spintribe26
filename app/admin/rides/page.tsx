@@ -24,6 +24,12 @@ type AdminRide = {
   team: TeamOption | TeamOption[] | null;
 };
 
+type FeedbackNote = {
+  id: string;
+  note: string;
+  created_at: string;
+};
+
 function joinedTeam(team: AdminRide["team"]): TeamOption | null {
   if (!team) return null;
   return Array.isArray(team) ? team[0] ?? null : team;
@@ -39,6 +45,8 @@ export default function AdminRidesPage() {
   const [capacity, setCapacity] = useState(String(DEFAULT_CAPACITY));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState<string | null>(null);
+  const [feedbackByRide, setFeedbackByRide] = useState<Record<string, FeedbackNote[] | undefined>>({});
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -135,6 +143,26 @@ export default function AdminRidesPage() {
     }
   }
 
+  async function toggleFeedback(id: string) {
+    if (feedbackByRide[id]) {
+      setFeedbackByRide((current) => ({ ...current, [id]: undefined }));
+      return;
+    }
+
+    setFeedbackLoading(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/rides/${encodeURIComponent(id)}/feedback`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Unable to load private feedback");
+      setFeedbackByRide((current) => ({ ...current, [id]: (data.feedback ?? []) as FeedbackNote[] }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load private feedback");
+    } finally {
+      setFeedbackLoading(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background px-5 py-8 text-foreground">
       <div className="mx-auto max-w-3xl space-y-8">
@@ -206,10 +234,28 @@ export default function AdminRidesPage() {
                         <p className="text-sm text-muted-foreground">{ride.route}</p>
                         <p className="text-xs text-muted-foreground">{ride.checkinCount}/{ride.capacity} checked in · {ride.feedbackCount} private feedback note{ride.feedbackCount === 1 ? "" : "s"}</p>
                       </div>
-                      <button type="button" onClick={() => void removeRide(ride.id)} className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
-                        Remove
-                      </button>
+                      <div className="flex shrink-0 flex-col gap-2">
+                        {ride.feedbackCount > 0 && (
+                          <button type="button" disabled={feedbackLoading === ride.id} onClick={() => void toggleFeedback(ride.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-50">
+                            {feedbackLoading === ride.id ? "Loading…" : feedbackByRide[ride.id] ? "Hide notes" : "View private notes"}
+                          </button>
+                        )}
+                        <button type="button" onClick={() => void removeRide(ride.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+                          Remove
+                        </button>
+                      </div>
                     </div>
+                    {feedbackByRide[ride.id] && (
+                      <div className="mt-4 space-y-2 border-t border-border pt-4" aria-label="Private ride feedback">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Private operational notes</p>
+                        {feedbackByRide[ride.id]?.map((feedback) => (
+                          <div key={feedback.id} className="rounded-xl bg-muted/50 p-3">
+                            <p className="whitespace-pre-wrap break-words text-sm">{feedback.note}</p>
+                            <p className="mt-2 text-[10px] text-muted-foreground">Received {new Date(feedback.created_at).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </article>
                 );
               })}

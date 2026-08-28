@@ -16,6 +16,24 @@ function escapeText(value: string) {
     .replace(/\r?\n/g, "\\n");
 }
 
+export function buildGoogleCalendarUrl(input: {
+  startsAt: Date;
+  endsAt: Date;
+  summary: string;
+  description?: string;
+  location?: string;
+}) {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: input.summary,
+    dates: `${formatIcsDate(input.startsAt)}/${formatIcsDate(input.endsAt)}`,
+  });
+
+  if (input.description) params.set("details", input.description);
+  if (input.location) params.set("location", input.location);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export function buildLessonIcs(input: {
   uid: string;
   startsAt: Date;

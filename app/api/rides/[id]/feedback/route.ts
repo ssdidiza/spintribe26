@@ -1,6 +1,37 @@
 import { NextResponse } from "next/server";
+import { getAdminContext } from "@/lib/admin-auth";
 import { canChampionClub, getSignedInClubUser } from "@/lib/club-auth";
 import { supabaseAdmin } from "@/lib/supabase";
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminContext();
+  if ("error" in admin) return NextResponse.json({ error: admin.error }, { status: admin.status });
+
+  try {
+    const { id } = await params;
+    const { data: ride, error: rideError } = await admin.db
+      .from("team_rides")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+    if (rideError) return NextResponse.json({ error: rideError.message }, { status: 500 });
+    if (!ride) return NextResponse.json({ error: "Ride not found." }, { status: 404 });
+
+    // Founder/admin receives the minimum operational projection. Rider IDs
+    // stay out of the response and this endpoint is never used by public UI.
+    const { data, error } = await admin.db
+      .from("ride_feedback")
+      .select("id,note,created_at")
+      .eq("ride_id", id)
+      .order("created_at", { ascending: true });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ feedback: data ?? [] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load feedback.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

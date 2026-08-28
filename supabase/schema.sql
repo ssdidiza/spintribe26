@@ -30,7 +30,7 @@ create table if not exists public.users (
   strava_id             text primary key,
   name                  text not null,
   avatar                text,
-  role                  text not null default 'member',   -- 'champion' | 'member' | 'admin'
+  role                  text not null default 'member',   -- platform role: 'member' | 'admin'
   tier                  int  not null default 200,        -- 200 | 400 | 600 | 800 | 1000
   team_id               uuid,
   current_league_id     uuid references public.leagues(id) on delete set null,

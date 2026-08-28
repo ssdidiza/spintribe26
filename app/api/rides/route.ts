@@ -9,18 +9,70 @@ import {
 import { supabaseAdmin } from "@/lib/supabase";
 
 const RIDE_SELECT = "id,starts_at,meeting_point,route,capacity,captain_id,created_by,team_id,team:teams!team_rides_team_id_fkey(id,name,slug),captain:users!team_rides_captain_id_fkey(strava_id,name)";
+const PUBLIC_RIDE_SELECT = "id,starts_at,meeting_point,route,capacity,team_id,team:teams!team_rides_team_id_fkey(id,name,slug)";
+const PUBLIC_HISTORY_DAYS = 90;
+
+async function countCheckins(db: ReturnType<typeof supabaseAdmin>, rideIds: string[]) {
+  const counts = new Map<string, number>();
+  if (rideIds.length === 0) return counts;
+
+  const { data, error } = await db.from("ride_checkins").select("ride_id").in("ride_id", rideIds);
+  if (error) throw error;
+  for (const checkin of data ?? []) {
+    const id = String(checkin.ride_id);
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+async function publicTeamVitalityRides(db: ReturnType<typeof supabaseAdmin>) {
+  const { data: vitality, error: vitalityError } = await db
+    .from("teams")
+    .select("id,name,slug")
+    .eq("slug", "team-vitality")
+    .maybeSingle();
+  if (vitalityError) throw vitalityError;
+  if (!vitality) throw new Error("Team Vitality club setup is missing.");
+
+  const since = new Date(Date.now() - PUBLIC_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data: rides, error } = await db
+    .from("team_rides")
+    .select(PUBLIC_RIDE_SELECT)
+    .eq("team_id", vitality.id)
+    .gte("starts_at", since)
+    .order("starts_at", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+
+  const checkins = await countCheckins(db, (rides ?? []).map((ride) => String(ride.id)));
+  const now = Date.now();
+  const publicRides = (rides ?? []).map((ride) => ({
+    ...ride,
+    checkinCount: checkins.get(String(ride.id)) ?? 0,
+    isPast: new Date(ride.starts_at).getTime() < now,
+  }));
+
+  publicRides.sort((left, right) => {
+    if (left.isPast !== right.isPast) return left.isPast ? 1 : -1;
+    const leftStart = new Date(left.starts_at).getTime();
+    const rightStart = new Date(right.starts_at).getTime();
+    return left.isPast ? rightStart - leftStart : leftStart - rightStart;
+  });
+
+  return NextResponse.json({ rides: publicRides, memberships: [], isAdmin: false, public: true });
+}
 
 export async function GET() {
   try {
     const user = await getSignedInClubUser();
-    if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    const db = supabaseAdmin();
+    if (!user) return publicTeamVitalityRides(db);
 
     const memberships = championMemberships(user);
     if (!user.isAdmin && memberships.length === 0) {
-      return NextResponse.json({ error: "Club champion access required." }, { status: 403 });
+      return publicTeamVitalityRides(db);
     }
 
-    const db = supabaseAdmin();
     let query = db
       .from("team_rides")
       .select(RIDE_SELECT)
@@ -35,19 +87,7 @@ export async function GET() {
     const { data: rides, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const rideIds = (rides ?? []).map((ride) => String(ride.id));
-    const checkinCounts = new Map<string, number>();
-    if (rideIds.length) {
-      const { data: checkins, error: checkinsError } = await db
-        .from("ride_checkins")
-        .select("ride_id")
-        .in("ride_id", rideIds);
-      if (checkinsError) return NextResponse.json({ error: checkinsError.message }, { status: 500 });
-      for (const checkin of checkins ?? []) {
-        const id = String(checkin.ride_id);
-        checkinCounts.set(id, (checkinCounts.get(id) ?? 0) + 1);
-      }
-    }
+    const checkinCounts = await countCheckins(db, (rides ?? []).map((ride) => String(ride.id)));
 
     return NextResponse.json({
       rides: (rides ?? []).map((ride) => ({
@@ -57,6 +97,7 @@ export async function GET() {
       })),
       memberships,
       isAdmin: user.isAdmin,
+      public: false,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load rides.";

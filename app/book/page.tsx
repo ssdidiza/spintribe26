@@ -94,13 +94,15 @@ export default function BookPage() {
         if (cancelled) return;
 
         const list = data.services ?? [];
-        const requestedPackage = COACHING_PACKAGE_TIERS.find((tier) => tier.id === params.get("package"));
+        const requestedSession = params.get("session");
+        const requestedPackage = COACHING_PACKAGE_TIERS.find((tier) =>
+          tier.id === params.get("package") || (requestedSession === "block" && tier.id === "performance-block-4")
+        );
         setServices(list);
         if (requestedPackage) {
           setPackageTierId(requestedPackage.id);
           setAvailabilityLoading(Boolean(findPerformanceService(list)));
         } else if (list[0]) {
-          const requestedSession = params.get("session");
           const requestedService = requestedSession === "performance" ? findPerformanceService(list) : list[0];
           setCart({ [(requestedService ?? list[0]).id]: 1 });
           setAvailabilityLoading(true);

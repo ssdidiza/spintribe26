@@ -12,21 +12,22 @@ import { useStore } from "@/lib/store";
 import { useHydrated } from "@/lib/useHydrated";
 
 const SESSION_OPTIONS = [
-  { id: "confidence", name: "Beginner confidence ride", description: "Build skills and confidence on the road.", duration: "60 min", price: "R399" },
-  { id: "performance", name: "Performance ride", description: "Focused coaching for stronger, smarter riding.", duration: "90 min", price: "R549" },
-  { id: "block", name: "Performance block", description: "Four coached rides with a clear progression.", duration: "4 × 90 min", price: "R1,899" },
+  { id: "confidence", name: "Beginner confidence ride", description: "Build skills and confidence on the road.", duration: "60 min", price: "R399", href: "/book?session=confidence" },
+  { id: "performance", name: "Performance ride", description: "Focused coaching for stronger, smarter riding.", duration: "90 min", price: "R549", href: "/book?session=performance" },
+  { id: "block", name: "Performance block", description: "Four coached rides with a clear progression.", duration: "4 × 90 min", price: "R1,899", href: "/book?package=performance-block-4" },
 ] as const;
 
 export default function LandingPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { currentUser, isOnboarded, login, completeOnboarding } = useStore();
-  const [selectedSession, setSelectedSession] = useState("confidence");
+  const [selectedSession, setSelectedSession] = useState<(typeof SESSION_OPTIONS)[number]["id"]>("confidence");
   const [showSignIn, setShowSignIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const selectedBookingHref = SESSION_OPTIONS.find((session) => session.id === selectedSession)?.href ?? "/book";
 
   useEffect(() => {
     if (!hydrated) return;
@@ -131,19 +132,19 @@ export default function LandingPage() {
       <section className="mx-auto flex min-h-[calc(100vh-132px)] w-full max-w-[1536px] flex-col px-6 pb-0 pt-7 sm:px-10 lg:px-16">
         <header className="flex items-center justify-between py-2">
           <BrandMark iconClassName="h-9 w-9" showWordmark wordmarkClassName="text-xl font-black tracking-[-0.04em] text-white sm:text-2xl" />
-          <div className="flex items-center gap-5">
-            <Link href="/join" className="text-sm font-bold text-white/75 hover:text-white sm:text-base">Team Vitality community</Link>
-            <button type="button" onClick={() => setShowSignIn(true)} className="border-b border-[#ff4b35] pb-1 text-sm font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base">Sign in</button>
+          <div className="flex items-center gap-3 sm:gap-5">
+            <Link href="/rides" className="whitespace-nowrap text-xs font-bold text-white/75 hover:text-white sm:text-base">Community rides</Link>
+            <button type="button" onClick={() => setShowSignIn(true)} className="whitespace-nowrap border-b border-[#ff4b35] pb-1 text-xs font-semibold text-white transition-colors hover:text-[#ff6a50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4b35] focus-visible:ring-offset-4 focus-visible:ring-offset-black sm:text-base">Sign in</button>
           </div>
         </header>
 
         <div className="grid min-w-0 flex-1 items-center gap-12 pb-8 pt-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16 lg:pt-10">
           <div className="min-w-0 max-w-[650px] pb-2">
             <h1 className="text-[clamp(2.75rem,13vw,5.45rem)] font-black leading-[0.98] tracking-[-0.065em]">Coaching built around your <span className="gradient-text">next ride.</span></h1>
-            <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">Book a single session or a focused coaching block. Pay once. Get calendar invites and email reminders.</p>
+            <p className="mt-7 max-w-[560px] text-base leading-8 text-white/65 sm:text-lg">1-on-1 cycling coaching for riders who want more confidence, stronger fitness, smarter preparation or better race-day performance.</p>
             <div className="mt-10"><p className="text-sm text-white/55">Sessions from</p><p className="mt-1 flex items-end gap-3"><span className="gradient-text text-5xl font-black tracking-[-0.05em] sm:text-6xl">R399</span><span className="pb-2 text-sm text-white/55">/ 60 min</span></p></div>
-            <Link href={`/book?session=${selectedSession}`} className="mt-8 inline-flex min-h-14 w-full max-w-[410px] items-center justify-center rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-7 text-base font-black text-white shadow-[0_16px_50px_rgba(238,0,117,0.18)] transition-transform hover:-translate-y-0.5">Choose your session</Link>
-            <Link href="/join" className="mt-4 inline-flex text-sm font-bold text-white/60 underline underline-offset-4 hover:text-white">Or join the Team Vitality community free →</Link>
+            <Link href={selectedBookingHref} className="mt-8 inline-flex min-h-14 w-full max-w-[410px] items-center justify-center rounded-xl bg-gradient-to-r from-[#ff5b1f] via-[#ff3b4d] to-[#ee0075] px-5 text-center text-sm font-black text-white shadow-[0_16px_50px_rgba(238,0,117,0.18)] transition-transform hover:-translate-y-0.5 sm:px-7 sm:text-base">BOOK YOUR COACHING SESSION</Link>
+            <Link href="/rides" className="mt-4 inline-flex text-sm font-bold text-white/60 underline underline-offset-4 hover:text-white">Or explore Team Vitality community rides free →</Link>
           </div>
 
           <div className="min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-[#111] shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
