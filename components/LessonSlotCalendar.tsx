@@ -115,7 +115,7 @@ export default function LessonSlotCalendar({ availability, selectedSlot, onSelec
             const selected = dateKey === activeDate;
 
             if (!slotCount || !inMonth) {
-              return <span key={dateKey} aria-hidden="true" className="aspect-square" />;
+              return <span key={dateKey} aria-hidden="true" className="h-10 sm:h-11" />;
             }
 
             return (
@@ -127,7 +127,7 @@ export default function LessonSlotCalendar({ availability, selectedSlot, onSelec
                   if (dateKey !== selectedDateKey) onSelect("");
                 }}
                 aria-label={`${format(day, "d MMMM")}, ${slotCount} available times`}
-                className={`relative flex aspect-square items-center justify-center rounded-xl text-xs font-bold transition-colors ${
+                className={`relative flex h-10 items-center justify-center rounded-xl text-xs font-bold transition-colors sm:h-11 ${
                   selected
                     ? "bg-[#ff4b35] text-white"
                     : "bg-foreground/[0.05] text-foreground hover:bg-[#ff4b35]/15"

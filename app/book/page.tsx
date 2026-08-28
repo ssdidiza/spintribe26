@@ -574,7 +574,7 @@ export default function BookPage() {
                     )}
                   </div>
                   <div className="flex items-end justify-between gap-4">
-                    <span className="text-xs text-muted-foreground">Total</span>
+                    <span className="text-xs text-muted-foreground">Total charged in ZAR</span>
                     <span className="text-2xl font-black text-accent-foreground">
                       {formatMoneyCents(selectedOffer.priceCents, selectedOffer.currency)}
                     </span>
@@ -593,6 +593,7 @@ export default function BookPage() {
                 </div>
                 <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground">
                   <ShieldCheck size={12} /> Secure online checkout.
+                  <span>Base charge is South African rand (ZAR).</span>
                   <MapPin size={12} /> Johannesburg area.
                   <CheckCircle2 size={12} /> Calendar invite after checkout.
                 </p>
